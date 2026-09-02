@@ -1,0 +1,480 @@
+control_store:
+  backend: postgres
+  url_env: DATABASE_URL
+  poll_interval_ms: 1000
+  pooled_proxy: false
+
+initial_sysadmins:
+  - issuer: https://identity.example
+    subject: platform-operator
+
+auth:
+  trusted_issuers:
+    - issuer: https://identity.example
+      audience: tellurion-placeholder
+      claims: { tenants: tenants }
+
+# Example Tellurion configuration (design doc shape), PostGIS-backed — the
+# "scaling up" reference config for when a single `.gpkg` file and its one
+# writer connection stop being enough (more concurrent writers, a larger
+# dataset, or an existing PostGIS estate to point at). See
+# `config/example-geopackage.yaml` instead for the minimal, embedded-first
+# config the README's Quickstart runs against a plain `.gpkg` file with no
+# database service at all; every optional section below (auth, RBAC/ABAC
+# policy, the relational registry backend, 3D places, styled tiles) applies
+# to either storage driver equally, this file just happens to demonstrate
+# them on `postgis`.
+#
+# Copy this file to config.yaml, point TELLURION_CONFIG / --config at it, or
+# mount it wherever the deployment layer you're using expects it.
+#
+# Env vars carry secrets/infra only: DATABASE_URL (per storage's `url_env`),
+# PORT (overrides server.port below), TELLURION_CONFIG (this file's path).
+# Everything else is behavior and belongs here.
+
+server:
+  port: 8080
+  request_timeout_s: 60
+  log_json: false
+  drain_timeout_s: 10
+  readiness_probe_interval_s: 5
+  readiness_probe_timeout_s: 2
+  metrics_tenant_allowlist: [public]
+  metrics_collection_allowlist:
+    - tenant: public
+      catalog: default
+      collection: demo
+  # Request concurrency ceiling ahead of the storage pool. Absent (the
+  # default, as here) derives it instead: the combined storage capacity hint
+  # (e.g. every postgis pool's connection count) times a fixed multiplier,
+  # or — with no pooled backend at all — cgroup-aware effective CPU count
+  # times 64. Precedence is explicit config > cgroup-derived value >
+  # hardcoded clamp bounds; see ServerConfig::max_concurrency and
+  # `derive_max_concurrency` in the `tellurion` server crate.
+  # max_concurrency: 256
+  # Cursor-paged change feed and webhook delivery (`#115`). The feed is
+  # available for any collection with a resolvable outbox; webhook delivery
+  # and pruning stay opt-in. Dead letters are inspected by platform admins at
+  # `/config/webhooks/{id}/dead-letters` with these independent page bounds.
+  # change_feed: { default_page_size: 100, max_page_size: 1000 }
+  # webhook_delivery:
+  #   enabled: true
+  #   batch_size: 200
+  #   poll_interval_ms: 1000
+  #   request_timeout_ms: 10000
+  #   max_attempts: 5
+  #   base_backoff_ms: 500
+  #   max_backoff_ms: 60000
+  #   dead_letter_capacity: 1000
+  #   dead_letter_default_page_size: 100
+  #   dead_letter_max_page_size: 1000
+  # outbox_retention:
+  #   enabled: true
+  #   poll_interval_ms: 60000
+  #   prune_batch_size: 10000
+
+# `memory_percent` is a share of a detected memory limit, never an absolute
+# byte count: cgroup v2's `memory.max`, else cgroup v1's
+# `memory.limit_in_bytes`, else total system RAM when neither cgroup
+# filesystem is mounted (e.g. running directly on macOS/dev). The same
+# precedence philosophy as `storages[].pool_size`/`server.max_concurrency`
+# below applies here too, one level up: this percentage is itself the
+# explicit config value, always applied against whichever detected limit is
+# "derived" — see `tellurion_core::resources` and `cache.rs`.
+cache:
+  memory_percent: 25.0
+
+settings:
+  slow_request_ms: 1000
+  max_request_body_bytes: 1048576
+  tile_vertex_budget: 500000
+  # Exact Features/STAC item pages over this cumulative source-geometry
+  # vertex count are refused with 422 rather than simplified or truncated.
+  items_vertex_budget: 50000
+  # Platform-default per-tenant admission control (`#66`): a bounded queue
+  # with a deadline in front of a fair-share slice of `server.
+  # max_concurrency`. Absent (as here) falls back to a small built-in
+  # default (32-deep queue, 250ms deadline, weight 1 — equal shares).
+  # Consulted only at this platform level and at each tenant declaration's
+  # `settings.admission` — a catalog/collection override is refused at load,
+  # since admission runs before routing ever resolves either.
+  # admission:
+  #   queue_capacity: 32
+  #   queue_deadline_ms: 250
+  #   weight: 1
+  # Batch-ingest budget and chunk size (`#114`) for `POST .../items/batch`
+  # and `tellurion-ingest`'s `geopackage load`/`postgis load`. Rides the
+  # same platform -> tenant -> catalog -> collection chain as
+  # `max_request_body_bytes` above (unlike `admission`, every level is
+  # consulted). Absent (as here) falls back to a 64 MiB cumulative byte
+  # budget, a 1,000,000-item cap, and 500-item chunks.
+  # batch:
+  #   max_bytes: 67108864
+  #   max_items: 1000000
+  #   chunk_items: 500
+
+storages:
+  - id: main
+    driver: postgis
+    url_env: DATABASE_URL
+    # Connection-pool size override (read by the `postgis` driver only).
+    # Absent (the default, as here) derives it instead: cgroup-aware
+    # effective CPU count (cgroup v2's `cpu.max`, else the host core count)
+    # doubled for connection headroom, clamped to [4, 32]. Precedence is
+    # explicit config > cgroup-derived value > hardcoded clamp bounds — see
+    # StorageDecl::pool_size and `tellurion-postgis`'s `pool::derive_pool_size`.
+    # pool_size: 16
+
+# Where a managed asset's bytes live — a sibling concept to `storages`
+# above, never the same word: `storages` declares data backends (where
+# features live), `object_stores` declares blob backends (where uploaded
+# asset bytes live). `fs` is the only profile this slice implements; `root`
+# must already exist as a writable directory. A collection opts in by id via
+# its own `object_store` field (see `demo` below) — absent entirely, a
+# collection still fully supports remote (metadata-only) assets, just no
+# managed-storage byte lifecycle.
+object_stores:
+  - id: main-assets
+    profile: fs
+    root: /tmp/tellurion-demo-assets
+
+tenants:
+  - id: public
+    # Per-tenant admission override (`#66`): this tenant's own values win
+    # outright over the platform default above for every field they set —
+    # unset fields here still fall back to this module's own built-in
+    # default, never to the platform's value for that one field (the same
+    # "whole value replaces" rule `stac`/`colormap` follow elsewhere in this
+    # chain). A second tenant declaring a higher `weight` gets a
+    # proportionally larger, still-bounded slice of `server.max_concurrency`
+    # instead of the equal share every tenant gets by default.
+    # settings:
+    #   admission: { queue_capacity: 64, queue_deadline_ms: 500, weight: 1 }
+
+# Registry read/validation configuration. `validation: eager` (the default,
+# shown explicitly here) cross-checks every collection against its storage's
+# catalog once at boot; `lazy` defers each collection's check to its first
+# resolved request instead. Applies identically no matter which `backend` is
+# selected below. See RegistryValidationMode.
+#
+# One deliberate exception either way: a collection that fully overrides
+# `table`/`geometry`/`pk` never derives anything from its storage's catalog
+# — a design decision (`Router::effective_decl`'s own doc comment), not an
+# oversight. An operator who has fully pinned a collection's physical shape
+# has asked this server to trust that declaration outright, so no extent,
+# row estimate, attribute schema, or datetime column is ever derived for it,
+# under either mode. That said, under `lazy` such a collection still gets
+# one cached existence/type check against the backend the first time a
+# request resolves it (table exists, and the pinned geometry/pk column names
+# are real) — the same asymmetry-closing check `eager`'s boot sweep already
+# does for every collection, pinned or not. A typo'd pin fails that check
+# with a named config error pointing at the collection and the missing
+# table/column, instead of surfacing as a raw query-time error on the first
+# real request.
+#
+# `backend: file` (the default, shown explicitly here) is what this example
+# uses: catalog/collection declarations below (`catalogs:`/`collections:`)
+# are the whole registry, indexed in memory at boot/reload, no I/O. Selecting
+# `backend: relational` instead moves tenant/catalog/collection declarations
+# into a database (see `tellurion-ingest registry create-tables` plus the
+# three `registry publish-*` commands) — the `storage` field below would then
+# name one of the storages above (reusing its `url_env`, never a second
+# connection shape) to connect through. `auth:` and `policy:` remain operator
+# configuration here, but their tenant internal-id references are validated
+# against the relational tenant snapshot read at boot/reload.
+#
+# IMPORTANT: `backend: relational` and non-empty `tenants:`/`catalogs:`/
+# `collections:` sections are mutually exclusive — a config declaring both
+# fails to load with a named error. Double-source is refused outright rather
+# than merged with a precedence rule: an operator who forgets to remove a
+# stale declaration after switching backends gets a boot error, not a config
+# that silently authenticates or routes against the wrong source.
+#
+# To try it: 1) save each tenant/catalog/collection declaration as its own
+# YAML file, then delete (or comment out) all three sections below; 2)
+# uncomment the two lines below; 3) run `tellurion-ingest registry
+# create-tables` once; 4) publish parents before children:
+# `tellurion-ingest registry publish-tenant tenant.yaml`, then
+# `tellurion-ingest registry publish-catalog catalog.yaml`, then
+# `tellurion-ingest registry publish-collection collection.yaml`; 5) restart,
+# or send this running process `SIGHUP` (or touch this file, if
+# it's already running) to pick up the new backend without a restart — see
+# `reload.rs`'s own doc for the trigger pipeline. A LATER publish/update
+# against the registry tables needs the same SIGHUP/touch to become visible:
+# there is no polling or watch on the database itself, only on this file and
+# the process signal — an operator triggers the refresh explicitly, the same
+# way any other config change does.
+#
+#   backend: relational
+#   storage: main
+registry:
+  validation: eager
+  backend: file
+
+catalogs:
+  - id: default
+    tenant: public
+    # Cross-tenant visibility (authorization policy layer). Absent (the
+    # default) is fully private: visible only to a subject with membership
+    # in this catalog's own tenant. `public: true` opens it to every
+    # tenant, including an anonymous subject when `auth:` is configured but
+    # no credential was presented; `shared_with` lists specific tenant
+    # internal ids instead. A collection inherits its catalog's visibility
+    # unless it declares its own (see below). See VisibilityDecl.
+    #
+    # visibility:
+    #   public: false
+    #   shared_with: []
+collections:
+  # `table`/`geometry`/`pk`/`datetime`/`tiles` are all omitted here: they
+  # derive from the `main` storage's catalog at boot (table defaults to the
+  # collection id, "demo"; geometry/pk/datetime come from PostGIS
+  # introspection; per-zoom tile serving parameters come from the
+  # row-estimate-driven heuristics) — see the driver-contract design doc,
+  # section 2, and `descriptor::heuristics` in tellurion-core. Set any of
+  # them explicitly only when the physical shape or tuning genuinely differs
+  # from what derivation produces.
+  - id: demo
+    catalog: default
+    storage: main
+    # Opts this collection into the managed-storage asset lane — see
+    # `object_stores` above. Absent entirely is also valid: a collection
+    # with no `object_store` still fully supports remote (metadata-only)
+    # assets via `PUT .../assets/{key}` with an `href` and no digest.
+    object_store: main-assets
+    style:
+      fill: "#3388ff66"
+      stroke: "#3366cc"
+      stroke_width: 1.0
+    # No `height` column exists on the seeded demo table, so every extruded
+    # footprint falls back to `default_height` (see Places3dConf) — enough
+    # to exercise the Glb lane end to end without new ingest work.
+    places3d:
+      height_property: "height"
+      default_height: 8.0
+    # Declares the seeded `name` column's type for queryables; leaves
+    # `additional_properties` at its default `true` so the backend's other
+    # reported columns (id, observed_at, geom) stay servable/filterable
+    # even though only `name` is spelled out here. See SchemaDecl.
+    schema:
+      properties:
+        - { name: name, type: string }
+    # Vector-tile property allowlist: projects the seeded `name` column into
+    # each MVT feature's attribute table, beyond the primary key every tile
+    # already carries under the reserved `id` property. Resolved through the
+    # same platform -> tenant -> catalog -> collection chain as `stac`/
+    # `tile_caps` above (nearest level wins, whole list replaces); absent
+    # anywhere in the chain (the default) means pk-only, same as before this
+    # setting existed. Validated against the collection's derived attribute
+    # schema at boot: an unknown column name fails fast, by name. See
+    # SettingsDecl::tile_properties.
+    settings:
+      tile_properties: [name]
+    # Zoom-selected pre-generalized geometry variants: an operator-produced
+    # column (e.g. simplified offline and loaded alongside `geom`) the tiles
+    # lane reads instead of the base `geometry` column for a declared zoom
+    # range, falling back to `geom` outside every declared range. Entirely
+    # declarative -- the SERVER only reads whichever column already exists; it
+    # never generates or refreshes one. Left commented out here because the
+    # seeded demo table only has the one `geom` column; declaring this
+    # without a real `geom_z6` column on the backend fails boot, by name
+    # (see Router::validate_catalog).
+    #
+    # Producing the column is ingest's job, not the server's -- uncomment the
+    # block below and then run:
+    #
+    #   tellurion-ingest variants materialize --config config.yaml \
+    #       --collection demo
+    #
+    # which adds the column, populates it by simplifying `geom` with a
+    # tolerance derived from this entry's own zoom range (one 256px tile
+    # pixel at its maxzoom), and indexes it. Rerunning repopulates; it is a
+    # batch backfill, not a maintained secondary, so rerun it after a bulk
+    # load.
+    #
+    # geometry_variants:
+    #   - column: geom_z6
+    #     minzoom: 0
+    #     maxzoom: 6
+
+# MapLibre Style JSON documents for the styled-tile lane
+# (/collections/{cid}/styles/{styleId}/map/tiles/...) and the read-only
+# OGC API — Styles surface (/styles). Paths are read relative to the
+# process's working directory, not this file's location.
+styles:
+  - id: default
+    path: config/styles/default.json
+
+# Tenant authentication/authorization. Absent entirely (as above), every
+# request may act as any tenant — no restriction at all, the same as
+# running behind a reverse proxy that already handles auth upstream.
+#
+# `bearer_tokens` and `trusted_issuers` are independently optional and compose:
+# mix a few static recovery/service tokens with approved OIDC issuers for human
+# users, or configure just one, or neither. A presented bearer token is
+# checked against `bearer_tokens` first — a match wins outright, cheap and
+# unambiguous — and only falls through to OIDC verification when it isn't a
+# known static token.
+#
+# Where a static token's VALUE lives is a separate question from what it
+# authorizes. `token_env` names an environment variable holding it, so the
+# document carries the reference and the environment carries the secret —
+# the same split `storages[].url_env` already uses for database credentials,
+# and the reason a config file, a control-store snapshot and a `GET /config`
+# response can all be read without reading a credential. Rotating a token
+# then means changing a variable and restarting, not editing and
+# redistributing this file.
+#
+# An inline `token:` still works exactly as it always did — every config
+# written before this existed uses one, and none of them stopped booting —
+# but it is reported by name in the log at every boot and every reload until
+# it moves. Declare exactly one of the two per principal; both, or neither,
+# is refused by name at startup.
+#
+# auth:
+#   bearer_tokens:
+#     - token_env: TELLURION_DEV_TOKEN
+#       tenants: [public]
+#       # Role names this token holds, per tenant (authorization policy
+#       # layer). Every key here must also appear in `tenants` above — a
+#       # token can't hold a role in a tenant it isn't even a member of.
+#       # Absent/empty means "a member, but no role a policy grant can
+#       # match" — the same starting point every subject has until an
+#       # operator assigns one.
+#       roles:
+#         public: [reader]
+#       # Arbitrary claims available for ABAC filter-template substitution
+#       # (see `policy.roles[].grants[].filter` below).
+#       claims:
+#         org: acme
+#   trusted_issuers:
+#     # Must equal the token's `iss` claim exactly, and is also the base URL
+#     # `/.well-known/openid-configuration` is discovered against to find
+#     # the JWKS endpoint. No network call happens at config load/reload
+#     # time — discovery and the JWKS fetch itself are both deferred to the
+#     # first bearer token that actually needs them, so an unreachable
+#     # issuer here never blocks startup or a reload; it just means every
+#     # OIDC token is rejected until the issuer becomes reachable.
+#     - issuer: "https://accounts.example.com"
+#       audience: "tellurion"
+#       # Opt in only when these registered claim mappings should create
+#       # tenant memberships directly. Otherwise durable `(issuer, sub)`
+#       # role bindings are authoritative and raw claims grant nothing.
+#       claims_authoritative: true
+#       claims:
+#       # Claim carrying tenant memberships — accepts either a JSON array
+#       # of strings or a single space-separated string.
+#         tenants: tenants
+#       # Claim carrying role names (authorization policy layer), same
+#       # array-or-space-separated-string convention as `tenants` above.
+#       # Absent (the default) means every OIDC-authenticated subject holds
+#       # no role at all. Flat, not per-tenant structured: every role this
+#       # claim names applies uniformly across every tenant the subject is
+#       # a member of — see OidcClaimsConfig::roles for the exact rule and
+#       # its documented follow-up (structured per-tenant role claims).
+#         roles: roles
+#       clock_skew_s: 60
+#       jwks_ttl_s: 300
+
+# Authorization policy: RBAC roles mapped to grants, optionally narrowed by
+# an ABAC filter (CQL2-text with `{{claims.NAME}}` placeholders substituted
+# from the subject's claims). Absent entirely (as here), RBAC never
+# activates for any tenant — a subject who clears the platform isolation
+# check above (membership, or the resource's own `public`/`shared_with`)
+# reads unrestricted, exactly as if this section didn't exist. See
+# docs/design/2026-07-18-authorization-policy-layer.md for the full design.
+#
+# policy:
+#   # Platform-shared roles: available to every tenant.
+#   roles:
+#     - name: reader
+#       grants:
+#         - scope:
+#             # Both empty (the default) matches every collection under the
+#             # catalog; narrow with `catalogs`/`collections` (internal
+#             # ids) instead.
+#             collections: [demo]
+#           lanes: [features, tiles]
+#           # No `filter` — this grant allows outright, no row-level
+#           # narrowing. No `rate` either — no request-rate ceiling, which
+#           # is what every grant meant before ceilings existed.
+#     - name: metered-reader
+#       grants:
+#         - scope: { collections: [demo] }
+#           # A `rate` ceiling is charged once per served request, by the
+#           # checkpoints that enforce it: features, stac, write and feed.
+#           # Naming `tiles` or `places3d` alongside a `rate` block is
+#           # refused at config load rather than silently left unenforced —
+#           # split those lanes into their own, ceiling-less grant.
+#           lanes: [features, stac]
+#           rate:
+#             # principal | role | tenant — which counter this ceiling is
+#             # charged against. Every counter is additionally per-tenant,
+#             # including `principal`: one tenant's document never spends
+#             # the same principal's budget in another tenant.
+#             scope: principal
+#             # A FIXED window (it resets on epoch-aligned boundaries), so a
+#             # client can burst up to twice the ceiling across a boundary.
+#             window_seconds: 60
+#             ceiling: 600
+#             # Required, with no default: what to do when the ceiling
+#             # cannot be evaluated at all — no counter backend wired, an
+#             # unreachable one, or a subject carrying no principal for a
+#             # `principal`-scoped ceiling. `strict` refuses the request
+#             # (429 with Retry-After); `graceful` serves it and logs that
+#             # the ceiling went unenforced. Availability versus safety is
+#             # the operator's call, so this server never picks a side.
+#             on_counter_unavailable: graceful
+#           # Several matching grants' ceilings compose conjunctively: every
+#           # one of them must admit the request, so holding a second,
+#           # looser grant is never a way around a tight ceiling.
+#     - name: org-scoped-reader
+#       grants:
+#         - scope: { collections: [demo] }
+#           lanes: [features]
+#           # AND-merged into the query alongside anything the request
+#           # itself supplied. Pushed down whenever the resolved driver
+#           # reports itself filter-capable: features/STAC items-list and
+#           # single-item GET, STAC ids-search, tiles (vector, unstyled PNG,
+#           # styled PNG), and 3D places' glb lane — both the
+#           # extruded-footprint path and the true-solid-geometry
+#           # (`VolumeSource`) path — all take the filter today. A subject
+#           # whose only matching grant is filtered is denied (never served
+#           # unfiltered) in the one case that remains: a resolved source
+#           # that genuinely can't compile a filter. See the design doc's
+#           # §5/§6.
+#           filter: "org = {{claims.org}}"
+#     - name: writer
+#       grants:
+#         - scope: { collections: [demo] }
+#           lanes: [write]
+#           # A grant naming `write` must never declare a `filter` — rejected
+#           # at config-load time (row-level write conditions are out of
+#           # scope; see docs/design/2026-07-18-authorization-policy-layer.md
+#           # section 8). `write` is also never implied by any read lane and
+#           # implies none itself — a role wanting both states both.
+#   # Tenant-custom policy documents: visible to one tenant only. A role
+#   # name declared both here and under the platform-shared `roles` above
+#   # has this document's own grants win outright for that tenant (whole-
+#   # role replacement, never merged) — a tenant can narrow its own access,
+#   # never widen access to another tenant's resources.
+#   tenant_policies:
+#     - tenant: public
+#       roles:
+#         - name: reader
+#           grants:
+#             - scope: { collections: [demo] }
+#               lanes: [features, tiles]
+
+# Webhook subscriptions are versioned config resources. The signing secret
+# is resolved from the named environment variable and never appears in this
+# document or the control-lane response. Runtime edits use `GET /config` +
+# compare-and-swap `PUT /config`; `GET /config/webhooks` is the bounded
+# subscription projection.
+# webhooks:
+#   - id: catalog-indexer
+#     url: https://consumer.example.com/tellurion
+#     secret_env: TELLURION_WEBHOOK_SECRET
+#     scope: { collections: [demo] }
+#     operations: [upsert, delete]
+#     enabled: true

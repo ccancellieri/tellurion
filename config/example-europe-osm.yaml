@@ -1,0 +1,55 @@
+control_store:
+  backend: postgres
+  url_env: DATABASE_URL
+  poll_interval_ms: 1000
+  pooled_proxy: false
+
+allow_empty_platform: true
+
+# Europe OSM XL profile. Use only after bench/data/prepare.sh confirms that the
+# mounted external volume has at least 64 GiB free. The physical tables are
+# created by bench/data/ingest-osm.sh --profile europe.
+
+server:
+  port: 8080
+
+cache:
+  memory_percent: 25.0
+
+storages:
+  - id: main
+    driver: postgis
+    url_env: DATABASE_URL
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: europe_lines
+    catalog: default
+    storage: main
+    table: europe_lines
+    geometry: geom
+    pk: ogc_fid
+    style:
+      stroke: "#6b7280"
+      stroke_width: 1.0
+    settings:
+      tile_properties: ["name", "highway", "waterway", "railway"]
+
+  - id: europe_multipolygons
+    catalog: default
+    storage: main
+    table: europe_multipolygons
+    geometry: geom
+    pk: ogc_fid
+    style:
+      fill: "#3388ff66"
+      stroke: "#3366cc"
+      stroke_width: 1.0
+    settings:
+      tile_properties: ["name", "building", "landuse", "natural", "leisure"]

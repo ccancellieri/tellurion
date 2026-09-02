@@ -1,0 +1,1612 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tellurion — STAC API (core + collections + items + search + assets)",
+    "description": "STAC API - Core (landing page, conformance, OpenAPI) plus STAC API - Collections, STAC API - Features (items), STAC API - Item Search (/search, both GET and POST, with the Filter Extension and free-text query), and this server's assets-and-object-storage surface (registration, direct upload, presigned upload, resumable upload, download redirect, and the read-only reconcile report) for one catalog. Mounted at /{tenant}/stac/catalogs/{catalog}.",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Landing page (STAC Catalog)",
+        "operationId": "getLandingPage",
+        "responses": {
+          "200": {
+            "description": "A STAC Catalog with an embedded conformsTo array and links to the API description, conformance declaration, and collections.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conformance": {
+      "get": {
+        "summary": "Conformance classes this API root implements",
+        "operationId": "getConformanceDeclaration",
+        "responses": {
+          "200": {
+            "description": "List of conformance class URIs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conformsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api": {
+      "get": {
+        "summary": "This OpenAPI document",
+        "operationId": "getApiDescription",
+        "responses": {
+          "200": {
+            "description": "The OpenAPI 3.0 document describing this API.",
+            "content": {
+              "application/vnd.oai.openapi+json;version=3.0": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections": {
+      "get": {
+        "summary": "List STAC Collections in this catalog",
+        "operationId": "getCollections",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 100
+            },
+            "description": "Collections per page. Values above the server maximum are clamped, not rejected."
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque keyset pagination token from a previous response's `next` link."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An object containing an array of STAC Collection objects, and root/self link relations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}": {
+      "get": {
+        "summary": "Fetch a single STAC Collection",
+        "operationId": "getCollection",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "name": "f",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "json",
+                "xml"
+              ]
+            },
+            "description": "Format selection: `xml` returns the ISO 19139 alternate representation of this collection (media type application/vnd.iso.19139+xml, also reachable through Accept) instead of the default STAC Collection JSON."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A STAC Collection: type, stac_version, id, description, license, extent (spatial and temporal), links, and assets (materialized links to the tile/glb lanes this deployment serves for the collection).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              },
+              "application/vnd.iso.19139+xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items": {
+      "get": {
+        "summary": "Fetch STAC Items from a collection (keyset-paginated)",
+        "operationId": "getItems",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            },
+            "description": "Values above the server maximum are clamped, not rejected."
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Four comma-separated numbers: minLon,minLat,maxLon,maxLat (CRS84)."
+          },
+          {
+            "name": "datetime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A single RFC 3339 instant, or a start/end interval with `..` for an open end (not both)."
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque keyset pagination token from a previous response's `next` link."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A STAC ItemCollection: a GeoJSON FeatureCollection whose features are STAC Items.",
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "422": {
+            "$ref": "#/components/responses/itemsVertexBudgetExceeded"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{itemId}": {
+      "get": {
+        "summary": "Fetch a single STAC Item by id",
+        "operationId": "getItem",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A STAC Item: a GeoJSON Feature plus stac_version, collection, assets, and properties.datetime.",
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/itemsVertexBudgetExceeded"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/assets/reconcile": {
+      "get": {
+        "summary": "Report drift between this collection's asset records and its object store",
+        "description": "Read-only: no repair action, no deletion, no state flip. Walks the whole collection's records against its object store's managed namespace and reports both directions — records whose object is gone, and objects no record points at (including in-progress upload staging objects). Gated by the write policy lane, since it introspects write-side state. Collection level only: it walks the whole collection rather than taking an item id.",
+        "operationId": "getReconcileReport",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The drift report.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reconcileReport"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/assets/{key}": {
+      "get": {
+        "summary": "Fetch one collection asset's registration",
+        "description": "Collection-level reads check configuration-declared assets first: a declared asset is a remote asset that happens to live in configuration — same read surface, always available, no byte lifecycle.",
+        "operationId": "getCollectionAsset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "Register (or re-register) one collection asset",
+        "description": "Managed vs. remote is discriminated by the Repr-Digest header, not by a body field. A managed registration is born pending and carries no bytes yet; the transfer happens on one of the .../data routes below. A remote registration is born available and has no byte lifecycle.",
+        "operationId": "putCollectionAsset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          },
+          {
+            "$ref": "#/components/parameters/reprDigest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/assetObjectInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupportedMediaType"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove one collection asset",
+        "description": "A remote asset loses its record only; a managed asset loses its record and its stored object.",
+        "operationId": "deleteCollectionAsset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The asset registration was removed."
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/assets/{key}/data": {
+      "get": {
+        "summary": "Download one managed collection asset's bytes",
+        "description": "On an object store with the presigned-URL capability this answers the download-redirect class with a 307 to a time-limited signed GET URL, never proxying bytes through this server; a profile with no URL space of its own proxies the bytes directly instead. A pending or failed asset is a 404 either way — there is nothing at the target to serve.",
+        "operationId": "getCollectionAssetData",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The asset bytes, served with the asset's own registered media type (application/octet-stream when it declared none).",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "307": {
+            "description": "A time-limited presigned GET URL for the stored object.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "Upload one managed collection asset's bytes directly",
+        "description": "The direct-upload transfer, capped at the asset's own declared size and refused before the body is fully buffered once it runs past that. Commits the asset from pending to available (or failed, named in status_detail) against the digest the registration declared.",
+        "operationId": "putCollectionAssetData",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/assets/{key}/data/presign": {
+      "get": {
+        "summary": "Mint a presigned download URL for one managed collection asset",
+        "description": "The read-side companion to the presigned upload, alongside (never in place of) the direct-proxy download above. Only for an already-available managed asset.",
+        "operationId": "getCollectionAssetPresign",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The presigned GET target.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/presignedTransfer"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      },
+      "put": {
+        "summary": "Negotiate a presigned upload URL for one managed collection asset",
+        "description": "The presigned-upload class's negotiation step: the client transfers bytes straight to the store, then commits with the finalize call below. Object-store profiles with no URL space of their own refuse this by name.",
+        "operationId": "putCollectionAssetPresign",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The presigned PUT target.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/presignedTransfer"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/assets/{key}/finalize": {
+      "post": {
+        "summary": "Commit a presigned upload for one managed collection asset",
+        "description": "The server never saw the bytes, so this verifies them through the store's own HEAD and flips the asset from pending to available or failed by name. No request body.",
+        "operationId": "postCollectionAssetFinalize",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/assets/{key}/data/uploads": {
+      "post": {
+        "summary": "Create a resumable upload for one managed collection asset",
+        "description": "The chunked-append transport, alongside direct upload and presigned upload. No request body.",
+        "operationId": "postCollectionAssetUpload",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/uploadOffset"
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      },
+      "get": {
+        "summary": "Probe a resumable upload's accumulated offset",
+        "description": "HEAD-style: a literal HEAD against this route is answered by the same handler, dropping the body and keeping the Upload-Offset header. 404 when no upload is in progress for this key.",
+        "operationId": "getCollectionAssetUploadOffset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/uploadOffset"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Append one chunk to a resumable upload",
+        "description": "Appends at the offset the Upload-Offset request header names, capped at whatever room remains below the asset's declared size.",
+        "operationId": "patchCollectionAssetUpload",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          },
+          {
+            "$ref": "#/components/parameters/uploadOffsetHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/uploadOffset"
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Abandon a resumable upload",
+        "description": "Idempotent: 204 whether or not an upload was actually in progress. The asset itself stays pending, untouched.",
+        "operationId": "deleteCollectionAssetUpload",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Any in-progress upload for this key was discarded."
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/assets/{key}/data/uploads/complete": {
+      "post": {
+        "summary": "Commit a resumable upload",
+        "description": "Pulls the accumulated bytes back out and commits them exactly as the direct-upload lane does, flipping the asset from pending to available or failed by name. No request body.",
+        "operationId": "postCollectionAssetUploadComplete",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{itemId}/assets/{key}": {
+      "get": {
+        "summary": "Fetch one item asset's registration",
+        "description": "Reads the item-level asset record; configuration-declared assets are a collection-level concept and never apply here.",
+        "operationId": "getItemAsset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "Register (or re-register) one item asset",
+        "description": "Managed vs. remote is discriminated by the Repr-Digest header, not by a body field. A managed registration is born pending and carries no bytes yet; the transfer happens on one of the .../data routes below. A remote registration is born available and has no byte lifecycle.",
+        "operationId": "putItemAsset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          },
+          {
+            "$ref": "#/components/parameters/reprDigest"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/assetObjectInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupportedMediaType"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove one item asset",
+        "description": "A remote asset loses its record only; a managed asset loses its record and its stored object.",
+        "operationId": "deleteItemAsset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The asset registration was removed."
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{itemId}/assets/{key}/data": {
+      "get": {
+        "summary": "Download one managed item asset's bytes",
+        "description": "On an object store with the presigned-URL capability this answers the download-redirect class with a 307 to a time-limited signed GET URL, never proxying bytes through this server; a profile with no URL space of its own proxies the bytes directly instead. A pending or failed asset is a 404 either way — there is nothing at the target to serve.",
+        "operationId": "getItemAssetData",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The asset bytes, served with the asset's own registered media type (application/octet-stream when it declared none).",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "307": {
+            "description": "A time-limited presigned GET URL for the stored object.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "Upload one managed item asset's bytes directly",
+        "description": "The direct-upload transfer, capped at the asset's own declared size and refused before the body is fully buffered once it runs past that. Commits the asset from pending to available (or failed, named in status_detail) against the digest the registration declared.",
+        "operationId": "putItemAssetData",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{itemId}/assets/{key}/data/presign": {
+      "get": {
+        "summary": "Mint a presigned download URL for one managed item asset",
+        "description": "The read-side companion to the presigned upload, alongside (never in place of) the direct-proxy download above. Only for an already-available managed asset.",
+        "operationId": "getItemAssetPresign",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The presigned GET target.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/presignedTransfer"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      },
+      "put": {
+        "summary": "Negotiate a presigned upload URL for one managed item asset",
+        "description": "The presigned-upload class's negotiation step: the client transfers bytes straight to the store, then commits with the finalize call below. Object-store profiles with no URL space of their own refuse this by name.",
+        "operationId": "putItemAssetPresign",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The presigned PUT target.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/presignedTransfer"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{itemId}/assets/{key}/finalize": {
+      "post": {
+        "summary": "Commit a presigned upload for one managed item asset",
+        "description": "The server never saw the bytes, so this verifies them through the store's own HEAD and flips the asset from pending to available or failed by name. No request body.",
+        "operationId": "postItemAssetFinalize",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{itemId}/assets/{key}/data/uploads": {
+      "post": {
+        "summary": "Create a resumable upload for one managed item asset",
+        "description": "The chunked-append transport, alongside direct upload and presigned upload. No request body.",
+        "operationId": "postItemAssetUpload",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/uploadOffset"
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      },
+      "get": {
+        "summary": "Probe a resumable upload's accumulated offset",
+        "description": "HEAD-style: a literal HEAD against this route is answered by the same handler, dropping the body and keeping the Upload-Offset header. 404 when no upload is in progress for this key.",
+        "operationId": "getItemAssetUploadOffset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/uploadOffset"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Append one chunk to a resumable upload",
+        "description": "Appends at the offset the Upload-Offset request header names, capped at whatever room remains below the asset's declared size.",
+        "operationId": "patchItemAssetUpload",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          },
+          {
+            "$ref": "#/components/parameters/uploadOffsetHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/uploadOffset"
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Abandon a resumable upload",
+        "description": "Idempotent: 204 whether or not an upload was actually in progress. The asset itself stays pending, untouched.",
+        "operationId": "deleteItemAssetUpload",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Any in-progress upload for this key was discarded."
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{itemId}/assets/{key}/data/uploads/complete": {
+      "post": {
+        "summary": "Commit a resumable upload",
+        "description": "Pulls the accumulated bytes back out and commits them exactly as the direct-upload lane does, flipping the asset from pending to available or failed by name. No request body.",
+        "operationId": "postItemAssetUploadComplete",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/itemId"
+          },
+          {
+            "$ref": "#/components/parameters/assetKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/assetObject"
+          },
+          "404": {
+            "$ref": "#/components/responses/capabilityUnsupported"
+          },
+          "409": {
+            "$ref": "#/components/responses/conflict"
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "summary": "Search STAC Items across one or more collections (STAC API - Item Search)",
+        "operationId": "getItemSearch",
+        "parameters": [
+          {
+            "name": "collections",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated Collection ids each matching Item must be in (no brackets, no whitespace). Omitted or empty means every collection in this catalog. Exactly one collection id is the efficient single-collection fast path; zero or more than one is a cross-collection fan-out (see the 'search' rel's description)."
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated Item ids to return, via direct per-id lookups. When present, bbox/datetime/filter/intersects are NOT combined with it in this implementation."
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Four comma-separated numbers: minLon,minLat,maxLon,maxLat (CRS84). Mutually exclusive with 'intersects' (400 if both are given)."
+          },
+          {
+            "name": "datetime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A single RFC 3339 instant, or a start/end interval with '..' for an open end (not both)."
+          },
+          {
+            "name": "intersects",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A GeoJSON Geometry object, JSON-encoded and percent-encoded as a single query value (this server's own GET encoding choice; the spec leaves it unspecified and recommends POST for this parameter). Mutually exclusive with 'bbox' (400 if both are given)."
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A CQL2 filter expression (Basic CQL2), encoded per 'filter-lang'. Composed with 'intersects' (if also given) as an AND. Requires the target collection's driver to support filtering, else 400."
+          },
+          {
+            "name": "filter-lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cql2-text",
+                "cql2-json"
+              ],
+              "default": "cql2-text"
+            },
+            "description": "Which encoding 'filter' is in. Defaults to cql2-text on GET."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            },
+            "description": "Values above the server maximum are clamped, not rejected."
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque continuation token from a previous response's 'next' link."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Free-text query, served exclusively by the target collection's derived search index. A collection with no search capability, or a combination this slice refuses rather than approximating, is a named 400 rather than a silently degraded result set."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A STAC ItemCollection: a GeoJSON FeatureCollection whose features are STAC Items, possibly drawn from more than one collection.",
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "422": {
+            "$ref": "#/components/responses/itemsVertexBudgetExceeded"
+          }
+        }
+      },
+      "post": {
+        "summary": "Search STAC Items across one or more collections (STAC API - Item Search, POST)",
+        "operationId": "postItemSearch",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "collections": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "bbox": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    },
+                    "minItems": 4,
+                    "maxItems": 4,
+                    "description": "2D bbox only (4 numbers) in this implementation."
+                  },
+                  "datetime": {
+                    "type": "string"
+                  },
+                  "intersects": {
+                    "type": "object",
+                    "description": "A GeoJSON Geometry object. Mutually exclusive with 'bbox' (400 if both are given)."
+                  },
+                  "filter": {
+                    "description": "A CQL2 filter, as a string (cql2-text) or a JSON object (cql2-json), per 'filter-lang'."
+                  },
+                  "filter-lang": {
+                    "type": "string",
+                    "enum": [
+                      "cql2-text",
+                      "cql2-json"
+                    ],
+                    "default": "cql2-json"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 10
+                  },
+                  "token": {
+                    "type": "string",
+                    "description": "Opaque continuation token from a previous response's 'next' link."
+                  },
+                  "q": {
+                    "type": "string",
+                    "description": "Free-text query, served exclusively by the target collection's derived search index. A collection with no search capability, or a combination this slice refuses rather than approximating, is a named 400 rather than a silently degraded result set."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A STAC ItemCollection: a GeoJSON FeatureCollection whose features are STAC Items, possibly drawn from more than one collection.",
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "422": {
+            "$ref": "#/components/responses/itemsVertexBudgetExceeded"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "collectionId": {
+        "name": "collectionId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "itemId": {
+        "name": "itemId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "assetKey": {
+        "name": "key",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The asset key within this collection (or item). A key declared in configuration is served here read-only: PUT and DELETE against it refuse with a named 409."
+      },
+      "reprDigest": {
+        "name": "Repr-Digest",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "RFC 9530 representation digest. Its presence is what discriminates a managed registration (digest present: no `href`, `file:size` required, this server will hold the bytes) from a remote one (digest absent: `href` required, born available, no byte lifecycle)."
+      },
+      "uploadOffsetHeader": {
+        "name": "Upload-Offset",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "description": "Byte offset this chunk starts at. Missing or malformed is a 400; an offset that parses but does not match the accumulated upload is a 409."
+      }
+    },
+    "responses": {
+      "badRequest": {
+        "description": "Invalid request parameter.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "itemsVertexBudgetExceeded": {
+        "description": "Exact geometry was refused rather than simplified or partially returned because the selected item page exceeded the collection's configured cumulative vertex budget.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "notFound": {
+        "description": "Unknown collection or item, or the driver doesn't support any capability this route needs.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "assetObject": {
+        "description": "The asset's current registration, including its lifecycle status.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/assetObject"
+            }
+          }
+        }
+      },
+      "uploadOffset": {
+        "description": "The accumulated upload offset, mirrored onto an Upload-Offset response header.",
+        "headers": {
+          "Upload-Offset": {
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/uploadOffset"
+            }
+          }
+        }
+      },
+      "conflict": {
+        "description": "The key is a configuration-declared asset (read-only through this API), or the request conflicts with the asset's current state.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "payloadTooLarge": {
+        "description": "The request body exceeds the applicable cap: this collection's request-body budget on a registration, or the asset's own declared size (minus what is already stored) on a transfer.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "unsupportedMediaType": {
+        "description": "The declared media type is not in this collection's asset media-type allow-list.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "capabilityUnsupported": {
+        "description": "This collection has no asset store, no object store, or an object store whose profile lacks the capability this route needs (presigned URLs, resumable uploads, or listing) — refused by name, never as a 500.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "assetObjectInput": {
+        "type": "object",
+        "description": "A STAC Asset Object plus the STAC `file` extension's `file:size`.",
+        "properties": {
+          "href": {
+            "type": "string",
+            "description": "Required for a remote registration; MUST be absent for a managed one — the server derives the eventual .../data href itself."
+          },
+          "type": {
+            "type": "string",
+            "description": "Media type, checked against this collection's asset media-type allow-list on a managed registration (415 when refused)."
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "file:size": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Declared byte length, required for a managed registration and checked against this collection's asset size cap (413 when refused). It is the cap every later transfer on this key is measured against."
+          }
+        }
+      },
+      "assetObject": {
+        "type": "object",
+        "description": "A STAC Asset Object plus this extension's own lifecycle `status`/`status_detail`.",
+        "required": [
+          "href",
+          "status"
+        ],
+        "properties": {
+          "href": {
+            "type": "string",
+            "description": "For a managed asset, this server's own .../data URL; for a remote one, the registered external URL."
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "available",
+              "failed"
+            ]
+          },
+          "status_detail": {
+            "type": "string"
+          }
+        }
+      },
+      "presignedTransfer": {
+        "type": "object",
+        "description": "The negotiated direct-to-store transfer target. Never the store's credentials — only the already-signed URL.",
+        "required": [
+          "href",
+          "method",
+          "expires_in_s"
+        ],
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "PUT"
+            ]
+          },
+          "expires_in_s": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "uploadOffset": {
+        "type": "object",
+        "required": [
+          "offset"
+        ],
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "reconcileReport": {
+        "type": "object",
+        "required": [
+          "broken",
+          "orphaned"
+        ],
+        "properties": {
+          "broken": {
+            "type": "array",
+            "description": "Records whose object is missing from the store.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "orphaned": {
+            "type": "array",
+            "description": "Objects in the store's managed namespace with no record pointing at them.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "staging": {
+                  "type": "boolean",
+                  "description": "True for an in-progress upload's staging object."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

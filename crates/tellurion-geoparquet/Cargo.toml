@@ -1,0 +1,63 @@
+[package]
+name = "tellurion-geoparquet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "GeoParquet storage driver for the Tellurion geospatial serving engine: serves paginated features directly from local GeoParquet files, with row-group pruning via GeoParquet 1.1 bbox covering statistics."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+tellurion-vector-tile = { workspace = true }
+tellurion-http-source = { path = "../tellurion-http-source", optional = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+bytes = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+# The official Apache Arrow Rust project's Parquet reader/writer. Trimmed to
+# just the "arrow" integration (RecordBatch reading/writing against Arrow
+# arrays — everything this driver needs to walk row groups, columns, and
+# per-row-group statistics) plus "snap", since Snappy is the de facto default
+# compression codec real-world GeoParquet writers (GDAL, DuckDB, GeoPandas)
+# emit; every other bundled codec (zstd, brotli, gzip) is left out. The
+# asynchronous API supports bounded remote input without `object_store`; see
+# driver.rs's crate docs for the fuller dependency-choice rationale.
+parquet = { version = "59", default-features = false, features = [
+    "arrow",
+    "snap",
+    "async",
+] }
+# `parquet`'s own "arrow" feature already resolves these two as transitive
+# dependencies (see the comment above) — declared directly here only because
+# this crate's own code names their types (`RecordBatch`, `Schema`,
+# `DataType`, ...) directly, which Cargo requires an explicit dependency for
+# regardless of what's already in the build graph transitively.
+arrow-array = { version = "59", default-features = false }
+arrow-schema = { version = "59", default-features = false }
+# Shares the workspace's single `geozero` pin. `with-wkb` decodes/encodes the
+# plain WKB GeoParquet's "geometry" column stores (never EWKB — GeoParquet's
+# encoding is spec-fixed to ISO WKB with no embedded SRID); `with-geojson`
+# turns a decoded geometry into the same GeoJSON shape flatgeobuf's own
+# driver produces. The workspace pin's default features and its `with-mvt`
+# (for the render crate) come along too, since a workspace-inherited
+# dependency can't turn off features another member has already turned on
+# for the same build.
+geozero = { workspace = true, features = ["with-wkb", "with-geojson", "with-geo"] }
+
+[dev-dependencies]
+serde_yaml = { workspace = true }
+
+[features]
+default = ["remote"]
+remote = ["dep:tellurion-http-source"]
+
+[[example]]
+name = "gen_geoparquet_fixture"

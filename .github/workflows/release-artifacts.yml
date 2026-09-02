@@ -1,0 +1,359 @@
+name: Release artifacts
+
+on:
+  push:
+    # A semver tag pattern, not one frozen version: `scripts/release.sh` moves
+    # the workspace version and names the matching `vMAJOR.MINOR.PATCH` tag, and
+    # this workflow builds whichever one arrives. It still creates only Actions
+    # workflow artifacts -- release publication remains a separate, ungranted decision.
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy-audit:
+    name: license policy audit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+
+      - name: Audit license policy
+        shell: bash
+        run: ./scripts/audit-license-policy.sh
+
+      - name: Audit publication licence
+        shell: bash
+        run: ./scripts/audit-publication-license.sh
+
+  source-artifact:
+    name: source archive and SBOM
+    needs: [policy-audit]
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve workspace version
+        id: version
+        shell: pwsh
+        run: |
+          $manifest = Get-Content -Raw -Path Cargo.toml
+          $pattern = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"(\d+\.\d+\.\d+)"[ \t\r]*$'
+          $found = [regex]::Match($manifest, $pattern)
+          if (-not $found.Success) {
+            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH"'
+          }
+          $version = $found.Groups[1].Value
+          Write-Host "workspace version: $version"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Verify tag matches workspace version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v${{ steps.version.outputs.version }}") {
+            throw "release tag must equal v${{ steps.version.outputs.version }}"
+          }
+
+      - name: Prepare source evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          public_core="${RUNNER_TEMP}/tellurion-public-core"
+          dependency_summary="${RUNNER_TEMP}/dependency-audit-summary.json"
+          dependency_inventory="${RUNNER_TEMP}/dependency-inventory.json"
+          export_manifest="${RUNNER_TEMP}/public-core-export-manifest.json"
+          test ! -e "$public_core"
+          python3 scripts/audit-dependency-licenses.py \
+            --output "$dependency_summary" \
+            --inventory-output "$dependency_inventory"
+          python3 scripts/export-public-core.py \
+            --source . \
+            --destination "$public_core" \
+            --manifest "$export_manifest"
+          python3 scripts/generate-third-party-notices.py \
+            --inventory "$dependency_inventory" \
+            --output "$public_core/THIRD_PARTY_NOTICES.json"
+          cp "$public_core/THIRD_PARTY_NOTICES.json" dist/THIRD_PARTY_NOTICES.json
+
+      - name: Generate workspace SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: ${{ runner.temp }}/tellurion-public-core
+          format: spdx-json
+          output-file: dist/tellurion.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+          syft-version: v1.51.0
+
+      - name: Create source archive
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          build_id="${GITHUB_SHA:0:12}"
+          public_core="${RUNNER_TEMP}/tellurion-public-core"
+          output="${GITHUB_WORKSPACE}/dist/tellurion-v${version}-source-${build_id}.zip"
+          python3 - "$public_core" "$output" <<'PY'
+          from pathlib import Path
+          import stat
+          import sys
+          import zipfile
+
+          source = Path(sys.argv[1])
+          output = Path(sys.argv[2])
+          with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+              for path in sorted(candidate for candidate in source.rglob("*") if candidate.is_file()):
+                  relative = path.relative_to(source).as_posix()
+                  info = zipfile.ZipInfo(relative, (1980, 1, 1, 0, 0, 0))
+                  info.compress_type = zipfile.ZIP_DEFLATED
+                  info.external_attr = (stat.S_IFREG | stat.S_IMODE(path.stat().st_mode)) << 16
+                  archive.writestr(info, path.read_bytes())
+          PY
+
+      - name: Upload source evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-source-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/tellurion-v*-source-*.zip
+            dist/tellurion.spdx.json
+            dist/THIRD_PARTY_NOTICES.json
+          if-no-files-found: error
+          retention-days: 7
+
+  native-artifacts:
+    name: ${{ matrix.target }}
+    needs: [source-artifact]
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-unknown-linux-musl
+            runner: ubuntu-24.04
+          - target: x86_64-pc-windows-msvc
+            runner: windows-2022
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download source evidence
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: release-source-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-source-evidence
+
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Verify pinned Rust toolchain
+        run: rustc +1.97.1 --version --verbose
+
+      - name: Resolve workspace version
+        id: version
+        shell: pwsh
+        run: |
+          # Archive identities derive from `[workspace.package] version` in the
+          # checked-out manifest -- never from the ref name. A ref name may
+          # contain `/` (any branch can start a workflow_dispatch run), so it
+          # can never reach a path or an artifact name; the manifest version is
+          # constrained to MAJOR.MINOR.PATCH here and is therefore always
+          # filesystem-safe.
+          $manifest = Get-Content -Raw -Path Cargo.toml
+          # `[ \t\r]*$` rather than `\s*$`: the Windows leg may check out CRLF,
+          # and `\s` would let the match run past the line it is anchored to.
+          $pattern = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"(\d+\.\d+\.\d+)"[ \t\r]*$'
+          $found = [regex]::Match($manifest, $pattern)
+          if (-not $found.Success) {
+            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH"'
+          }
+          $version = $found.Groups[1].Value
+          Write-Host "workspace version: $version"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: release-${{ matrix.target }}
+
+      - name: Install musl build dependencies
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools cmake pkg-config
+
+      - name: Build default-feature binaries
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+        run: cargo +1.97.1 build --release --locked --target ${{ matrix.target }} -p tellurion -p tellurion-ingest
+
+      - name: Package native artifact
+        shell: pwsh
+        run: |
+          $target = "${{ matrix.target }}"
+          $version = "${{ steps.version.outputs.version }}"
+          $package_name = "tellurion-v$version-$target"
+          $package_dir = Join-Path "dist" $package_name
+          $archive_name = if ($IsWindows) { "$package_name.zip" } else { "$package_name.tar.gz" }
+          $archive = Join-Path (Join-Path (Get-Location) "dist") $archive_name
+          $extension = if ($IsWindows) { ".exe" } else { "" }
+
+          New-Item -ItemType Directory -Force -Path (Join-Path $package_dir "config") | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $package_dir "docs") | Out-Null
+          Copy-Item "target/$target/release/tellurion$extension" -Destination $package_dir
+          Copy-Item "target/$target/release/tellurion-ingest$extension" -Destination $package_dir
+          Copy-Item LICENSE, COPYRIGHT.md, README.md -Destination "$package_dir"
+          Copy-Item COMMERCIAL-LICENSE.md -Destination "$package_dir"
+          Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.json" -Destination "$package_dir"
+          Copy-Item config/example-geopackage.yaml -Destination "$package_dir/config"
+          Copy-Item docs/licensing.md -Destination "$package_dir/docs"
+          Set-Content -Path (Join-Path $package_dir 'BUILD-INFO') -Value @(
+            "version=$version"
+            "ref=$env:GITHUB_REF_NAME"
+            "revision=$env:GITHUB_SHA"
+            "target=$target"
+            "rustc:"
+            (& rustc +1.97.1 --version --verbose)
+          )
+          if ($IsWindows) {
+            Compress-Archive -Path $package_dir -DestinationPath $archive -Force
+          } else {
+            & tar -C dist -czf $archive $package_name
+          }
+
+      - name: Smoke test packaged demo
+        shell: pwsh
+        run: |
+          $target = "${{ matrix.target }}"
+          $version = "${{ steps.version.outputs.version }}"
+          $extension = if ($IsWindows) { ".exe" } else { "" }
+          $package_name = "tellurion-v$version-$target"
+          $archive = if ($IsWindows) { "dist/$package_name.zip" } else { "dist/$package_name.tar.gz" }
+          $smoke_dir = Join-Path $env:RUNNER_TEMP "tellurion-smoke-$target"
+          $port = 18080
+          $base_url = "http://127.0.0.1:$port"
+          $demo_path = Join-Path $smoke_dir "demo.gpkg"
+
+          New-Item -ItemType Directory -Force -Path $smoke_dir | Out-Null
+          if ($IsWindows) {
+            Expand-Archive -Path $archive -DestinationPath $smoke_dir -Force
+          } else {
+            & tar -xzf $archive -C $smoke_dir
+          }
+          $ingest = Join-Path (Join-Path $smoke_dir $package_name) "tellurion-ingest$extension"
+          $process = Start-Process -FilePath $ingest -ArgumentList @("demo", "--path", $demo_path, "--port", $port) -PassThru
+          try {
+            $healthy = $false
+            for ($attempt = 0; $attempt -lt 60; $attempt++) {
+              try {
+                $health = Invoke-WebRequest -Uri "$base_url/healthz" -UseBasicParsing
+                if ($health.StatusCode -eq 200) {
+                  $healthy = $true
+                  break
+                }
+              } catch {
+                $process.Refresh()
+                if ($process.HasExited) {
+                  throw "tellurion-ingest demo exited before /healthz became ready"
+                }
+              }
+              Start-Sleep -Milliseconds 500
+            }
+            if (-not $healthy) {
+              throw "timed out waiting for /healthz"
+            }
+            $items = Invoke-WebRequest -Uri "$base_url/public/features/catalogs/default/collections/demo/items?limit=1" -UseBasicParsing
+            if ($items.StatusCode -ne 200) {
+              throw "demo items endpoint returned HTTP $($items.StatusCode)"
+            }
+          } finally {
+            $process.Refresh()
+            if (-not $process.HasExited) {
+              $process.Kill($true)
+              $process.WaitForExit()
+            }
+          }
+
+      - name: Upload native artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-native-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dist/tellurion-v${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz
+            dist/tellurion-v${{ steps.version.outputs.version }}-${{ matrix.target }}.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  release-candidate:
+    name: aggregate release candidate
+    needs: [source-artifact, native-artifacts]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download release evidence
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Assemble aggregate checksums
+        shell: bash
+        run: |
+          shopt -s nullglob
+          source_archives=(dist/tellurion-v*-source-*.zip)
+          native_archives=(dist/tellurion-v*.tar.gz dist/tellurion-v*-pc-windows-msvc.zip)
+          if [ "${#source_archives[@]}" -ne 1 ]; then
+            echo "expected exactly one source archive, found ${#source_archives[@]}" >&2
+            exit 1
+          fi
+          if [ "${#native_archives[@]}" -ne 3 ]; then
+            echo "expected exactly three native archives, found ${#native_archives[@]}" >&2
+            exit 1
+          fi
+          test -f dist/tellurion.spdx.json
+          test -f dist/THIRD_PARTY_NOTICES.json
+          unzip -Z1 "${source_archives[0]}" | grep -Fx THIRD_PARTY_NOTICES.json >/dev/null
+          for archive in dist/tellurion-v*.tar.gz; do
+            tar -tzf "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
+          done
+          for archive in dist/tellurion-v*-pc-windows-msvc.zip; do
+            unzip -Z1 "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
+          done
+          (
+            cd dist
+            shasum -a 256 tellurion-v*.tar.gz tellurion-v*.zip tellurion.spdx.json THIRD_PARTY_NOTICES.json > SHA256SUMS
+          )
+
+      - name: Attest release archives
+        if: github.event.repository.private == false
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: |
+            dist/tellurion-v*.tar.gz
+            dist/tellurion-v*.zip
+
+      - name: Attest the source SBOM
+        if: github.event.repository.private == false
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist/tellurion-v*-source-*.zip
+          sbom-path: dist/tellurion.spdx.json
+
+      - name: Upload release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tellurion-v${{ needs.source-artifact.outputs.version }}-candidate-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14

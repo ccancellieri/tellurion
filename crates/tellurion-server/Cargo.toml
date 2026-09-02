@@ -1,0 +1,293 @@
+[package]
+name = "tellurion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "High-performance geospatial serving engine: OGC API Features, Tiles (MVT and PNG), styled maps, and 3D places over routed, pluggable storage drivers."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = ["postgis", "geopackage", "control-sqlite", "control-postgres"]
+control-sqlite = ["dep:tellurion-control-sqlite"]
+control-postgres = ["dep:tellurion-control-postgres"]
+# The PostGIS driver crate, feature-gated so the server binary can be built
+# (and, per the driver contract, so protocol crates can be proven to build)
+# with no database dependency at all — see tellurion-postgis's own crate
+# docs for what that driver still assumes. A deployment without this feature
+# has no drivers registered; a config naming `driver: postgis` then fails
+# fast at boot as an unknown driver, same as any other typo'd driver name.
+postgis = ["dep:tellurion-postgis"]
+# The embedded GeoPackage (SQLite) driver crate (`#73`) — default ON,
+# unlike every other file-backed driver in this list. Every one of those is
+# read-only and off by default because nothing in this workspace assumes it
+# exists yet; this one is read/write/tiles-capable and turned on alongside
+# `postgis` on purpose, so an out-of-the-box `cargo build`/`cargo run`
+# already gives a single binary plus a single `.gpkg` file as a genuine,
+# self-contained deployment option — no database service, no container
+# runtime. `cargo build -p tellurion --no-default-features --features
+# geopackage` is the acceptance proof that this still holds with the
+# database driver fully compiled out; see `tellurion-geopackage`'s own
+# crate docs for the full positioning.
+geopackage = ["dep:tellurion-geopackage"]
+# The PMTiles driver crate (`#20`) — default OFF. Unlike `postgis`, nothing
+# in this workspace assumes a `pmtiles` storage exists yet (no reference
+# config declares one), and it's the acceptance proof for `#18`: turning it
+# on standalone (`--no-default-features --features pmtiles`) is exactly what
+# demonstrates a second real driver serving traffic with the database driver
+# — and every crate it pulls in — compiled out of the graph. Defaulting it
+# on would blur that proof into "always there anyway."
+pmtiles = ["dep:tellurion-pmtiles"]
+# The FlatGeobuf driver crate (`#20`) — default OFF, same rationale as
+# `pmtiles`: it's the features-lane counterpart of that tiles-lane proof,
+# turned on standalone (`--no-default-features --features flatgeobuf`) to
+# demonstrate a database-free `FeatureSource` serving traffic through the
+# same contract as `postgis`.
+flatgeobuf = ["dep:tellurion-flatgeobuf"]
+# The GeoParquet driver crate (`#20`-family) — default OFF, same rationale as
+# `flatgeobuf`: another database-free `FeatureSource` proof on the features
+# lane, turned on standalone (`--no-default-features --features geoparquet`)
+# to demonstrate it serving traffic through the same contract as `postgis`
+# with the database driver compiled out.
+geoparquet = ["dep:tellurion-geoparquet"]
+# The Shapefile driver is optional for the same database-free deployment
+# proof as GeoParquet: `--no-default-features --features shapefile` serves
+# Features and WebMercatorQuad MVT without compiling a database driver.
+shapefile = ["dep:tellurion-shapefile"]
+# The Cloud-Optimized GeoTIFF driver crate (`#37`) — default OFF, same
+# rationale as `pmtiles`/`flatgeobuf`/`geoparquet`: another database-free
+# driver proof, this time on the raster side of the tiles lane, turned on
+# standalone (`--no-default-features --features cog`) to demonstrate it
+# serving PNG raster tiles through the same contract as every other driver
+# with the database driver compiled out.
+cog = ["dep:tellurion-cog"]
+# Deliberately isolated anonymous remote-source inspection routes. These
+# never register a source in the configured control/router graph.
+public-demo = [
+    "cog",
+    "geoparquet",
+    "shapefile",
+    "dep:tellurion-http-source",
+    "dep:tempfile",
+]
+# The Zarr v2 driver crate (`#37`) — default OFF, same rationale as `cog`:
+# another database-free driver proof, this time serving a local Zarr v2
+# array store as PNG raster tiles, turned on standalone
+# (`--no-default-features --features zarr`) to demonstrate it serving
+# traffic through the same raster-capability contract as `cog`, with the
+# database driver compiled out.
+zarr = ["dep:tellurion-zarr"]
+# The Iceberg driver crate — default OFF, same rationale as
+# `flatgeobuf`/`geoparquet`: another `FeatureSource` proof on the features
+# lane, turned on standalone (`--no-default-features --features iceberg`)
+# to demonstrate it serving traffic through the same contract as `postgis`
+# with the database driver compiled out. Unlike the other file-backed
+# drivers, this one still reaches an external service at boot (its REST
+# catalog), just never a database of its own — see tellurion-iceberg's own
+# crate docs for what that driver assumes.
+iceberg = ["dep:tellurion-iceberg"]
+# The DuckDB driver crate (embedded analytical storage, issue #145) —
+# default OFF, same rationale as `flatgeobuf`/`geoparquet`: another
+# database-free `FeatureSource` proof on the features lane, turned on
+# standalone (`--no-default-features --features duckdb`) to demonstrate it
+# serving traffic through the same contract as `postgis` with the database
+# driver compiled out. See `tellurion-duckdb`'s own crate docs for why this
+# driver never loads DuckDB's `spatial` extension.
+duckdb = ["dep:tellurion-duckdb"]
+# Embeds `ui/dist` (the demo UI, built via `cd ui && npm ci && npm run
+# build`) into the binary and serves it at `/ui` — see `src/ui_assets.rs`.
+# Default OFF: a deployment that never wants the demo UI compiled in (or
+# that hasn't built it) gets zero rust-embed/mime_guess dependency, same
+# "opt-in, not always there" rationale as `pmtiles`/`flatgeobuf` above.
+# `build.rs` fails the build with a clear message naming the npm command
+# when this feature is on but `ui/dist` doesn't exist yet.
+ui = ["dep:rust-embed"]
+# The Valkey L2 tile-cache backend (`#16`) — default OFF, same "opt-in, not
+# always there" rationale as `pmtiles`/`flatgeobuf`: nothing in this
+# workspace assumes a `cache.l2` backend exists, and turning it on standalone
+# (`--features valkey`, with `cache.l2.backend: valkey` in config) is what
+# proves an L2 cache tier serving traffic with no dependency on it compiled
+# into the default binary. See `tellurion_core::cache_l2_valkey` for the
+# backend and `main.rs` for where a `cache.l2` config selection is wired
+# into the `LayeredCache`.
+valkey = ["tellurion-core/valkey"]
+
+[dependencies]
+tellurion-core = { workspace = true }
+tellurion-control = { workspace = true }
+tellurion-control-sqlite = { workspace = true, optional = true }
+tellurion-control-postgres = { workspace = true, optional = true }
+tellurion-postgis = { workspace = true, optional = true }
+tellurion-pmtiles = { workspace = true, optional = true }
+tellurion-flatgeobuf = { workspace = true, optional = true }
+tellurion-geoparquet = { workspace = true, optional = true }
+tellurion-shapefile = { workspace = true, optional = true }
+tellurion-cog = { workspace = true, optional = true }
+tellurion-http-source = { path = "../tellurion-http-source", optional = true }
+tellurion-zarr = { workspace = true, optional = true }
+tellurion-geopackage = { workspace = true, optional = true }
+tellurion-iceberg = { workspace = true, optional = true }
+tellurion-duckdb = { workspace = true, optional = true }
+tellurion-features = { workspace = true }
+tellurion-tiles = { workspace = true }
+tellurion-places = { workspace = true }
+tellurion-styles = { workspace = true }
+tellurion-stac = { workspace = true }
+tellurion-records = { workspace = true }
+tellurion-processes = { workspace = true }
+# `#245`: `link_contributors.rs` decides which registered styles are worth
+# advertising for a collection, and the predicate that decides it
+# (`style_paints_any_layer`) belongs to the crate that owns the MapLibre
+# style document's shape — the same crate `tellurion-tiles` calls for the
+# identical decision on the TileSet resource. Already in this binary's
+# dependency graph through `tellurion-tiles`/`tellurion-styles`; named here
+# so the reuse is a declared edge rather than an accident of the graph.
+tellurion-render = { workspace = true }
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+# `#189`: request-id middleware mints a v4 uuid when the client sent none —
+# the same `uuid` crate `tellurion-postgis` binds pk values with.
+uuid = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+anyhow = { workspace = true }
+# `link_contributors.rs` (`#186`) implements `tellurion_core::LinkContributor`,
+# an async-trait trait — the macro must be a real dependency, not only the
+# dev-dependency the test suites already had.
+async-trait = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
+url = { workspace = true }
+sha2 = { workspace = true }
+base64 = "0.22"
+clap = { workspace = true }
+# "debug-embed" makes the embed genuinely unconditional (rust-embed's own
+# default only embeds in release builds; debug builds otherwise read
+# ui/dist off disk at request time) — the whole point of this feature is a
+# self-contained binary, in any profile. "mime-guess" gives
+# `Metadata::mimetype()` so `ui_assets.rs` doesn't need its own mime_guess
+# dependency.
+rust-embed = { version = "8.12.0", features = ["debug-embed", "mime-guess"], optional = true }
+# Backs the config-reload file-watch trigger (`src/reload.rs`, `#47`): a
+# mounted ConfigMap update swaps a symlink rather than writing the file in
+# place, so the watch has to be on the config file's parent directory, not
+# the file inode — exactly what `notify` watches. Default features only
+# (macOS FSEvents locally, inotify on Linux with no feature flag needed).
+notify = "8"
+tempfile = { version = "3", optional = true }
+
+[[test]]
+name = "binary"
+# Skipped entirely (not even compiled) unless `postgis` is on — every config
+# this test writes declares `driver: postgis`. The file itself is also
+# `#![cfg(feature = "postgis")]`-gated, matching `pmtiles_binary`/
+# `flatgeobuf_binary`'s own pairing of `required-features` here with an
+# inner `#![cfg]` in their respective test files.
+required-features = ["postgis"]
+
+[[test]]
+name = "pmtiles_binary"
+# Skipped entirely (not even compiled) unless `pmtiles` is on — this test
+# drives the real binary against a `driver: pmtiles` config, so it has
+# nothing to do under the default feature set. The file itself is also
+# `#![cfg(all(feature = "pmtiles", not(feature = "postgis")))]`-gated, since
+# `required-features` can only require a feature, not the absence of one —
+# see the file's own doc comment for the full `#18` proof invocation.
+required-features = ["pmtiles"]
+
+[[test]]
+name = "flatgeobuf_binary"
+# Mirrors `pmtiles_binary`'s own gating — see that test's comment above and
+# this file's own doc comment for the full `#20` features-lane proof
+# invocation.
+required-features = ["flatgeobuf"]
+
+[[test]]
+name = "geoparquet_binary"
+# Mirrors `flatgeobuf_binary`'s own gating exactly — see that test's comment
+# above and this file's own doc comment for the full features-lane proof
+# invocation.
+required-features = ["geoparquet"]
+
+[[test]]
+name = "shapefile_binary"
+required-features = ["shapefile"]
+
+[[test]]
+name = "public_vector_demo"
+# This suite imports the public-demo router and its optional HTTP gateway.
+# Cargo must not auto-compile it for the default or single-driver matrices.
+required-features = ["public-demo"]
+
+[[test]]
+name = "cog_binary"
+# Mirrors `pmtiles_binary`'s own gating exactly — see that test's comment
+# above and this file's own doc comment for the raster-tiles-lane proof
+# invocation.
+required-features = ["cog"]
+
+[[test]]
+name = "zarr_binary"
+# Mirrors `cog_binary`'s own gating exactly — see that test's comment above
+# and this file's own doc comment for the raster-tiles-lane proof
+# invocation, this time over a local Zarr v2 array store instead of a
+# GeoTIFF.
+required-features = ["zarr"]
+
+[[test]]
+name = "duckdb_binary"
+# Mirrors `flatgeobuf_binary`'s own gating exactly — see that test's comment
+# above and this file's own doc comment for the features-lane proof
+# invocation, this time over a local `.duckdb` file instead of `.fgb`.
+required-features = ["duckdb"]
+
+[[test]]
+name = "geopackage_binary"
+# `geopackage` is default ON (unlike every other file-backed driver above),
+# so this test's own inner `#![cfg(... not(feature = "postgis"))]` (see the
+# file's own doc comment) is what actually isolates the `--no-default-
+# features --features geopackage` proof — `required-features` here only
+# skips compiling the file at all when `geopackage` itself is off.
+required-features = ["geopackage"]
+
+[dev-dependencies]
+tellurion-core = { workspace = true, features = ["test-support"] }
+tokio = { workspace = true, features = ["test-util"] }
+tower = { workspace = true, features = ["util"] }
+async-trait = { workspace = true }
+bytes = { workspace = true }
+http-body = "1"
+tokio-postgres = { workspace = true }
+geozero = { workspace = true }
+tempfile = "3"
+zip = { workspace = true }
+# `cog_binary.rs`'s own PNG pixel-color assertions decode via the same
+# `tiny_skia::Pixmap` every renderer in this workspace already uses.
+tiny-skia = { workspace = true }
+# `geopackage_binary.rs` provisions its own temp `.gpkg` fixture directly
+# (see that file's own doc comment for why, rather than shelling out to
+# `tellurion-ingest`) — the same bundled, no-system-dependency build this
+# crate's own `geopackage` feature pulls in via `tellurion-geopackage`.
+rusqlite = { version = "0.40", default-features = false, features = [
+    "bundled",
+] }
+# `duckdb_binary.rs` provisions its own temp `.duckdb` fixture directly (same
+# "own the fixture, no cross-binary dependency" rationale as
+# `geopackage_binary.rs`'s own `rusqlite` dev-dependency above) — the same
+# bundled, no-system-dependency build this crate's own `duckdb` feature pulls
+# in via `tellurion-duckdb`.
+duckdb = { version = "1", default-features = false, features = ["bundled"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"

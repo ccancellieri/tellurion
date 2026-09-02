@@ -1,0 +1,402 @@
+name: CI
+
+# Public pull requests and main receive the same full verification. A tag has
+# its own release workflow, so CI intentionally does not run for tag pushes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_DEV_DEBUG: "0"
+
+# `libduckdb-sys` (and the rest of the C++/debug-heavy graph the workspace
+# builds) has filled the hosted runner's disk with debuginfo sections and
+# taken CI down with "No space left on device" — debug symbols buy nothing
+# in CI, so strip them workflow-wide (cc-built C++ follows the same profile
+# switch via the DEBUG env cargo derives from it).
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake pkg-config
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: tellurion_test
+          POSTGRES_USER: tellurion
+          POSTGRES_PASSWORD: tellurion
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U tellurion -d tellurion_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      TELLURION_TEST_DATABASE_URL: postgres://tellurion:tellurion@localhost:5432/tellurion_test
+      DATABASE_URL: postgres://tellurion:tellurion@localhost:5432/tellurion_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Free runner disk
+        # The workspace build (DuckDB's bundled C++ above all) needs more
+        # scratch space than the hosted image leaves free; drop the
+        # preinstalled toolchains this job never uses. Running service
+        # containers (the test job's PostGIS) are in use and survive the
+        # image prune.
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake pkg-config
+      # `--nocapture` is not noise-for-its-own-sake: 165 tests in this
+      # workspace read a database DSN out of the environment, and every one of
+      # them PASSES by printing `skipping <name>: <VAR> not set` and returning
+      # when it is unset. libtest swallows that line for a passing test, so
+      # without `--nocapture` a job whose service container never came up, or
+      # whose env block lost a variable, is indistinguishable from one that ran
+      # the whole live suite: a green check that means far less than a reader
+      # assumes. Measured on this workspace: with no DSN the suite still exits
+      # 0 and still reports 3397 passed -- the identical verdict -- while 165
+      # live tests quietly do nothing. `test_harness.rs`'s
+      # `require_database_url` documents this exact grep as how the workspace
+      # proves its live tests ran; the step below is that grep, executed.
+      - name: Run the suite, keeping the live-test skip lines readable
+        run: |
+          set -o pipefail
+          cargo test --workspace --locked -- --nocapture 2>&1 | tee test-output.log
+      - name: Assert the live tests ran rather than skipped
+        # A named refusal instead of a silent degradation. This job is the one
+        # place in CI that supplies a database, so a skip HERE is a broken
+        # job, not an accepted trade-off -- and it must be reported as the
+        # infrastructure fault it is rather than absorbed into a green run.
+        #
+        # The pattern is the bare `DATABASE_URL not set`, which is a SUBSTRING
+        # of both messages the workspace emits: 152 tests skip on
+        # `TELLURION_TEST_DATABASE_URL not set` and 13 -- the whole of
+        # `binary.rs`'s real-binary lifecycle suite, plus `tellurion-ingest`'s
+        # create-tables checks -- on plain `DATABASE_URL not set`. Grepping the
+        # longer name alone reports "no live test skipped" while those 13 sit
+        # out, which is the same silent-skip bug one level up. Both variables
+        # are supplied by this job's `env:` block, so both must come back
+        # clean.
+        run: |
+          skipped="$(grep -c 'DATABASE_URL not set' test-output.log || true)"
+          {
+            echo "### Live database tests"
+            echo
+            echo "\`TELLURION_TEST_DATABASE_URL\` and \`DATABASE_URL\` are both"
+            echo "set for this job, so the live suite is expected to run in full."
+            echo
+            echo "- live tests that skipped for a missing DSN: **$skipped**"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$skipped" -ne 0 ]; then
+            echo "FAIL: $skipped live test(s) skipped although this job provides a database." >&2
+            echo "This is a CI infrastructure fault, NOT a defect in the code under test:" >&2
+            echo "the postgis service container or this job's env block did not deliver" >&2
+            echo "TELLURION_TEST_DATABASE_URL / DATABASE_URL to the test process." >&2
+            echo "The tests that skipped:" >&2
+            grep 'DATABASE_URL not set' test-output.log >&2
+            exit 1
+          fi
+          echo "no live test skipped: the database-backed suite genuinely ran"
+
+  smoke:
+    name: demo smokes
+    runs-on: ubuntu-latest
+    # No `services:` block on purpose. Both scripts are GeoPackage-backed and
+    # `#260` made each of them assert that by name before booting anything, so
+    # an ordinary runner with cargo and curl is the whole requirement. These
+    # are the campaign's decisive gates -- 202 and 136 HTTP assertions against
+    # servers booted from real configs -- and until now neither had ever run
+    # anywhere but a developer's machine.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Free runner disk
+        # Same reason as the `test` job above: the workspace build needs more
+        # scratch space than the hosted image leaves free.
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: smoke
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake pkg-config
+      # Each script builds the binaries it needs itself (`cargo build -p
+      # tellurion -p tellurion-ingest`, and once more with `--features valkey`
+      # for the L2-cache phase), so there is no build step here to drift out
+      # of step with what the scripts actually boot.
+      - name: Synthetic end-to-end smoke over the real binaries
+        run: ./scripts/demo-smoke.sh
+      - name: Contract smoke over the live demo's own production config
+        run: ./scripts/italy-contract-smoke.sh
+
+  ui-test:
+    name: UI tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: cd ui && npm ci && npm test
+
+  feature-matrix:
+    name: feature matrix (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The README's `cargo build --workspace --no-default-features`
+          # claim — a zero-driver build with no database dependency at all
+          # — was never checked in CI before this job; a regression here
+          # (e.g. #31) previously surfaced only from a manual run.
+          - name: no-default-features
+            flags: --no-default-features
+          # Each of these three proves its driver crate serves real traffic
+          # through the abstract driver contract with the bundled database
+          # driver compiled out — see that driver's own
+          # `tests/*_binary.rs` doc comment for the exact invocation this
+          # mirrors. `required-features` in tellurion's Cargo.toml means
+          # none of these three test files even build under the default
+          # feature set, so without this job they silently never run.
+          - name: pmtiles
+            flags: --no-default-features --features pmtiles
+          - name: flatgeobuf
+            flags: --no-default-features --features flatgeobuf
+          - name: geoparquet
+            flags: --no-default-features --features geoparquet
+          # `cog`, `zarr`, `duckdb` and `geopackage` are the same proof for
+          # the four drivers that had no leg here. Each owns a
+          # `tests/<name>_binary.rs` whose `required-features` names it AND
+          # whose file-level attribute is `#![cfg(all(feature = "<name>",
+          # not(feature = "postgis")))]` -- so under the default feature set
+          # and under `--all-features` alike the file compiles to nothing.
+          # Without a leg of its own, not one assertion in those four files
+          # ran anywhere in CI: 1459 lines of driver acceptance test that
+          # looked covered because the crate compiled.
+          - name: cog
+            flags: --no-default-features --features cog
+          - name: zarr
+            flags: --no-default-features --features zarr
+          - name: duckdb
+            flags: --no-default-features --features duckdb
+          # `geopackage` is the only one of the four that is default-ON, which
+          # is exactly why its leg is easy to believe already exists. It does
+          # not: `postgis` is default-on too, and the `not(feature =
+          # "postgis")` half of the gate is what this leg supplies. It is also
+          # the driver both smoke scripts boot, so this leg and the `smoke`
+          # job check the same driver from opposite ends -- unit-level
+          # acceptance and a live HTTP contract.
+          - name: geopackage
+            flags: --no-default-features --features geopackage
+          # `iceberg` had no leg here at all until #123, so the ONLY job
+          # that ever compiled it was `all-features` -- where every other
+          # driver is compiled too, and where `tellurion-postgis` (default-on)
+          # supplies half the dependency graph. A driver that builds only
+          # alongside the database driver it is supposed to be independent of
+          # is not a proven independent driver; that is the whole claim every
+          # other leg in this list exists to check, and this one was missing
+          # it. It is also the driver most likely to break the claim, since it
+          # carries its own arrow/parquet tree pinned separately from
+          # `tellurion-geoparquet`'s.
+          - name: iceberg
+            flags: --no-default-features --features iceberg
+          # The embedded demo UI. Needs `ui/dist` built first (below) —
+          # this is the leg that would have caught the stale `AppContext`
+          # fixture arity, since the `ui` feature is default-off and no
+          # other job compiles it.
+          - name: ui
+            flags: --no-default-features --features ui
+            build_ui: true
+          # The public demo deployment is intentionally smaller than the
+          # ordinary server: only the isolated remote COG sandbox and the
+          # embedded UI. This leg proves that exact pair without relying on
+          # default database/control-store features or the all-features build.
+          - name: public-demo-ui
+            flags: --no-default-features --features public-demo,ui
+            build_ui: public-demo
+          - name: valkey
+            flags: --no-default-features --features valkey
+          # Every leg together, proving the combination itself compiles —
+          # also needs `ui/dist`. Kept as compile+test coverage only: the
+          # `postgis`-backed acceptance tests in `tests/binary.rs` skip
+          # themselves (pass, not fail) without a `DATABASE_URL`, which
+          # this job deliberately doesn't provide — the `test` job above,
+          # with its real postgis service, stays the sole authority for
+          # those.
+          - name: all-features
+            flags: --all-features
+            build_ui: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Free runner disk
+        # The workspace build (DuckDB's bundled C++ above all) needs more
+        # scratch space than the hosted image leaves free; drop the
+        # preinstalled toolchains this job never uses. Running service
+        # containers (the test job's PostGIS) are in use and survive the
+        # image prune.
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.name }}
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake pkg-config
+      - name: Build demo UI assets
+        if: matrix.build_ui
+        run: |
+          cd ui
+          npm ci
+          if [ "${{ matrix.build_ui }}" = "public-demo" ]; then
+            npm run build:public-demo
+          else
+            npm run build
+          fi
+      - run: cargo test -p tellurion --locked ${{ matrix.flags }}
+      # `tellurion`'s `valkey` feature is just `tellurion-core/valkey`, so the
+      # leg above proves the server builds against the L2 backend -- but it is
+      # scoped `-p tellurion` and therefore never builds `tellurion-core`'s OWN
+      # `[[test]] valkey_live`, which is `required-features = ["valkey"]` and
+      # `#![cfg(feature = "valkey")]`. That target compiled in no CI job at
+      # all until this step; `scripts/check-test-feature-coverage.py` is what
+      # noticed, and now keeps it noticed. Its tests are all `#[ignore]`d and
+      # want a real Valkey, so this run reports them ignored rather than
+      # passed -- compile coverage is the whole point, and a file that no
+      # longer compiles is a red this workspace previously could not see.
+      - name: Build tellurion-core's own valkey-gated test target
+        if: matrix.name == 'valkey'
+        run: cargo test -p tellurion-core --locked --features valkey
+
+  deploy-manifests:
+    name: deploy manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install kustomize
+        # Pinned rather than `latest`: the renderer decides whether a
+        # kustomization is valid, so an unpinned upgrade could flip CI red (or,
+        # worse, green) with no commit behind it. The hosted image also ships
+        # kubectl, which the script falls back to, but that version floats.
+        env:
+          KUSTOMIZE_VERSION: "5.4.3"
+        run: |
+          set -euo pipefail
+          curl -fsSL -o kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          sudo tar -xzf kustomize.tar.gz -C /usr/local/bin kustomize
+          rm kustomize.tar.gz
+          kustomize version
+      - name: Install PyYAML if the runner image lacks it
+        run: python3 -c 'import yaml' 2>/dev/null || python3 -m pip install --quiet pyyaml
+      - name: Render every overlay, assert PSS restricted and the air-gap image list
+        run: ./scripts/validate-deploy-manifests.sh
+
+  artifact-audit:
+    name: artifact audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # One step per guard rather than one anonymous `run:` block. The
+      # scripts are unchanged and run in the same order; what changes is that
+      # a red run names the guard that failed in the job's step list, instead
+      # of naming a single anonymous step whose log has to be opened to find
+      # out which contract broke.
+      #
+      # `scripts/check-release-workflow.sh` asserts that this file invokes the
+      # license policy audit, and `test-release-workflow-contract.sh` proves
+      # that assertion bites by deleting the invocation at exactly the
+      # indentation used below. Splitting the steps keeps that line
+      # byte-identical on purpose -- and this comment deliberately does not
+      # spell the script's path, because a second textual occurrence anywhere
+      # in this file would satisfy the audit check after the mutation had
+      # removed the real one, turning a mutation test green while it proved
+      # nothing.
+      - name: License policy audit
+        run: |
+          ./scripts/audit-license-policy.sh
+      - name: Publication licence audit
+        run: |
+          ./scripts/audit-publication-license.sh
+      - name: Dependency license audit
+        run: |
+          ./scripts/audit-dependency-licenses.py \
+            --output "$RUNNER_TEMP/dependency-audit-summary.json"
+      - name: CI topology contract
+        run: |
+          ./scripts/check-ci-workflows.sh
+      - name: CI topology mutation tests
+        run: |
+          ./scripts/test-ci-workflows.sh
+      - name: Packaged-artifact audit
+        run: |
+          ./scripts/audit-artifacts.sh
+      - name: Workflow publication-capability contract
+        run: |
+          ./scripts/check-release-workflow.sh
+      - name: Workflow contract mutation tests
+        run: |
+          ./scripts/test-release-workflow-contract.sh
+      - name: License policy mutation test
+        run: |
+          ./scripts/test-license-policy.sh
+      # A release mechanism nobody exercises is not a mechanism. `--dry-run`
+      # rewrites nothing, creates no tag and pushes nothing -- it resolves the
+      # next version, applies every derivation to a scratch copy and runs the
+      # workflow contract against the result, so a bump that would produce an
+      # inconsistent tree fails here rather than on the day somebody needs to
+      # cut a version.
+      - name: Release bump dry run
+        run: |
+          ./scripts/release.sh --dry-run patch
+      # Guards the class of bug the feature-matrix legs above fixed one
+      # instance of: a `[[test]]` target whose `required-features` and inner
+      # `#![cfg]` together match no invocation in this file compiles to
+      # nothing, so no assertion in it can ever go red. Static and cheap --
+      # stdlib only, no build -- so it belongs beside the other contract
+      # audits rather than in a job that compiles anything.
+      - name: Feature-gated test targets are built somewhere
+        run: |
+          ./scripts/check-test-feature-coverage.py

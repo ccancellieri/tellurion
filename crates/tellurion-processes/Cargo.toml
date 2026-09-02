@@ -1,0 +1,33 @@
+[package]
+name = "tellurion-processes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "OGC API - Processes surface for the Tellurion geospatial serving engine: a durable job ledger, capability-gated runners, and describe/execute/status/results/dismiss over them."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+# Server-minted job ids. A job id reaches the wire, so it must be
+# unguessable and globally unique without a round trip — the same reason
+# `tellurion-core`'s asset ids are v4 UUIDs.
+uuid = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+serde_yaml = { workspace = true }
+# The in-memory ledger fake and the driver-agnostic `Router` these tests drive
+# the real handlers through — see `tellurion_core::InMemoryJobStore`'s own doc
+# for the invariants that fake reproduces from the real table.
+tellurion-core = { workspace = true, features = ["test-support"] }
+tower = { workspace = true }
+async-trait = { workspace = true }

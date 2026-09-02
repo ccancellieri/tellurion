@@ -1,0 +1,21 @@
+# k3s ships Traefik as its default ingress controller and understands plain
+# networking.k8s.io/v1 Ingress objects directly (no Traefik CRDs required).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tellurion
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: tellurion.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tellurion
+                port:
+                  name: http

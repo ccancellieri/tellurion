@@ -1,0 +1,69 @@
+name: Evaluation feedback
+description: Describe a self-hosted evaluation workflow or an unmet product need.
+title: "evaluation: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tellurion Cloud is not offered. This form is for self-hosted product discovery,
+        not a support contract or a commitment to implement a feature. Keep all details
+        safe for a public issue.
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Primary outcome
+      options:
+        - Serve an existing spatial dataset
+        - Evaluate a read-only remote source
+        - Configure tenants, catalogs, or collections
+        - Render or style a layer
+        - Evaluate search or indexing
+        - Evaluate deployment and operations
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Main data source
+      options:
+        - GeoPackage
+        - PostGIS
+        - GeoParquet
+        - Shapefile archive
+        - Cloud-Optimized GeoTIFF
+        - Zarr
+        - PMTiles
+        - FlatGeobuf
+        - Iceberg
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Current workflow and friction
+      description: Explain the job, the deployment boundary, and where the current process becomes difficult.
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: A successful evaluation would prove
+      description: Name an observable result, not a preferred implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Include scale shape, update frequency, authentication, network, and operating constraints without sharing secrets.
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Evaluation boundaries
+      options:
+        - label: I understand that this is public, self-hosted evaluation feedback and not a Cloud or support commitment.
+          required: true
+        - label: I removed credentials, private URLs, confidential data, and personal information.
+          required: true

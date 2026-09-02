@@ -1,0 +1,17 @@
+[package]
+name = "tellurion-control"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Framework-neutral hierarchical authorization checkpoint for Tellurion's control plane."
+
+[dependencies]
+tellurion-core = { workspace = true }
+
+[dev-dependencies]
+async-trait = { workspace = true }
+serde_yaml = { workspace = true }
+tokio = { workspace = true }

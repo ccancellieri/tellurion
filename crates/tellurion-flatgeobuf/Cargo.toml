@@ -1,0 +1,38 @@
+[package]
+name = "tellurion-flatgeobuf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "FlatGeobuf storage driver for the Tellurion geospatial serving engine: serves paginated features directly from local .fgb files via their packed R-tree."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+# Local-file reads only: `default-features = false` drops the upstream
+# `http`/`default-tls` features (which pull in `reqwest` plus an async HTTP
+# range-read client) — this driver only ever opens a path from disk today;
+# see driver.rs's crate docs for the future-http-compatible config shape.
+flatgeobuf = { version = "6.0", default-features = false }
+# Shares the workspace's single `geozero` pin, which happens to match the
+# version `flatgeobuf` 6.0.1 itself depends on. `with-geojson` is what this
+# driver actually calls (converting a decoded feature to a GeoJSON
+# `Feature` object — see `feature_to_geojson` in driver.rs); the workspace
+# pin's default features and its `with-mvt` (for the render crate) come
+# along too, since a workspace-inherited dependency can't turn off features
+# another member has already turned on for the same build.
+geozero = { workspace = true, features = ["with-geojson"] }
+
+[dev-dependencies]
+serde_yaml = { workspace = true }
+
+[[example]]
+name = "gen_flatgeobuf_fixture"

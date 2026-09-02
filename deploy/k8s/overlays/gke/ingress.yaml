@@ -1,0 +1,30 @@
+# Annotation stub for the GKE Ingress controller (the in-cluster GCP add-on);
+# no Google SDK or CRD is involved, only the built-in `gce` IngressClass.
+#
+# `gce` provisions an external HTTP(S) load balancer; swap to `gce-internal`
+# for an internal one. No `host:` is pinned here, same as the EKS overlay —
+# add one when the deployment has a DNS name to scope the rules to.
+#
+# The load balancer's health check is derived from the pod's readinessProbe
+# (`/readyz`), so nothing extra needs configuring: the same bounded-dependency
+# readiness that gates Kubernetes endpoints also gates GCP backend health.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tellurion
+  # Optional: reserve a global static IP out of band and name it here.
+  #
+  # annotations:
+  #   kubernetes.io/ingress.global-static-ip-name: tellurion
+spec:
+  ingressClassName: gce
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tellurion
+                port:
+                  name: http

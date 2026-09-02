@@ -1,0 +1,164 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/tellurion-http-source",
+    "crates/tellurion-vector-tile",
+    "crates/tellurion-core",
+    "crates/tellurion-postgis",
+    "crates/tellurion-pmtiles",
+    "crates/tellurion-flatgeobuf",
+    "crates/tellurion-geoparquet",
+    "crates/tellurion-cog",
+    "crates/tellurion-zarr",
+    "crates/tellurion-geopackage",
+    "crates/tellurion-iceberg",
+    "crates/tellurion-features",
+    "crates/tellurion-tiles",
+    "crates/tellurion-render",
+    "crates/tellurion-server",
+    "crates/tellurion-ingest",
+    "crates/tellurion-places",
+    "crates/tellurion-styles",
+    "crates/tellurion-stac",
+    "crates/tellurion-records",
+    "crates/tellurion-processes",
+    "crates/tellurion-memory",
+    "crates/tellurion-duckdb",
+    "crates/tellurion-control-sqlite",
+    "crates/tellurion-control-postgres",
+    "crates/tellurion-control",
+    "crates/tellurion-shapefile",
+]
+
+[workspace.package]
+version = "0.4.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+publish = false
+authors = ["Carlo Cancellieri"]
+repository = "https://github.com/ccancellieri/tellurion"
+readme = "README.md"
+keywords = ["gis", "ogc", "tiles", "geospatial", "postgis"]
+categories = ["science::geo"]
+
+[workspace.dependencies]
+tellurion-core = { path = "crates/tellurion-core", version = "0.4.0" }
+tellurion-vector-tile = { path = "crates/tellurion-vector-tile", version = "0.4.0" }
+tellurion-postgis = { path = "crates/tellurion-postgis", version = "0.4.0" }
+tellurion-pmtiles = { path = "crates/tellurion-pmtiles", version = "0.4.0" }
+tellurion-flatgeobuf = { path = "crates/tellurion-flatgeobuf", version = "0.4.0" }
+tellurion-geoparquet = { path = "crates/tellurion-geoparquet", version = "0.4.0" }
+tellurion-shapefile = { path = "crates/tellurion-shapefile", version = "0.4.0" }
+tellurion-cog = { path = "crates/tellurion-cog", version = "0.4.0" }
+tellurion-zarr = { path = "crates/tellurion-zarr", version = "0.4.0" }
+tellurion-geopackage = { path = "crates/tellurion-geopackage", version = "0.4.0" }
+tellurion-iceberg = { path = "crates/tellurion-iceberg", version = "0.4.0" }
+tellurion-features = { path = "crates/tellurion-features", version = "0.4.0" }
+tellurion-tiles = { path = "crates/tellurion-tiles", version = "0.4.0" }
+tellurion-render = { path = "crates/tellurion-render", version = "0.4.0" }
+tellurion-places = { path = "crates/tellurion-places", version = "0.4.0" }
+tellurion-styles = { path = "crates/tellurion-styles", version = "0.4.0" }
+tellurion-stac = { path = "crates/tellurion-stac", version = "0.4.0" }
+tellurion-records = { path = "crates/tellurion-records", version = "0.4.0" }
+tellurion-processes = { path = "crates/tellurion-processes", version = "0.4.0" }
+tellurion-memory = { path = "crates/tellurion-memory", version = "0.4.0" }
+tellurion-duckdb = { path = "crates/tellurion-duckdb", version = "0.4.0" }
+tellurion-control-sqlite = { path = "crates/tellurion-control-sqlite", version = "0.4.0" }
+tellurion-control-postgres = { path = "crates/tellurion-control-postgres", version = "0.4.0" }
+tellurion-control = { path = "crates/tellurion-control", version = "0.4.0" }
+
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+tower = { version = "0.5", features = ["timeout", "limit", "load-shed"] }
+tower-http = { version = "0.6", features = ["trace", "compression-gzip", "cors", "timeout", "catch-panic"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "2"
+anyhow = "1"
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tokio-postgres = { version = "0.7", features = ["with-serde_json-1", "with-uuid-1"] }
+deadpool-postgres = "0.14"
+moka = { version = "0.12", features = ["future"] }
+# `default-features = false` drops the `simd` feature (on by default):
+# tiny-skia's blend/rasterization SIMD code (`src/wide/*_t.rs`) takes a
+# different instruction path per target (SSE2 on x86_64, NEON on aarch64,
+# plain scalar arithmetic otherwise), and the golden-image harness in
+# `tellurion-render` (`#65`) requires byte-identical PNGs across every
+# architecture the workspace runs on. The scalar fallback is the one code
+# path every platform shares, so disabling `simd` is what actually delivers
+# that guarantee, rather than hoping SIMD float rounding agrees across
+# backends. `std`/`png-format` keep everything else tiny-skia already
+# provided by default.
+#
+# `#174` asked what that guarantee costs, since "if material, validate a
+# documented tolerance policy before changing the comparison mode". Measured
+# 2026-08 on x86_64 (Linux, release profile), the same tiny-skia 0.11.4 built
+# twice — once with `simd`, once without — over a 256x256 tile of 64
+# translucent overlapping polygons plus 32 anti-aliased strokes, 400
+# iterations each, interleaved to spread machine noise across both arms:
+#
+#   scalar   rasterize 2.45 / 2.37 / 2.12 ms   encode_png 1.16 / 1.06 / 1.24 ms
+#   simd     rasterize 2.53 / 2.35 / 2.29 ms   encode_png 1.10 / 1.06 / 1.10 ms
+#
+# The two arms are indistinguishable — scalar was the faster of the pair in
+# two of the three rounds — so the cost is NOT material and no tolerance
+# policy is warranted: the goldens stay byte-exact. Two things explain the
+# result. PNG encoding is roughly a third of the total and involves tiny-skia
+# no further than reading the finished pixel buffer (it is the `png` crate
+# and `miniz_oxide`), so `simd` cannot touch it at all. And the scenes this
+# workspace rasterizes are small flat-color fills, where the per-path setup
+# dominates the per-pixel blend loop that SIMD actually widens. Both builds
+# also produced byte-identical PNG output on this architecture, which is
+# consistent with — but does not weaken — the cross-architecture argument
+# above: the risk is x86_64 vs aarch64 disagreeing, not one machine
+# disagreeing with itself.
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "png-format"] }
+geozero = { version = "0.15.1", features = ["with-mvt", "with-geojson"] }
+geojson = { version = "0.24", default-features = false }
+clap = { version = "4", features = ["derive"] }
+metrics = "0.24"
+metrics-exporter-prometheus = "0.18"
+bytes = "1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+url = "2"
+rand = "0.9"
+futures = "0.3"
+arc-swap = "1"
+# Object-store asset digests (RFC 9530 `Repr-Digest`, sha-256) and asset
+# internal ids. `sha2` is already in the dependency graph transitively (via
+# `tokio-postgres`'s SCRAM auth) — pinned to the same major.minor here so
+# Cargo resolves one copy instead of two.
+sha2 = "0.11"
+uuid = { version = "1", features = ["v4"] }
+# AWS SigV4 request signing (the s3-compatible object-store profile,
+# `sigv4.rs`) — HMAC-SHA256 over the canonical request, no hand-rolled HMAC.
+# Already in the dependency graph transitively (`postgres-protocol`'s own
+# SCRAM auth pulls the same major version) — declaring it directly here
+# resolves to that one copy rather than a second.
+hmac = "0.13"
+# Optimistic-locking Timestamps class (OGC API Features Part 4, `#107`):
+# RFC 3339 parsing for a collection's declared modified-timestamp column
+# value. Already in the dependency graph transitively (the iceberg and
+# geoparquet drivers pull it in via `arrow`/`parquet`) — pinned here so
+# `tellurion-core` resolves to that same copy rather than a second one.
+chrono = "0.4"
+# Same class: RFC 7231 HTTP-date parsing/formatting for `Last-Modified`/
+# `If-Unmodified-Since`. Already in the dependency graph transitively (via
+# `hyper`, which every direct `reqwest`/`axum` dependency in this workspace
+# already pulls in) — pinned here for the same one-copy reason as `chrono`.
+httpdate = "1"
+# The Shapefile archive spool only accepts standard ZIP deflate and stored
+# members.  Keeping ZIP's broad default codec set disabled makes unsupported
+# archive formats an explicit refusal instead of an accidental capability.
+zip = { version = "6", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+# panic = "unwind" (the default) is intentional: the tellurion server catches a
+# handler panic at the request boundary (see its middleware-stack doc
+# comment) so one request fails instead of the whole process.
+strip = true

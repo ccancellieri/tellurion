@@ -1,0 +1,90 @@
+[package]
+name = "tellurion-ingest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Ingest CLI for the Tellurion geospatial serving engine: owns physical table DDL, seeds demo data, and loads datasets into PostGIS."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "tellurion-ingest"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+anyhow = { workspace = true }
+# `harvest stac` (`#191`): its `StacFetch` seam is a `dyn` trait with an
+# async method, so the page walk — and its bookmark, and its whole report —
+# stays unit-testable against an in-memory catalog with no server and no
+# network. Native `async fn` in trait is not object-safe, hence the macro.
+async-trait = { workspace = true }
+tokio = { workspace = true }
+tokio-postgres = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+tellurion-core = { workspace = true }
+tellurion-control-sqlite = { workspace = true }
+tellurion-control-postgres = { workspace = true }
+# Direct SQLite access for `geopackage create-tables` (`#73`) — a driver
+# crate `geopackage.rs`'s own DDL path never depends on, the same "talk to
+# the backend directly" arrangement `db.rs` already follows for
+# `tokio-postgres`; see `geopackage.rs`'s own doc.
+# `functions` (`#201`): `variants materialize`'s GeoPackage arm runs an
+# `UPDATE` against a provisioned feature table, and SQLite resolves the
+# function names in a trigger body when the triggering statement is
+# *prepared*, not when a `WHEN` clause turns out true. The Annex L R*Tree
+# maintenance triggers `geopackage create-tables` installs call
+# `ST_MinX`/`ST_MaxX`/`ST_MinY`/`ST_MaxY`/`ST_IsEmpty`, so any connection
+# that writes to such a table has to register them first — see
+# `variants::register_gpkg_envelope_functions`.
+rusqlite = { version = "0.40", default-features = false, features = [
+    "bundled",
+    "functions",
+] }
+# Unlike `rusqlite` above, this one IS a driver crate dependency — on
+# purpose: `geopackage seed`'s write path routes through this crate's own
+# `DriverFactory`/`WriteSink`, the only way to keep a seeded row's outbox
+# obligation and R*Tree index entry in the same transaction as the data
+# itself; see `geopackage_seed.rs`'s own doc.
+tellurion-geopackage = { workspace = true }
+# `cog author` (raster authoring lane) routes through this crate's own
+# `author_cog` — the only place a serving-optimized COG comes from; see
+# `cog.rs`'s own doc.
+tellurion-cog = { workspace = true }
+# `postgis load` (`#114`) routes through this crate's own `WriteSink::
+# apply_batch` — the same "write through the driver crate, not around it"
+# rule `geopackage_seed.rs` already documents for `tellurion-geopackage`,
+# extended to PostGIS now that a bulk load needs the real transactional-
+# outbox write path rather than `seed.rs`'s own raw-SQL demo inserts.
+tellurion-postgis = { workspace = true }
+# `variants materialize` (`#201`): the GeoPackage arm decodes each stored
+# GeoPackage geometry BLOB, simplifies it, and re-encodes it. `geozero`'s
+# `with-wkb` carries the GPB header codec (`wkb::GpkgWkb` in, `ToWkb::
+# to_gpkg_wkb` out — the same little-endian, envelope-indicator-1 header
+# `tellurion-geopackage::gpb` reads and writes, a module private to that
+# driver crate); `with-geo` converts to the `geo_types` representation
+# `geo`'s topology-preserving simplification runs on. The same two crates
+# `tellurion-geopackage` itself pairs, for the same reason it gives: no new
+# geometry engine and no C binding. The PostGIS arm needs neither — it
+# simplifies in SQL, with `ST_SimplifyPreserveTopology`.
+geozero = { workspace = true, features = ["with-wkb", "with-geo"] }
+geo = "0.29"
+geo-types = "0.7"
+
+[dev-dependencies]
+async-trait = { workspace = true }
+tempfile = "3"
+# `#138`: this crate's live tests share one PostgreSQL with
+# `tellurion-postgis`'s own, so they must take the same fixture locks. The
+# harness lives there because that is the crate that already owns this
+# workspace's PostgreSQL knowledge; enabling the feature here (dev only)
+# keeps it out of the shipped `tellurion-ingest` binary.
+tellurion-postgis = { workspace = true, features = ["test-support"] }

@@ -1,0 +1,65 @@
+[package]
+name = "tellurion-geopackage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Embedded, self-contained GeoPackage (SQLite) storage driver for the Tellurion geospatial serving engine: read/write features and MVT tiles from a single .gpkg file, no database service required."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+tellurion-vector-tile = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+bytes = { workspace = true }
+tracing = { workspace = true }
+metrics = { workspace = true }
+# `default-features = false` + explicit `bundled`: statically compiles SQLite
+# from source (no system libsqlite3), matching the crate's whole point (a
+# single binary plus a single `.gpkg` file, nothing else installed). The
+# bundled build compiles with `SQLITE_ENABLE_RTREE` and `SQLITE_ENABLE_JSON1`
+# on by default (see `libsqlite3-sys`'s own `build.rs`) — exactly the R*Tree
+# module the GeoPackage spec's spatial index extension needs. `functions`
+# adds `Connection::create_scalar_function`, used to register the small
+# `ST_MinX`/`ST_MaxX`/`ST_MinY`/`ST_MaxY`/`ST_IsEmpty` set the R*Tree
+# maintenance triggers call (see `functions.rs`) — this driver never links
+# SpatiaLite, so those five functions are this crate's own minimal
+# implementation, not an external extension load.
+rusqlite = { version = "0.40", default-features = false, features = [
+    "bundled",
+    "functions",
+] }
+# Shares the workspace's single `geozero` pin. `with-wkb` reads/writes the
+# ISO WKB body a GeoPackage geometry BLOB wraps in its small GPB header (see
+# `gpb.rs`); `with-geojson` converts a decoded geometry to/from the GeoJSON
+# this driver's `FeatureSource`/`WriteSink` exchange with callers, the same
+# pattern `tellurion-geoparquet`/`tellurion-iceberg` already use. The
+# workspace pin's `with-mvt` (needed for this driver's own `TileSource`, see
+# `driver.rs`) comes along automatically since a workspace-inherited
+# dependency can't turn off a feature another member has already turned on
+# for the same build.
+geozero = { workspace = true, features = ["with-wkb", "with-geojson", "with-geo"] }
+# Exact-geometry intersection testing for the CQL2 `S_INTERSECTS` predicate
+# (`intersects.rs`) — `geo-types` (already pulled in transitively by
+# `geozero`'s own `with-geo` feature above) is the coordinate representation;
+# `geo` adds the `Intersects` algorithm on top of it, no new geometry engine
+# or C binding. Also carries the shared 4326->3857 tile/write reprojection
+# coordinate walk (`crs.rs`): `geo`'s `MapCoordsInPlace` applies the
+# per-vertex Web Mercator transform to a decoded `geo_types::Geometry` in
+# place, with no native projection dependency.
+geo = "0.29"
+geo-types = "0.7"
+
+[dev-dependencies]
+axum = { workspace = true }
+serde_yaml = { workspace = true }
+tellurion-features = { workspace = true }
+tempfile = "3"
+tower = { workspace = true, features = ["util"] }

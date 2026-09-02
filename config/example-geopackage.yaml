@@ -1,0 +1,71 @@
+control_store:
+  backend: sqlite
+  path: ./tellurion-control.sqlite
+  poll_interval_ms: 1000
+
+allow_empty_platform: true
+
+# Minimal, embedded-first Tellurion configuration: a single `.gpkg` file as
+# the only storage, serving reads, writes, and MVT tiles with no database
+# service and no container runtime. This is the exact config the README's
+# Quickstart runs against a `.gpkg` freshly provisioned by
+# `tellurion-ingest geopackage create-tables` — copy it as a starting point
+# for your own embedded deployment, or read it alongside the README to see
+# what each line does.
+#
+# See `config/example.yaml` for the fuller reference config: PostGIS-backed,
+# plus every optional section this file leaves out (authentication, RBAC/ABAC
+# policy, the relational registry backend, 3D places, styled tiles). That
+# file is the "scaling up" option once a single `.gpkg` file and its one
+# writer connection aren't enough (more concurrent writers, a larger
+# dataset, or an existing PostGIS estate to point at) — everything it shows
+# still applies once you're on the `geopackage` driver's own storage-service
+# counterpart, `postgis`.
+#
+# Env vars carry secrets/infra only: TELLURION_GEOPACKAGE_PATH (the `.gpkg`
+# file's local filesystem path — the name is arbitrary, it's whatever
+# `storages[0].url_env` below names), PORT (overrides server.port below),
+# TELLURION_CONFIG (this file's own path).
+
+server:
+  port: 8080
+
+cache:
+  memory_percent: 10.0
+
+storages:
+  - id: main
+    driver: geopackage
+    # `url_env` is the same field every driver reuses (`StorageDecl.url_env`)
+    # to name the environment variable holding its connection information —
+    # for `postgis` that's a `postgres://` URL, for `geopackage` it's a
+    # plain local filesystem path to the `.gpkg` file.
+    url_env: TELLURION_GEOPACKAGE_PATH
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  # `table`/`geometry`/`pk` are omitted here: they derive at boot from the
+  # `.gpkg` file's own GeoPackage metadata tables (`gpkg_contents`/
+  # `gpkg_geometry_columns`), the same introspection PostGIS does for
+  # `config/example.yaml`'s own `demo` collection — see the driver-contract
+  # design doc, section 2. `tellurion-ingest geopackage create-tables
+  # --table demo` (the README's provisioning step) is what writes those
+  # metadata rows in the first place.
+  - id: demo
+    catalog: default
+    storage: main
+    # Explicit on purpose: unlike `features`/`tiles`, a collection's write
+    # lane is never implied by the storage it reads from — a collection
+    # with no `routing.write` refuses PUT/DELETE cleanly instead of
+    # guessing a storage for you. Naming `main` again here (the same
+    # storage the collection already reads from) is deliberate, not
+    # redundant: nothing stops a collection from reading one storage and
+    # writing another. See `RoutingDecl`.
+    routing:
+      write: main

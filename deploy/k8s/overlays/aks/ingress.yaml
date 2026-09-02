@@ -1,0 +1,32 @@
+# Annotation stub for the AKS application routing add-on — the managed NGINX
+# ingress controller AKS installs on request. It consumes plain
+# networking.k8s.io/v1 Ingress objects; no Azure SDK and no CRD is involved on
+# this path. Enable the add-on out of band:
+#
+#   az aks approuting enable --resource-group <rg> --name <cluster>
+#
+# The other supported AKS path is the Application Gateway Ingress Controller,
+# which is also plain Ingress — swap `ingressClassName` to
+# `azure-application-gateway` and use `appgw.ingress.kubernetes.io/*`
+# annotations instead. Both are convenience layers: the base Service alone is
+# enough behind any conformant ingress controller, or behind the Gateway API
+# overlay.
+#
+# No `host:` is pinned here, same as the EKS overlay — add one when the
+# deployment has a DNS name to scope the rules to.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tellurion
+spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tellurion
+                port:
+                  name: http

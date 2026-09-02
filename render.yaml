@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: tellurion-public-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./docker/Dockerfile.public-demo
+    dockerContext: .
+    healthCheckPath: /readyz
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - .dockerignore
+        - render.yaml
+        - LICENSE
+        - Cargo.toml
+        - Cargo.lock
+        - rust-toolchain.toml
+        - crates/**
+        - ui/**
+        - demo/**
+        - docker/Dockerfile.public-demo

@@ -1,0 +1,33 @@
+{
+  "version": 8,
+  "name": "OSM Basic (Sicily and Sardinia)",
+  "layers": [
+    {
+      "id": "osm-multipolygons-fill",
+      "type": "fill",
+      "source-layer": "italy_isole_multipolygons",
+      "paint": {
+        "fill-color": "#e8dfca",
+        "fill-opacity": 0.75
+      }
+    },
+    {
+      "id": "osm-multipolygons-outline",
+      "type": "line",
+      "source-layer": "italy_isole_multipolygons",
+      "paint": {
+        "line-color": "#a8967a",
+        "line-width": 0.5
+      }
+    },
+    {
+      "id": "osm-lines-stroke",
+      "type": "line",
+      "source-layer": "italy_isole_lines",
+      "paint": {
+        "line-color": "#8a5a44",
+        "line-width": 1.2
+      }
+    }
+  ]
+}

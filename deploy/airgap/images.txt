@@ -1,0 +1,46 @@
+# Container images referenced by this repository, for air-gapped installs.
+#
+# Mirror every runtime image into the internal registry before installing, then
+# point the deployment at the mirror — kustomize does this without patching any
+# manifest:
+#
+#   cd deploy/k8s/overlays/<overlay>
+#   kustomize edit set image tellurion=registry.internal/tellurion:<tag>
+#
+# Copying is a plain registry-to-registry operation; any OCI client will do:
+#
+#   while read -r image; do
+#     case "$image" in ''|'#'*) continue ;; esac
+#     skopeo copy --all "docker://$image" "docker://registry.internal/${image#*/}"
+#   done < deploy/airgap/images.txt
+#
+# (`crane copy` and `oras cp` take the same two arguments; `--all` / `--all-tags`
+# style flags matter only if the mirror must keep every architecture.)
+#
+# scripts/validate-deploy-manifests.sh asserts in CI that this file lists
+# exactly the images the manifests, the compose stack and the Dockerfile
+# reference — no missing entry, no stale one. Digests are intentionally absent:
+# the tag in the manifests is what a mirror has to resolve, and pinning digests
+# here would go stale on every rebuild.
+
+# --- Runtime: needed to *run* tellurion in the air gap ---
+
+# The server and the tellurion-ingest CLI (one image, two binaries). The tag
+# tracks deploy/k8s/base/kustomization.yaml; pin a release tag instead of
+# `latest` for a reproducible install.
+ghcr.io/ccancellieri/tellurion:latest
+
+# PostgreSQL + PostGIS, the source-of-truth database used by the compose stack.
+# A Kubernetes install usually points DATABASE_URL at a database the platform
+# already runs, in which case this image is not needed. On Apple Silicon the
+# compose file's POSTGIS_IMAGE override selects an arm64 community build
+# instead; mirror that one too if the air gap contains arm64 hosts.
+postgis/postgis:16-3.4
+
+# --- Build time: needed only to *build* the image inside the air gap ---
+# Skip these if the runtime image above is mirrored from outside. The Node
+# image builds the embedded interface for Dockerfile.public-demo only.
+
+rust:1.97-bookworm
+node:22-bookworm-slim
+debian:bookworm-slim

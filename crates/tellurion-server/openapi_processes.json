@@ -1,0 +1,589 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tellurion — OGC API Processes",
+    "description": "OGC API — Common (Core, landing page, conformance, OpenAPI) plus describe/execute/status/results/dismiss following the resource shapes of OGC API — Processes — Part 1: Core (OGC 18-062r2, 1.0.0) for one catalog. No ogcapi-processes-1 conformance class is declared — see the /conformance response and the tellurion-processes crate documentation for the per-class reasoning. Mounted at /{tenant}/processes/catalogs/{catalog}, and served only where the deployment has both a durable job ledger (server.processes) and at least one process runner compiled into the binary; otherwise the prefix does not answer at all. Every process offered here is asynchronous-only, so an execute request always creates a job.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Landing page",
+        "operationId": "getLandingPage",
+        "responses": {
+          "200": {
+            "description": "Links to the API description, conformance declaration, and process list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conformance": {
+      "get": {
+        "summary": "Conformance classes this server implements",
+        "operationId": "getConformanceDeclaration",
+        "responses": {
+          "200": {
+            "description": "List of conformance class URIs. OGC API — Common classes only: no OGC API — Processes class is claimed by this root.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conformsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api": {
+      "get": {
+        "summary": "This OpenAPI document",
+        "operationId": "getApiDescription",
+        "responses": {
+          "200": {
+            "description": "The OpenAPI 3.0 document describing this API.",
+            "content": {
+              "application/vnd.oai.openapi+json;version=3.0": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processes": {
+      "get": {
+        "summary": "The processes this deployment can execute",
+        "operationId": "getProcesses",
+        "responses": {
+          "200": {
+            "description": "Process list. Exactly the runners compiled into this binary, alphabetically. No limit parameter is honoured: the list is bounded by the build, not by paging.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/processList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processes/{processID}": {
+      "get": {
+        "summary": "One process description",
+        "operationId": "getProcessDescription",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/processID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The process summary. The fuller OGC Process Description (declared inputs/outputs schemas) is a separate requirements class this root does not implement.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/processSummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NoSuchProcess"
+          }
+        }
+      }
+    },
+    "/processes/{processID}/execution": {
+      "post": {
+        "summary": "Execute a process",
+        "description": "Always asynchronous: every process offered here declares jobControlOptions [async-execute, dismiss], so a job is created and its status document returned. An optional Idempotency-Key request header makes the enqueue idempotent — a second submission carrying the same key, while the first job is still accepted or running, returns that first job instead of creating a second.",
+        "operationId": "executeProcess",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/processID"
+          },
+          {
+            "$ref": "#/components/parameters/prefer"
+          },
+          {
+            "$ref": "#/components/parameters/idempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/execute"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The job was created. The Location header names it.",
+            "headers": {
+              "Location": {
+                "description": "URL of the created job.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Preference-Applied": {
+                "description": "Present only when the request asserted Prefer: respond-async, which this root always honours.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/statusInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidParameter"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NoSuchProcess"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/jobs/{jobID}": {
+      "get": {
+        "summary": "Status information about a job",
+        "operationId": "getJobStatus",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/jobID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The job's status document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/statusInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NoSuchJob"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Dismiss a job",
+        "operationId": "dismissJob",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/jobID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The job was dismissed; its status is now dismissed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/statusInfo"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NoSuchJob"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/jobs/{jobID}/results": {
+      "get": {
+        "summary": "The results of a job",
+        "operationId": "getJobResults",
+        "responses": {
+          "200": {
+            "description": "The results document: one member per output, keyed by output identifier.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/results"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/ResultsNotAvailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/jobID"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "processID": {
+        "name": "processID",
+        "in": "path",
+        "required": true,
+        "description": "Identifier of a process this deployment can execute.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "jobID": {
+        "name": "jobID",
+        "in": "path",
+        "required": true,
+        "description": "Identifier of a job, as returned by an execute request.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "prefer": {
+        "name": "Prefer",
+        "in": "header",
+        "required": false,
+        "description": "RFC 7240 preferences. Only respond-async is honoured, and it is honoured unconditionally because every process here is asynchronous-only.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "idempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "description": "Opt-in enqueue idempotency. Absent, two identical submissions create two jobs.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "InvalidParameter": {
+        "description": "The execute request body was malformed, or its inputs were refused by the process.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "A credential is required and none was presented.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The presented credential does not authorize this process against the collection it would act on.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The job cannot be dismissed because it has already finished, or a submitted job id is already recorded.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "A configured rate ceiling was exceeded.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      },
+      "NoSuchProcess": {
+        "description": "No such tenant, catalog, or process. The problem type is http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-process.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      },
+      "NoSuchJob": {
+        "description": "No such tenant, catalog, or job in this catalog. The problem type is http://www.opengis.net/def/exceptions/ogcapi-processes-1/1.0/no-such-job.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      },
+      "ResultsNotAvailable": {
+        "description": "Either no such job (problem type .../no-such-job), or the job has not produced results — it is still accepted or running, or it was dismissed (problem type .../result-not-ready).",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "The ledger could not be reached, has not been provisioned (run tellurion-ingest processes create-tables), or — on the results resource — the job failed and its failure is reported here.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/problem"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "link": {
+        "type": "object",
+        "required": [
+          "href",
+          "rel",
+          "type"
+        ],
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "rel": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "processSummary": {
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "jobControlOptions",
+          "links"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "jobControlOptions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "sync-execute",
+                "async-execute",
+                "dismiss"
+              ]
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/link"
+            }
+          }
+        }
+      },
+      "processList": {
+        "type": "object",
+        "required": [
+          "processes",
+          "links"
+        ],
+        "properties": {
+          "processes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/processSummary"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/link"
+            }
+          }
+        }
+      },
+      "execute": {
+        "type": "object",
+        "description": "The execute request. Only the inputs member is read: outputs and response shape a synchronous or raw-valued answer this root never produces, and subscriber belongs to the Callback requirements class this root does not implement.",
+        "properties": {
+          "inputs": {
+            "type": "object"
+          }
+        }
+      },
+      "statusInfo": {
+        "type": "object",
+        "required": [
+          "jobID",
+          "processID",
+          "type",
+          "status",
+          "created",
+          "updated",
+          "links"
+        ],
+        "properties": {
+          "jobID": {
+            "type": "string"
+          },
+          "processID": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "process"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "running",
+              "successful",
+              "failed",
+              "dismissed"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/link"
+            }
+          }
+        }
+      },
+      "results": {
+        "type": "object",
+        "description": "One member per process output, keyed by output identifier."
+      },
+      "problem": {
+        "type": "object",
+        "required": [
+          "status",
+          "code",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

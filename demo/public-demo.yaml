@@ -1,0 +1,12 @@
+# Minimal, stateless configuration for the anonymous HTTPS source sandbox.
+# COG, GeoParquet, and zipped Shapefile handles remain in one short browser
+# session; this file declares no tenant, catalog, storage, identity provider,
+# control database, or persistent ingest path.
+server:
+  port: 8080
+  request_timeout_s: 60
+  log_json: true
+  max_concurrency: 64
+
+cache:
+  memory_percent: 10.0

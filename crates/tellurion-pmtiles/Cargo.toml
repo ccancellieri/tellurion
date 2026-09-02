@@ -1,0 +1,43 @@
+[package]
+name = "tellurion-pmtiles"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "PMTiles storage driver for the Tellurion geospatial serving engine: serves vector tiles directly from local PMTiles v3 archives."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+bytes = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+# Local-file async reads only (`mmap-async-tokio`) plus zstd, since the v3
+# spec allows a Zstd-compressed archive and gzip decoding needs no extra
+# feature. No http/s3/object_store backend feature is enabled — those are a
+# future storage kind, not this driver's job (see driver.rs's crate docs).
+pmtiles = { version = "0.23", default-features = false, features = [
+    "mmap-async-tokio",
+    "zstd",
+] }
+
+[dev-dependencies]
+serde_yaml = { workspace = true }
+geozero = { workspace = true }
+
+[features]
+# Pulls in the crate's write path, used only by `examples/gen_fixture.rs` to
+# (re)produce the committed test archive — never part of a normal build or
+# the production driver, which is read-only by design (see driver.rs).
+fixture-gen = ["pmtiles/write"]
+
+[[example]]
+name = "gen_fixture"
+required-features = ["fixture-gen"]

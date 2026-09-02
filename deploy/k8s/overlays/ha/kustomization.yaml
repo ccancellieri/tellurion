@@ -1,0 +1,12 @@
+# The base plus the `ha` component and nothing else: a distribution-neutral
+# multi-replica deployment, and the thing CI renders to keep the component
+# building. Combine it with a cloud overlay by adding the same `components:`
+# stanza there instead of stacking two overlays.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+components:
+  - ../../components/ha

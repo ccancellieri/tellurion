@@ -1,0 +1,74 @@
+tellurion-demo-map-viewer {
+  display: block;
+}
+
+.demo-map {
+  overflow: hidden;
+  border: 1px solid #b7c9c5;
+  background: var(--surface);
+  box-shadow: 0 14px 36px rgb(37 59 58 / 8%);
+}
+
+.demo-map__heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid #b7c9c5;
+  background: #f7fbfa;
+}
+
+.demo-map__eyebrow {
+  margin: 0;
+  color: #2e6970;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.demo-map h2 {
+  margin: 0.22rem 0 0;
+  color: #1c3439;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.3rem;
+}
+
+.demo-map__status {
+  max-width: 44ch;
+  margin: 0;
+  color: #536b70;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.demo-map__canvas {
+  min-height: min(62vh, 680px);
+  background: #dce8e7;
+}
+
+.demo-map__attribution {
+  margin: 0;
+  border-top: 1px solid #d7e1de;
+  color: #536b70;
+  padding: 0.55rem 1.2rem;
+  font-size: 0.76rem;
+}
+
+@media (max-width: 700px) {
+  .demo-map__heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .demo-map__status {
+    text-align: left;
+  }
+
+  .demo-map__canvas {
+    min-height: 440px;
+  }
+}

@@ -1,0 +1,44 @@
+# build
+/target
+**/*.rs.bk
+# the `test` job's captured suite output, which its live-test skip gate greps
+# (`ci.yml`); running that job's command by hand leaves the same file behind
+/test-output.log
+# scripts/check-pss-restricted.py leaves these behind if it is ever imported
+__pycache__/
+
+# env & secrets
+.env
+.env.*
+*.pem
+
+# local agent/editor context — never committed
+CLAUDE.md
+.claude/
+AGENTS.md
+GEMINI.md
+.memory/
+.cursorrules
+.aider*
+.codegraph/
+*.rvf
+*.rvf.lock
+*.local.md
+
+# os / editor
+.DS_Store
+.vscode/
+.idea/
+
+# bench artifacts
+bench/results/
+
+# real-data demo extracts (large, checksummed local artifacts)
+demo-data/
+
+# runtime control-store artifacts (a server boot or test run creates these)
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.worktrees/
+.superpowers/

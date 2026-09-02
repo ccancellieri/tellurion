@@ -1,0 +1,12 @@
+# GKE Ingress fronts a ClusterIP Service only through container-native load
+# balancing (network endpoint groups). Without this annotation the controller
+# demands a NodePort Service instead, which would change the base for one
+# cloud's benefit. The annotation is inert on every other distribution, but it
+# still lives in this overlay rather than the base so the base stays free of
+# vendor keys.
+apiVersion: v1
+kind: Service
+metadata:
+  name: tellurion
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'

@@ -1,0 +1,56 @@
+# Two-node HA with no cluster software at all: two systemd hosts running the
+# unit from deploy/systemd/tellurion.service, one floating VIP, one shared
+# PostgreSQL. Install as /etc/keepalived/keepalived.conf on BOTH nodes and
+# change the marked lines on the second one.
+#
+# This is the floor the design must never break — coordination for background
+# work lives in the application (a PostgreSQL lease), so keepalived only has to
+# answer "which node owns the address", never "which node owns the work".
+#
+# Prerequisites on both nodes:
+#   - tellurion.service enabled and pointed at the same DATABASE_URL
+#   - curl installed (the health check below uses it)
+#   - the VRRP protocol (IP proto 112) allowed between the two nodes
+#   - an unprivileged `keepalived_script` user: `enable_script_security` below
+#     refuses to run a check script as root, and running it as root is exactly
+#     the hardening the tellurion unit itself avoids
+
+global_defs {
+    enable_script_security
+    script_user keepalived_script
+}
+
+# Readiness, not liveness: /readyz turns 200 only once the registry and every
+# configured storage have passed their latest probe, and turns 503 the moment
+# the process starts draining on SIGTERM. Tying the VIP to it means a rolling
+# restart hands the address over before the old process stops accepting
+# connections, instead of blackholing traffic for the drain window.
+vrrp_script check_tellurion {
+    script "/usr/bin/curl --fail --silent --max-time 2 http://127.0.0.1:8080/readyz"
+    interval 2
+    timeout 3
+    rise 2
+    fall 2
+    weight -20
+}
+
+vrrp_instance TELLURION {
+    state MASTER            # second node: BACKUP
+    interface eth0          # both nodes: the NIC carrying the VIP
+    virtual_router_id 51    # both nodes: identical, unique on the L2 segment
+    priority 110            # second node: 100
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass CHANGEME  # both nodes: identical, 8 characters max
+    }
+
+    virtual_ipaddress {
+        192.0.2.10/24 dev eth0   # both nodes: the service VIP
+    }
+
+    track_script {
+        check_tellurion
+    }
+}

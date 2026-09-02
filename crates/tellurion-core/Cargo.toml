@@ -1,0 +1,145 @@
+[package]
+name = "tellurion-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Core of the Tellurion geospatial serving engine: configuration model, routing, storage capability traits, collection descriptors, and the tile cache."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# Valkey-backed L2 tile cache (`cache_l2_valkey.rs`), default OFF — the
+# default build stays L1-only with zero extra crates in its dependency
+# graph. `cargo tree` on default features proves this: the graph is
+# identical with and without this feature declared, since nothing pulls
+# `dep:redis` unless a caller opts in.
+valkey = ["dep:redis"]
+# Exposes `objectstore::InMemoryObjectStore`, `asset::InMemoryAssetRecordStore`
+# and `job::InMemoryJobStore` to other crates' test builds (default OFF —
+# these are test fakes, never linked into a production binary). This crate's
+# own tests always have them via `#[cfg(test)]` regardless of this feature.
+test-support = []
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+moka = { workspace = true }
+bytes = { workspace = true }
+geojson = { workspace = true }
+async-trait = { workspace = true }
+metrics = { workspace = true }
+sysinfo = "0.33"
+# Lock-free, atomically-swappable `Arc` — backs `AppContext`'s reloadable
+# state (config + router + resolver, `#39`): a config reload builds a new
+# triple and swaps it in with one atomic store, so an in-flight request
+# always sees a consistent (never half-old, half-new) view.
+arc-swap = { workspace = true }
+# `valkey` feature only. `default-features = false` drops the sync client,
+# TLS backends, and non-tokio async runtimes this crate never uses:
+# `tokio-comp` is the async client this crate needs, `connection-manager`
+# gives automatic reconnect after a transient outage so the server doesn't
+# need its own retry loop. Chosen over `fred` — the other actively
+# maintained async Rust Redis/Valkey client — on dependency-graph size: with
+# comparable minimal feature sets, this resolves to 66-73 unique crates
+# (73 with `connection-manager`) against 84 for `fred`, which cannot shrink
+# further than that even with every optional command-interface feature
+# dropped (its RESP parser combinators and a `rand` dependency for
+# jitter/backoff are pulled in unconditionally).
+redis = { version = "0.27", default-features = false, features = ["tokio-comp", "connection-manager"], optional = true }
+# OIDC bearer-token validation (issue #17/#34): JWT signature verification
+# against a JWKS. `default-features = false` + `aws_lc_rs` picks the
+# `aws-lc-rs`-backed crypto provider over the crate's other option
+# (`rust_crypto`, a pure-RustCrypto backend) because `aws-lc-rs` is already
+# compiled into this workspace's dependency graph — `rustls` (pulled in via
+# `hyper-rustls`, itself pulled in by `metrics-exporter-prometheus`'s
+# push-gateway support) already resolves its crypto provider to `aws-lc-rs`.
+# Selecting the same backend here adds zero new crypto crates instead of a
+# second one (`ring`) alongside it. The two uses never share global state:
+# `jsonwebtoken`'s `CryptoProvider` is its own process-local `OnceLock`,
+# entirely separate from `rustls::crypto::CryptoProvider`, so there is no
+# install-order coupling between this crate and `reqwest`/`hyper-rustls`
+# below. `use_pem` is left off: decoding never needs it (JWKS keys arrive as
+# raw modulus/exponent components, see `auth.rs`), and the test suite signs
+# with `EncodingKey::from_rsa_der`, not a PEM.
+jsonwebtoken = { version = "10", default-features = false, features = ["aws_lc_rs"] }
+# JWKS discovery + fetch (issuer's `/.well-known/openid-configuration` then
+# its `jwks_uri`). `rustls-tls` (not `default-tls`) avoids pulling in a
+# second, OpenSSL/native-tls-based TLS stack alongside the `rustls` one
+# already in the tree; its crypto provider selection is `ring` (via the
+# feature's `rustls-tls-webpki-roots` -> `__rustls-ring` default) rather
+# than the `aws-lc-rs` `rustls` already resolves to elsewhere in this graph
+# (`ring` was already a transitive dependency here regardless, via
+# `rustls-webpki`, so this doesn't add a new crate — it's an existing one
+# gaining an explicitly-selected role) — the "no-provider" feature variants
+# that would make `reqwest` share the already-active `aws-lc-rs` provider
+# require it to coordinate a process-wide
+# `rustls::crypto::CryptoProvider::install_default()` call with every other
+# `rustls` consumer in the binary (`hyper-rustls` via
+# `metrics-exporter-prometheus`), and a second `install_default()` call
+# anywhere in the process fails; `rustls-tls`'s self-contained provider
+# construction avoids that coordination.
+# `json` only adds `dep:serde_json`, already a direct dependency of this
+# crate, so it's free — used to decode both the discovery document and the
+# JWKS document. `charset`/`cookies`/`multipart`/`gzip`/etc. are all off —
+# this client only ever does two unauthenticated GETs (discovery document,
+# JWKS document) on a background refresh path, nothing response-format-
+# sensitive enough to need them.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+# `AppConfig::validate`'s `auth.oidc.issuer` check (config.rs): parses the
+# issuer as an absolute URL without a network call. Already compiled into
+# this graph as `reqwest`'s own dependency; declaring it directly here
+# rather than reaching through `reqwest::Url` keeps the config model's only
+# coupling to `reqwest` from being an implicit re-export.
+url = "2"
+# Asset digest verification (RFC 9530 `Repr-Digest`, sha-256 minimum
+# required algorithm — `asset.rs`, the assets-and-object-storage proposal's
+# first slice). Pure Rust, already a de-facto standard hashing crate.
+sha2 = { workspace = true }
+# Internal asset ids (`asset.rs`/`objectstore.rs`): an object key derives
+# ONLY from this immutable, server-generated id — never from a client-
+# supplied asset key or filename — which is what makes path traversal
+# impossible by construction on the filesystem object-store profile.
+uuid = { workspace = true }
+# AWS SigV4 request signing (`sigv4.rs`, the `s3` object-store profile) —
+# the HMAC half; `sha2` above is the digest half. Pure computation, no I/O.
+hmac = { workspace = true }
+# Optimistic-locking Timestamps class (OGC API Features Part 4, `#107`,
+# `locking.rs`): RFC 3339 parsing for a collection's declared modified-
+# timestamp column value.
+chrono = { workspace = true }
+# Same class: RFC 7231 HTTP-date parsing/formatting for `Last-Modified`/
+# `If-Unmodified-Since`.
+httpdate = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+metrics-exporter-prometheus = { workspace = true }
+# Test-only RSA keypair generation for the OIDC validator's unit tests
+# (`auth.rs`) — never a production dependency. Pure Rust (RustCrypto), no
+# external `openssl`/`ssh-keygen` binary needed for a hermetic, reproducible
+# test run.
+rsa = "0.9"
+rand = "0.8"
+axum = { workspace = true }
+futures = { workspace = true }
+# `FsObjectStore`'s own tests (`objectstore.rs`) exercise a real temp
+# directory rather than mocking the filesystem — the same reasoning the
+# GeoPackage driver's own tests use a real SQLite file.
+tempfile = "3"
+
+[[test]]
+name = "valkey_live"
+# Skipped entirely (not even compiled) unless `valkey` is on — the test
+# drives the real `ValkeyL2Cache` against a live server. The file itself is
+# also `#![cfg(feature = "valkey")]`-gated and every test in it is
+# `#[ignore]`d, so even a `--features valkey` run needs `--ignored` (and a
+# reachable server) to actually execute it.
+required-features = ["valkey"]

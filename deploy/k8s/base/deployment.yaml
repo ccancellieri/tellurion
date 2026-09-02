@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tellurion
+  labels:
+    app.kubernetes.io/name: tellurion
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tellurion
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tellurion
+    spec:
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: tellurion
+          image: tellurion
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: TELLURION_CONFIG
+              value: /etc/tellurion/config.yaml
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  # Provision out of band, e.g.:
+                  #   kubectl create secret generic tellurion-db \
+                  #     --from-literal=DATABASE_URL='postgres://user:pass@host:5432/tellurion'
+                  name: tellurion-db
+                  key: DATABASE_URL
+          volumeMounts:
+            - name: config
+              mountPath: /etc/tellurion
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: config
+          configMap:
+            name: tellurion-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+              - key: styles-default.json
+                path: styles/default.json

@@ -1,0 +1,91 @@
+control_store:
+  backend: legacy_file
+
+# Portable end-to-end verification config (no machine-specific paths).
+# Pairs with a `db` service from deploy/compose (see deploy/compose/README
+# notes in docker-compose.yml) seeded with:
+#   tellurion-ingest seed
+#   tellurion-ingest load <geofabrik-country>.osm.pbf --collection pt_roads --layer lines
+#   tellurion-ingest load <geofabrik-country>.osm.pbf --collection pt_landuse --layer multipolygons
+#
+# Point TELLURION_CONFIG / --config at this file, with DATABASE_URL exported
+# for the `main` storage below.
+
+server:
+  port: 8080
+  request_timeout_s: 60
+  log_json: false
+  drain_timeout_s: 10
+  readiness_probe_interval_s: 5
+  readiness_probe_timeout_s: 2
+  metrics_tenant_allowlist: [public]
+  metrics_collection_allowlist:
+    - tenant: public
+      catalog: default
+      collection: demo
+
+cache:
+  memory_percent: 25.0
+
+settings:
+  slow_request_ms: 1000
+
+storages:
+  - id: main
+    driver: postgis
+    url_env: DATABASE_URL
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+collections:
+  # `table`/`geometry`/`pk`/`datetime`/`tiles` are all omitted below where
+  # they'd only restate what derives from the `main` storage's catalog at
+  # boot (table defaults to the collection id; geometry/pk/datetime come
+  # from PostGIS introspection; per-zoom tile serving parameters come from
+  # the row-estimate-driven heuristics) — see the driver-contract design
+  # doc, section 2, and `descriptor::heuristics` in tellurion-core.
+  # `pt_roads` keeps an explicit `tiles.maxzoom` because 16 genuinely
+  # differs from the default (14); everything else here matches derivation.
+  - id: demo
+    catalog: default
+    storage: main
+    style:
+      fill: "#3388ff66"
+      stroke: "#3366cc"
+      stroke_width: 1.0
+    # No `height` column exists on the seeded demo table, so every extruded
+    # footprint falls back to `default_height` (see Places3dConf) — enough
+    # to exercise the Glb lane end to end without new ingest work.
+    places3d:
+      height_property: "height"
+      default_height: 8.0
+
+  - id: pt_roads
+    catalog: default
+    storage: main
+    tiles:
+      maxzoom: 16
+    style:
+      fill: "#00000000"
+      stroke: "#c0392b"
+      stroke_width: 1.0
+
+  - id: pt_landuse
+    catalog: default
+    storage: main
+    style:
+      fill: "#27ae6066"
+      stroke: "#1e8449"
+      stroke_width: 0.5
+
+# MapLibre Style JSON documents for the styled-tile lane
+# (/collections/{cid}/styles/{styleId}/map/tiles/...) and the read-only
+# OGC API — Styles surface (/styles). Paths are read relative to the
+# process's working directory, not this file's location.
+styles:
+  - id: default
+    path: config/styles/default.json

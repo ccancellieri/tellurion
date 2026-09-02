@@ -1,0 +1,23 @@
+# Sensitive publication and supply-chain surfaces
+/.github/workflows/ @ccancellieri
+/.github/CODEOWNERS @ccancellieri
+/.github/dependabot.yml @ccancellieri
+/distribution/public-core.toml @ccancellieri
+/scripts/export-public-core.py @ccancellieri
+/scripts/tests/test_export_public_core.py @ccancellieri
+/scripts/audit-license-policy.sh @ccancellieri
+/scripts/audit-artifacts.sh @ccancellieri
+/scripts/check-release-workflow.sh @ccancellieri
+/scripts/release.sh @ccancellieri
+/LICENSE @ccancellieri
+/COMMERCIAL-LICENSE.md @ccancellieri
+/CLA.md @ccancellieri
+/CONTRIBUTING.md @ccancellieri
+/SUPPORT.md @ccancellieri
+/.github/ISSUE_TEMPLATE/ @ccancellieri
+/render.yaml @ccancellieri
+/demo/ @ccancellieri
+/docs/design/2026-08-27-public-core-readiness.md @ccancellieri
+/docs/publication-runbook.md @ccancellieri
+/scripts/snapshot-publication-state.sh @ccancellieri
+/SECURITY.md @ccancellieri

@@ -1,0 +1,17 @@
+# Restricted SCC assigns the UID (and, on classic `restricted`, the GID) from
+# a per-namespace range at admission time; pinning either here would be
+# rejected. Null clears the base's pins while runAsNonRoot/seccompProfile
+# stay enforced, and fsGroup is never set (fsGroup-free, no PVC needs it).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tellurion
+spec:
+  template:
+    spec:
+      securityContext:
+        runAsUser: null
+        runAsGroup: null
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault

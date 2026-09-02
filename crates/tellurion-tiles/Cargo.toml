@@ -1,0 +1,42 @@
+[package]
+name = "tellurion-tiles"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "OGC API - Tiles implementation for the Tellurion geospatial serving engine: MVT and PNG tiles plus styled map tiles on WebMercatorQuad."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+tellurion-render = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+bytes = { workspace = true }
+
+[dev-dependencies]
+async-trait = { workspace = true }
+serde_yaml = { workspace = true }
+geozero = { workspace = true }
+tiny-skia = { workspace = true }
+# `#37`: the raster maps lane's contract tests drive the REAL `RasterSource`
+# of both raster drivers, because a raster-maps test backed by a fake
+# `RasterSource` would pin nothing about the budgets, the colormap
+# classification or the fixed-slice selection this lane's whole claim is that
+# it reuses. The only honest way to reach that code from outside either
+# driver crate is the public `DriverFactory` -> `StorageDriver` ->
+# `RasterSource` contract, which is exactly what a served map goes through
+# anyway — the same reasoning, and the same DEV-only arrow,
+# `tellurion-render`'s own colormap goldens already follow. Nothing in this
+# crate's library depends on a driver, and the drivers still know nothing
+# about this crate.
+tellurion-cog = { workspace = true }
+tellurion-zarr = { workspace = true }

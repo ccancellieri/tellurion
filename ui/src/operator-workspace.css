@@ -1,0 +1,109 @@
+.workspace__context-form {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.workspace__context-form label {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.workspace__context-form input,
+.workspace__context-form select {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: var(--surface);
+  color: inherit;
+  padding: 0.42rem 0.5rem;
+  font: inherit;
+  accent-color: var(--accent);
+}
+
+.workspace__context-form select:focus-visible {
+  outline: 3px solid #d4a72c;
+  outline-offset: 3px;
+}
+
+.workspace__context-form button {
+  grid-column: 1 / -1;
+}
+
+.workspace__load-more {
+  width: 100%;
+  margin-top: 0.65rem;
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--accent-deep);
+}
+
+.workspace__layer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.workspace__layer-mode {
+  overflow: hidden;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  grid-column: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace__layer div {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.workspace__fallback {
+  margin: 0.7rem 0;
+  border-left: 3px solid #d4a72c;
+  background: #fff7df;
+  color: #55420e;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.workspace__inspection {
+  margin: 0.8rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-muted);
+  padding: 0.65rem;
+}
+
+.workspace__inspection h3,
+.workspace__inspection p {
+  margin: 0 0 0.45rem;
+}
+
+.workspace__inspection ol {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.3rem;
+}
+
+.workspace__inspection li span {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 560px) {
+  .workspace__context-form {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace__context-form button {
+    grid-column: 1;
+  }
+}

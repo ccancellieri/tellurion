@@ -1,0 +1,741 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tellurion \u2014 OGC API Features",
+    "description": "OGC API \u2014 Common (Core, landing page, conformance, OpenAPI) plus Features Part 1 (Core + GeoJSON), Part 2 (CRS by Reference), Part 3 (Filtering/CQL2 and Queryables as Query Parameters), and Part 4 (Create/Replace/Update/Delete, with optimistic locking) for one catalog, alongside this server's own batch-write and change-feed resources. Mounted at /{tenant}/features/catalogs/{catalog}.",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Landing page",
+        "operationId": "getLandingPage",
+        "responses": {
+          "200": {
+            "description": "Links to the API description, conformance declaration, and data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conformance": {
+      "get": {
+        "summary": "Conformance classes this server implements",
+        "operationId": "getConformanceDeclaration",
+        "responses": {
+          "200": {
+            "description": "List of conformance class URIs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conformsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api": {
+      "get": {
+        "summary": "This OpenAPI document",
+        "operationId": "getApiDescription",
+        "responses": {
+          "200": {
+            "description": "The OpenAPI 3.0 document describing this API.",
+            "content": {
+              "application/vnd.oai.openapi+json;version=3.0": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections": {
+      "get": {
+        "summary": "List the feature collections available to this tenant",
+        "operationId": "getCollections",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 100
+            },
+            "description": "Collections per page. Values above the server maximum are clamped, not rejected."
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque keyset pagination token from a previous response's `next` link."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collections list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}": {
+      "get": {
+        "summary": "Describe a single collection",
+        "operationId": "getCollection",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/queryables": {
+      "get": {
+        "summary": "JSON Schema of the properties the filter parameter accepts for a collection",
+        "operationId": "getQueryables",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A JSON Schema (draft 2020-12) document describing this collection's queryable properties.",
+            "content": {
+              "application/schema+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items": {
+      "get": {
+        "summary": "Fetch features from a collection (keyset-paginated)",
+        "description": "In addition to the parameters listed here, every simple-valued property this collection declares as a queryable (see the collection's own /queryables document) may also be supplied as its own ?propertyName=value query parameter, evaluated as an equality predicate and combined with any other filtering already applied (OGC API - Features Part 3, \"Queryables as Query Parameters\"). Per-collection parameter names are dynamic and not enumerated in this document.",
+        "operationId": "getFeatures",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 10
+            },
+            "description": "Values above the server maximum are clamped, not rejected."
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Four comma-separated numbers: minLon,minLat,maxLon,maxLat (CRS84)."
+          },
+          {
+            "name": "datetime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A single RFC 3339 instant, or a start/end interval with `..` for an open end (not both)."
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque keyset pagination token from a previous response's `next` link."
+          },
+          {
+            "$ref": "#/components/parameters/crs"
+          },
+          {
+            "name": "bbox-crs",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "The CRS `bbox`'s four numbers are expressed in (OGC API Features Part 2). Meaningful only together with `bbox`; a latitude-before-longitude CRS is axis-swapped before evaluation."
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A CQL2 filter expression (OGC API Features Part 3), encoded per `filter-lang`. Requires the collection's resolved driver to support filtering, else 400."
+          },
+          {
+            "name": "filter-lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["cql2-text", "cql2-json"],
+              "default": "cql2-text"
+            },
+            "description": "Which encoding `filter` is in. Ignored when `filter` itself is absent."
+          },
+          {
+            "$ref": "#/components/parameters/hints"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A GeoJSON FeatureCollection.",
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "422": {
+            "$ref": "#/components/responses/itemsVertexBudgetExceeded"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a new feature to a collection",
+        "description": "OGC API Features Part 4 (Create/Replace/Delete). The server mints the feature id and returns it in the Location header; an id member in the posted feature is not authoritative. The body is validated against the collection's declared schema, when it has one, before anything is committed.",
+        "operationId": "createFeature",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/contentCrs"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/geo+json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The feature was created; Location names the new feature's URI.",
+            "headers": {
+              "Location": {
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/batch": {
+      "post": {
+        "summary": "Apply many caller-identified feature upserts in one paced request",
+        "description": "This server's own bulk-write resource, layered over the same write lane the single-feature routes use. Every item is an upsert carrying its own top-level id — there is no server-assigned create and no delete here. The response is streamed newline-delimited JSON: one outcome object per item, then one terminal summary object; once the stream has started, a budget overrun, a malformed record, or a strict stop is reported in band rather than as a different HTTP status.",
+        "operationId": "batchItems",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/contentCrs"
+          },
+          {
+            "name": "strict",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"],
+              "default": "false"
+            },
+            "description": "`true` stops attempting further items at the first refusal; the already-staged items still get their own outcome lines and the unread tail is reported as unapplied."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Either an RFC 8142 GeoJSON text sequence (streamed, never buffered whole) or one ordinary GeoJSON FeatureCollection. Both are capped by this collection's effective batch byte and item budgets.",
+          "content": {
+            "application/geo+json-seq": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/geo+json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A newline-delimited stream of per-item outcomes followed by one terminal summary.",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/unsupportedMediaType"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/changes": {
+      "get": {
+        "summary": "Read this collection's committed change feed",
+        "description": "Drains the same write-lane outbox the index applier and tile-generation consumer read, as compact versioned envelopes. A collection with no resolvable outbox refuses by name with the same capability 404 every other capability-gated lane gives.",
+        "operationId": "getChanges",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Entries per page, bounded by this deployment's change-feed page-size configuration."
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque cursor from a previous response's `next` link; entries strictly after it are returned."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An object with `links` and a `changes` array of change envelopes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/items/{featureId}": {
+      "get": {
+        "summary": "Fetch a single feature by id",
+        "operationId": "getFeature",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/featureId"
+          },
+          {
+            "$ref": "#/components/parameters/crs"
+          },
+          {
+            "$ref": "#/components/parameters/hints"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A GeoJSON Feature.",
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/itemsVertexBudgetExceeded"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      },
+      "put": {
+        "summary": "Replace (or create) one feature at a caller-chosen id",
+        "description": "OGC API Features Part 4 (Create/Replace/Delete). The path id is authoritative. If-Match / If-Unmodified-Since are evaluated first when present (Part 4 optimistic locking), and the body is validated against the collection's declared schema, when it has one, before anything is committed.",
+        "operationId": "replaceFeature",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/featureId"
+          },
+          {
+            "$ref": "#/components/parameters/contentCrs"
+          },
+          {
+            "$ref": "#/components/parameters/ifMatch"
+          },
+          {
+            "$ref": "#/components/parameters/ifUnmodifiedSince"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/geo+json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The feature was replaced or created."
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/preconditionFailed"
+          },
+          "413": {
+            "$ref": "#/components/responses/payloadTooLarge"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove one feature",
+        "description": "OGC API Features Part 4 (Create/Replace/Delete), with the same optimistic-locking preconditions PUT evaluates.",
+        "operationId": "deleteFeature",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/featureId"
+          },
+          {
+            "$ref": "#/components/parameters/ifMatch"
+          },
+          {
+            "$ref": "#/components/parameters/ifUnmodifiedSince"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The feature was removed."
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/preconditionFailed"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Partially update an existing feature with JSON Merge Patch",
+        "description": "Applies RFC 7396 recursively. Null removes members; arrays and scalar values replace their targets. The feature id in the path is immutable and an id in the patch document is ignored.",
+        "operationId": "patchFeature",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/featureId"
+          },
+          {
+            "$ref": "#/components/parameters/contentCrs"
+          },
+          {
+            "$ref": "#/components/parameters/ifMatch"
+          },
+          {
+            "$ref": "#/components/parameters/ifUnmodifiedSince"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/merge-patch+json": {
+              "schema": {}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated GeoJSON Feature, with ETag and Content-Crs validators.",
+            "headers": {
+              "ETag": {
+                "schema": { "type": "string" }
+              },
+              "Last-Modified": {
+                "schema": { "type": "string" }
+              },
+              "Content-Crs": {
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/geo+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "412": {
+            "description": "A supplied write precondition did not match the current feature."
+          },
+          "413": {
+            "description": "The merge patch exceeds the configured request body limit."
+          },
+          "415": {
+            "description": "The request is not application/merge-patch+json."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "collectionId": {
+        "name": "collectionId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "featureId": {
+        "name": "featureId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "crs": {
+        "name": "crs",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "format": "uri"
+        },
+        "description": "Requested output CRS for geometry coordinates (OGC API Features Part 2, CRS by Reference), as a CRS URI the collection declares. Answered with a matching Content-Crs response header. Requires the collection's resolved driver to support CRS output, else 400."
+      },
+      "hints": {
+        "name": "hints",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Comma-separated read-lane hints from this server's own closed vocabulary. Unknown tokens are dropped rather than rejected, so a typo never fails the request."
+      },
+      "contentCrs": {
+        "name": "Content-Crs",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The CRS the request body's coordinates are expressed in. A CRS the collection's write lane cannot reproject from is refused by name."
+      },
+      "ifMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Optimistic-locking precondition (OGC API Features Part 4): the current feature's ETag."
+      },
+      "ifUnmodifiedSince": {
+        "name": "If-Unmodified-Since",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Optimistic-locking precondition (OGC API Features Part 4), evaluated against the collection's declared modified column."
+      }
+    },
+    "responses": {
+      "payloadTooLarge": {
+        "description": "The request body exceeds this collection's effective body (or batch) byte budget.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "unsupportedMediaType": {
+        "description": "The request body's media type is not one this resource accepts.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "preconditionFailed": {
+        "description": "A supplied write precondition did not match the current feature.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "badRequest": {
+        "description": "Invalid request parameter.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "itemsVertexBudgetExceeded": {
+        "description": "Exact geometry was refused rather than simplified or partially returned because the selected item page exceeded the collection's configured cumulative vertex budget.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "notFound": {
+        "description": "Unknown collection or feature, or the driver doesn't support this capability.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

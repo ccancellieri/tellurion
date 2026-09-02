@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "overrides": [
+    {
+      "source": "npm",
+      "name": "json-bignum",
+      "version": "0.0.3",
+      "license": "MIT",
+      "evidence": "https://github.com/datalanche/json-bignum/blob/68f270db0ec25f6b19260103e5127a2f9424405e/LICENSE",
+      "reason": "npm CycloneDX omits the package's legacy package.json licenses field."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": 8,
+  "name": "Tellurion Default",
+  "layers": [
+    {
+      "id": "demo-polygons",
+      "type": "fill",
+      "source-layer": "demo",
+      "paint": {
+        "fill-color": "#3388ff66",
+        "fill-outline-color": "#3366cc"
+      }
+    },
+    {
+      "id": "demo-points",
+      "type": "circle",
+      "source-layer": "demo",
+      "paint": {
+        "circle-color": "#cc3366",
+        "circle-radius": 4
+      }
+    }
+  ]
+}

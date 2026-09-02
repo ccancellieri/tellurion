@@ -1,0 +1,96 @@
+control_store:
+  backend: sqlite
+  path: ./tellurion-italy-control.sqlite
+  poll_interval_ms: 1000
+
+allow_empty_platform: true
+
+# Real OpenStreetMap data over the embedded GeoPackage driver — no
+# database service, no container runtime, just the `tellurion` binary and a
+# single `.gpkg` file.
+#
+# The dataset is NOT all of Italy. It is Geofabrik's "isole" (islands)
+# regional sub-extract of the Italy PBF (Sicily + Sardinia), chosen because
+# converting the full ~2.1 GB Italy extract into a single-writer SQLite
+# GeoPackage was impractical to complete inside one working session — the
+# regional extract is still real, unmodified OSM data covering a
+# substantial, honestly-labeled area (two large islands and their coastal
+# waters), not a synthetic or hand-picked bounding box. See
+# docs/quickstart/real-data-osm-geopackage.md for the full provenance,
+# license note, and the exact commands that produced the `.gpkg` file this
+# config points at.
+#
+# Unlike config/example-italy-osm.yaml (the PostGIS-backed sibling of this
+# file), there is no `tellurion-ingest load` counterpart for the
+# `geopackage` driver (see the README's own Quickstart section for why) —
+# this `.gpkg` file was produced by converting the source PBF directly with
+# the host's `ogr2ogr` (GDAL), never through `tellurion-ingest`. The result
+# still satisfies everything `tellurion-geopackage` requires of a feature
+# table on its read path: a single `INTEGER PRIMARY KEY` column (GDAL's own
+# default `fid`), a registered `gpkg_geometry_columns`/`gpkg_contents` row,
+# and an R*Tree spatial index in the exact shape (Annex L) the GeoPackage
+# spec — and this driver — expect. Being GDAL-authored rather than
+# `tellurion-ingest`-provisioned, it has no `<table>_outbox` table, so these
+# two collections are read-only (features + tiles); a write against them
+# fails cleanly by name (`OutboxTableMissing`) rather than serving a write
+# this file was never provisioned to accept.
+#
+# © OpenStreetMap contributors — this data is licensed under the Open
+# Database License (ODbL) 1.0. Any use, display, or redistribution of it
+# (including a rendered tile) must carry that attribution; see
+# https://www.openstreetmap.org/copyright.
+
+server:
+  port: 8080
+
+cache:
+  memory_percent: 20.0
+
+storages:
+  - id: main
+    driver: geopackage
+    # The `.gpkg` file's local filesystem path — set this to wherever you
+    # ran the conversion commands in docs/quickstart/real-data-osm-geopackage.md,
+    # e.g. TELLURION_GEOPACKAGE_PATH=/path/to/italy-isole.gpkg.
+    url_env: TELLURION_GEOPACKAGE_PATH
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  # OSM ways: roads, waterways, railways — table/geometry/pk are all
+  # omitted, deriving at boot from this table's own GeoPackage metadata
+  # (gpkg_contents/gpkg_geometry_columns, the `fid` primary key), the same
+  # convention config/example-geopackage.yaml documents for its seeded
+  # `demo` table.
+  - id: italy_isole_lines
+    catalog: default
+    storage: main
+    style:
+      stroke: "#6b7280"
+      stroke_width: 1.0
+    settings:
+      tile_properties: ["name", "highway", "waterway", "railway"]
+
+  # OSM closed ways/relations: buildings, land use, natural areas.
+  - id: italy_isole_multipolygons
+    catalog: default
+    storage: main
+    style:
+      fill: "#3388ff66"
+      stroke: "#3366cc"
+      stroke_width: 1.0
+    settings:
+      tile_properties: ["name", "building", "landuse", "natural", "leisure"]
+
+# MapLibre Style JSON for the styled-PNG lane
+# (/collections/{cid}/styles/{styleId}/map/tiles/...) and the read-only OGC
+# API — Styles surface (/styles). Path is read relative to the process's
+# working directory, not this file's location.
+styles:
+  - id: osm-basic
+    path: config/styles/osm-basic.json

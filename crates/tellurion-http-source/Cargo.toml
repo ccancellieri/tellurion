@@ -1,0 +1,31 @@
+[package]
+name = "tellurion-http-source"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Bounded, pinned HTTPS byte-range objects for public source inspection."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+async-trait = { workspace = true }
+bytes = { workspace = true }
+hmac = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+
+[features]
+administrative-compat = []

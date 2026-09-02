@@ -1,0 +1,520 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tellurion \u2014 OGC API Tiles",
+    "description": "OGC API \u2014 Common (Core, landing page, conformance, OpenAPI) plus Tiles Part 1 (WebMercatorQuad, plus WorldCRS84Quad on grid-capable drivers; MVT + PNG + styled PNG) for one catalog. Mounted at /{tenant}/tiles/catalogs/{catalog}.",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Landing page",
+        "operationId": "getLandingPage",
+        "responses": {
+          "200": {
+            "description": "Links to the API description, conformance declaration, and data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conformance": {
+      "get": {
+        "summary": "Conformance classes this server implements",
+        "operationId": "getConformanceDeclaration",
+        "responses": {
+          "200": {
+            "description": "List of conformance class URIs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conformsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api": {
+      "get": {
+        "summary": "This OpenAPI document",
+        "operationId": "getApiDescription",
+        "responses": {
+          "200": {
+            "description": "The OpenAPI 3.0 document describing this API.",
+            "content": {
+              "application/vnd.oai.openapi+json;version=3.0": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/tiles": {
+      "get": {
+        "summary": "List the tilesets available for a collection",
+        "operationId": "getCollectionTilesets",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tileset list \u2014 one entry per tile matrix set the collection's resolved driver serves (WebMercatorQuad always; WorldCRS84Quad on grid-capable drivers, #190).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/tiles/{tileMatrixSetId}": {
+      "get": {
+        "summary": "Tileset metadata for a collection, in one tile matrix set",
+        "operationId": "getCollectionTileset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/tileMatrixSetId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tileset metadata, including the configured zoom range.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow}/{tileCol}": {
+      "get": {
+        "summary": "Fetch a single vector or raster tile",
+        "operationId": "getTile",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/tileMatrixSetId"
+          },
+          {
+            "name": "tileMatrix",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Zoom level."
+          },
+          {
+            "name": "tileRow",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "tileCol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Tile column; an explicit `.mvt` or `.png` suffix overrides Accept-header negotiation."
+          },
+          {
+            "$ref": "#/components/parameters/f"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tile.",
+            "content": {
+              "application/vnd.mapbox-vector-tile": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "A valid tile at this coordinate with no features to draw."
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "description": "Unknown collection, or the zoom is outside the collection's configured range.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tileMatrixSets": {
+      "get": {
+        "summary": "List the supported tile matrix sets",
+        "operationId": "getTileMatrixSets",
+        "responses": {
+          "200": {
+            "description": "WebMercatorQuad and WorldCRS84Quad (#190).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tileMatrixSets/{tileMatrixSetId}": {
+      "get": {
+        "summary": "One tile matrix set definition (WebMercatorQuad or WorldCRS84Quad, zoom 0-24)",
+        "operationId": "getTileMatrixSet",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/tileMatrixSetId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The full TileMatrixSet document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "An id this server's tile matrix set registry does not know."
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/map": {
+      "get": {
+        "summary": "Render one styled map image of a collection (OGC API Maps)",
+        "description": "Composites the collection's WebMercatorQuad tile pyramid into a single PNG window. Every parameter is optional, as the Maps Part 1 Core class requires: an omitted `bbox` renders the collection's own derived spatial extent (the same extent its collection metadata publishes), and omitted `width`/`height` render that window at the tile grid's own native scale. The zoom is picked from the resulting resolution; both the output image and the source tiles it needs are bounded by this server's pixel budget, refused by name rather than truncated.",
+        "operationId": "getCollectionMap",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Four comma-separated numbers in `bbox-crs` units: minX,minY,maxX,maxY. Each minimum must be strictly less than its maximum. Omitted renders this collection's own derived spatial extent; a collection with no known extent is refused by name (`CapabilityUnsupported`), never given a world bbox."
+          },
+          {
+            "name": "bbox-crs",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uri",
+              "enum": [
+                "http://www.opengis.net/def/crs/EPSG/0/3857",
+                "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+              ],
+              "default": "http://www.opengis.net/def/crs/EPSG/0/3857"
+            },
+            "description": "The CRS `bbox` is expressed in. Omitted means this lane's native WebMercatorQuad CRS; any other URI is refused by name. Ignored when no `bbox` is supplied."
+          },
+          {
+            "name": "crs",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uri",
+              "enum": [
+                "http://www.opengis.net/def/crs/EPSG/0/3857",
+                "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+              ],
+              "default": "http://www.opengis.net/def/crs/EPSG/0/3857"
+            },
+            "description": "The CRS the rendered window is projected into. Same closed set and same default as `bbox-crs`."
+          },
+          {
+            "name": "width",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Output image width in pixels. Omitted with `height` supplied derives it from the window's aspect ratio; omitted with neither supplied renders the window at the tile grid's native scale (between 256 and 512 pixels on the longest side). A supplied value must still be a positive integer."
+          },
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Output image height in pixels. Omitted with `width` supplied derives it from the window's aspect ratio; omitted with neither supplied renders the window at the tile grid's native scale (between 256 and 512 pixels on the longest side). A supplied value must still be a positive integer."
+          },
+          {
+            "name": "style",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "A registered style id to paint with; omitted renders the collection's own configured style."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The rendered map image.",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Content-Crs": {
+                "description": "The CRS the image was rendered in, as `<URI>` \u2014 this lane's native WebMercatorQuad CRS unless `crs` asked otherwise.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Bbox": {
+                "description": "The window this image actually covers, four comma-separated numbers in the `Content-Crs` CRS. The only way a client that supplied no `bbox` can georeference the result.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An invalid parameter, a collection with no extent to derive a window from, or a window over this server's pixel budget (output side or source-tile side).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown collection, a collection with no tiles lane, or an unknown style id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/styles/{styleId}/map/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow}/{tileCol}": {
+      "get": {
+        "summary": "Fetch a raster tile rendered with a named style",
+        "operationId": "getStyledTile",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "$ref": "#/components/parameters/styleId"
+          },
+          {
+            "$ref": "#/components/parameters/tileMatrixSetId"
+          },
+          {
+            "name": "tileMatrix",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Zoom level."
+          },
+          {
+            "name": "tileRow",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "tileCol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Tile column; an explicit `.png` suffix overrides Accept-header negotiation. MVT is not an offerable format on this route \u2014 styling only affects rasterization."
+          },
+          {
+            "$ref": "#/components/parameters/f"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The styled raster tile (MVT-first: fetched/cached like the unstyled PNG lane, then painted with the named style's resolved layer paints).",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "A valid tile at this coordinate with no features to draw."
+          },
+          "400": {
+            "description": "Invalid coordinate, or the request negotiated to MVT (styled tiles are raster-only).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown collection, or unknown style id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "collectionId": {
+        "name": "collectionId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "styleId": {
+        "name": "styleId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "tileMatrixSetId": {
+        "name": "tileMatrixSetId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": ["WebMercatorQuad", "WorldCRS84Quad"]
+        },
+        "description": "The tile matrix set to serve from. WebMercatorQuad is always available; WorldCRS84Quad (#190) is served by grid-capable drivers, and a collection's own tileset list names which of the two it offers. An id outside this closed registry is a 404; a known id the collection's resolved lane cannot serve is refused by name."
+      },
+      "f": {
+        "name": "f",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": ["mvt", "png"]
+        },
+        "description": "Explicit output format, overriding Accept-header negotiation. An explicit path suffix (`.mvt`/`.png`) wins over this."
+      }
+    },
+    "responses": {
+      "badRequest": {
+        "description": "Invalid request parameter.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "notFound": {
+        "description": "Unknown collection or feature, or the driver doesn't support this capability.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

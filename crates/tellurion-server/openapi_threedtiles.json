@@ -1,0 +1,270 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tellurion \u2014 3D Tiles for 3D places",
+    "description": "OGC API \u2014 Common (Core, landing page, conformance, OpenAPI) plus 3D Tiles 1.1 glTF delivery for 3D places (follows the OGC API \u2014 3D GeoVolumes URL shape; that standard is still a candidate draft with no approved conformance class to claim) for one catalog. Mounted at /{tenant}/3dtiles/catalogs/{catalog}.",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Landing page",
+        "operationId": "getLandingPage",
+        "responses": {
+          "200": {
+            "description": "Links to the API description, conformance declaration, and data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conformance": {
+      "get": {
+        "summary": "Conformance classes this server implements",
+        "operationId": "getConformanceDeclaration",
+        "responses": {
+          "200": {
+            "description": "List of conformance class URIs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conformsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api": {
+      "get": {
+        "summary": "This OpenAPI document",
+        "operationId": "getApiDescription",
+        "responses": {
+          "200": {
+            "description": "The OpenAPI 3.0 document describing this API.",
+            "content": {
+              "application/vnd.oai.openapi+json;version=3.0": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/3dtiles": {
+      "get": {
+        "summary": "3D Tiles 1.1 tileset document for a collection's extruded 3D places",
+        "operationId": "getCollection3dTileset",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A 3D Tiles 1.1 `tileset.json` (implicit quadtree tiling, `content.uri` templated at the .glb tile endpoint below). Follows the `/collections/{cid}/3dtiles` URL shape from OGC API \u2014 3D GeoVolumes without claiming conformance to it \u2014 that standard is still a candidate draft with no approved conformance class to cite. The bounding region is always whole-world in this milestone; `implicitTiling.subtrees.uri` is served by the subtree route below.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown collection, or the collection has no `places3d` configuration.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/3dtiles/tiles/{tileMatrix}/{tileRow}/{tileCol}": {
+      "get": {
+        "summary": "Fetch a single glTF binary (.glb) 3D tile, extruded from MVT feature footprints at request time",
+        "operationId": "getCollection3dTile",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "name": "tileMatrix",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Zoom level."
+          },
+          {
+            "name": "tileRow",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "tileCol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Tile column with a mandatory `.glb` suffix \u2014 this route serves glTF binary content only, no negotiation."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "glTF binary (.glb) tile content: footprint polygons from the MVT-first lane extruded into prism meshes per the collection's `places3d` config.",
+            "content": {
+              "model/gltf-binary": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "A valid tile at this coordinate with no features to extrude."
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "description": "Unknown collection, no `places3d` configuration, or the zoom is outside the collection's configured range.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/collections/{collectionId}/3dtiles/subtrees/{tileMatrix}/{tileRow}/{tileCol}": {
+      "get": {
+        "summary": "Fetch the implicit-tiling subtree availability document",
+        "description": "The availability document a spec-compliant 3D Tiles client resolves before requesting any .glb content, matching the tileset's own `implicitTiling.subtrees.uri` template. With `subtreeLevels` equal to `availableLevels`, the collection's whole declared zoom range fits inside exactly one subtree, so only the implicit root coordinate `0/0/0.subtree` names a real one — every other coordinate is a 404.",
+        "operationId": "getCollection3dSubtree",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/collectionId"
+          },
+          {
+            "name": "tileMatrix",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Subtree root level; only `0` names a real subtree."
+          },
+          {
+            "name": "tileRow",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Subtree root row; only `0` names a real subtree."
+          },
+          {
+            "name": "tileCol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Subtree root column with a mandatory `.subtree` suffix; only `0.subtree` names a real subtree."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The binary 3D Tiles 1.1 subtree availability document.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/badRequest"
+          },
+          "404": {
+            "description": "Unknown collection, no `places3d` configuration, or a coordinate other than the implicit root.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "collectionId": {
+        "name": "collectionId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "badRequest": {
+        "description": "Invalid request parameter.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "notFound": {
+        "description": "Unknown collection or feature, or the driver doesn't support this capability.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

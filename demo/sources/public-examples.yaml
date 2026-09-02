@@ -1,0 +1,299 @@
+version: 1
+examples:
+  - id: esa-worldcover-2021-italy
+    status: active
+    executable: true
+    title: ESA WorldCover 2021 v200 — Italy tile N39E012
+    provider: ESA WorldCover
+    license:
+      verification: confirmed
+      label: CC BY 4.0
+      terms_url: https://creativecommons.org/licenses/by/4.0/
+    attribution: "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium"
+    source_page: https://esa-worldcover.org/en/data-access
+    url: https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39E012_Map.tif
+    transport: range-native
+    format: tiled-geotiff
+    connector:
+      state: ready
+      reason: The COG connector reads this tiled GeoTIFF through bounded HTTPS byte ranges.
+    activation:
+      state: approved
+      reason: The 2026-08-28 probe returned an exact 206 response, a strong ETag, and no redirect.
+    content:
+      kind: object
+      revision: ESA WorldCover v200 object identity verified 2026-08-28
+      expected_length: 41236803
+      expected_strong_etag: '"493c0cdb8f7b96acb9f326575f7c9b8b-5"'
+    resource:
+      selected: land-cover map band
+      crs: EPSG:4326
+      extent: [12.0, 39.0, 15.0, 42.0]
+    render:
+      profile: categorical-land-cover
+      band: 1
+
+  - id: google-microsoft-open-buildings-monaco
+    status: active
+    executable: true
+    title: Google and Microsoft Open Buildings — Monaco GeoParquet
+    provider: Google and Microsoft Open Buildings via Source Cooperative
+    license:
+      verification: confirmed
+      label: ODbL 1.0
+      terms_url: https://opendatacommons.org/licenses/odbl/1-0/
+    attribution: Google Open Buildings and Microsoft GlobalMLBuildingFootprints, distributed by Source Cooperative under ODbL 1.0.
+    source_page: https://source.coop/vida/google-microsoft-open-buildings
+    url: https://data.source.coop/vida/google-microsoft-open-buildings/geoparquet/by_country/country_iso=MCO/MCO.parquet
+    transport: range-native
+    format: geoparquet
+    connector:
+      state: ready
+      reason: The GeoParquet connector reads this object through bounded HTTPS byte ranges.
+    activation:
+      state: approved
+      reason: The 2026-09-02 probe returned an exact 206 response, a strong ETag, and no redirect.
+    content:
+      kind: object
+      revision: Source Cooperative object identity verified 2026-09-02
+      expected_length: 181283
+      expected_strong_etag: '"249d53f3e864d33f6998d9ad5f6c0225"'
+    resource:
+      selected: Open Buildings footprint features
+      crs: EPSG:4326
+      extent: [7.409199, 43.725495, 7.439595, 43.750982]
+      geometry_type: Polygon
+      feature_count: 868
+      attributes: [boundary_id, bf_source, confidence, area_in_meters, s2_id, country_iso, geohash]
+      tested_initial_view: Fit the verified Monaco extent.
+    render:
+      profile: vector-default
+
+  - id: natural-earth-110m-coastline-shapefile
+    status: active
+    executable: true
+    title: Natural Earth 1:110m coastline — Shapefile archive
+    provider: Natural Earth
+    license:
+      verification: confirmed
+      label: Public domain
+      terms_url: https://www.naturalearthdata.com/about/terms-of-use/
+    attribution: Made with Natural Earth.
+    source_page: https://www.naturalearthdata.com/downloads/110m-physical-vectors/110m-coastline/
+    url: https://naturalearth.s3.amazonaws.com/110m_physical/ne_110m_coastline.zip
+    transport: bounded-spool
+    format: shapefile-zip
+    connector:
+      state: ready
+      reason: The Shapefile connector uses a bounded, temporary archive spool and validates its required companions.
+    activation:
+      state: approved
+      reason: The 2026-09-01 probe returned an exact 206 response, a strong ETag, and no redirect.
+    content:
+      kind: object
+      revision: Natural Earth S3 object identity verified 2026-09-01
+      expected_length: 85352
+      expected_strong_etag: '"2defae9f229bf50e4f6d26ee8a8cca7d"'
+    resource:
+      selected: Coastline features
+      crs: EPSG:4326
+      extent: [-180, -85.609038, 180, 83.64513]
+      geometry_type: LineString
+      feature_count: 134
+      attributes: [scalerank, featurecla, min_zoom]
+      tested_initial_view: Fit the verified world extent.
+    render:
+      profile: vector-default
+
+  - id: natural-earth-110m-countries-geojson
+    status: candidate
+    executable: false
+    title: Natural Earth 1:110m Admin 0 countries — GeoJSON derivative
+    provider: Natural Earth
+    license:
+      verification: confirmed
+      label: Public domain
+      terms_url: https://www.naturalearthdata.com/about/terms-of-use/
+    attribution: Made with Natural Earth.
+    source_page: https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_admin_0_countries.geojson
+    url: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson
+    transport: bounded-spool
+    format: geojson
+    connector:
+      state: planned
+      reason: The public demo needs a bounded GeoJSON reader before it can expose this document.
+    activation:
+      state: connector-unavailable
+      reason: This upstream reference follows a mutable branch and must be pinned to a commit before activation.
+    content:
+      kind: object
+      revision: mutable upstream master branch; do not use as an identity until pinned
+      expected_length: 838726
+
+  - id: pangeo-geozarr-tci
+    status: candidate
+    executable: false
+    title: Pangeo GeoZarr TCI example
+    provider: Pangeo GeoZarr examples
+    license:
+      verification: review-required
+      label: Review required — catalog entry does not state dataset terms
+    attribution: Pangeo GeoZarr example; attribution and dataset terms require review before activation.
+    source_page: https://data.source.coop/pangeo/geozarr-examples/TCI.zarr
+    url: https://data.source.coop/pangeo/geozarr-examples/TCI.zarr
+    transport: chunk-native
+    format: geozarr
+    connector:
+      state: planned
+      reason: The public demo has no GeoZarr metadata and chunk connector yet.
+    activation:
+      state: review-blocked
+      reason: A prefix has multiple metadata and chunk objects, and the catalog page does not state dataset terms.
+    content:
+      kind: prefix
+      revision: prefix root; each metadata object and chunk needs its own identity
+
+  - id: gdal-grib2-gfswave
+    status: candidate
+    executable: false
+    title: GDAL GRIB2 fixture — GFS wave forecast sample
+    provider: GDAL project
+    license:
+      verification: review-required
+      label: Review required — fixture source does not assert dataset terms
+    attribution: GDAL GRIB2 test fixture; attribution and dataset terms require review before activation.
+    source_page: https://github.com/OSGeo/gdal/tree/c38804752886b887e67affbc9820f12564912793/autotest/gdrivers/data/grib
+    url: https://raw.githubusercontent.com/OSGeo/gdal/c38804752886b887e67affbc9820f12564912793/autotest/gdrivers/data/grib/gfswave-11.t00z.global.0p25.f000.grib2
+    transport: bounded-spool
+    format: grib2
+    connector:
+      state: planned
+      reason: Scientific formats are reserved for an isolated bounded-spool worker.
+    activation:
+      state: review-blocked
+      reason: The source is immutable, but its fixture provenance and data terms are not asserted on the fixture page.
+    content:
+      kind: object
+      revision: upstream commit c38804752886b887e67affbc9820f12564912793
+      expected_length: 293465
+
+  - id: gdal-hdf5-geoeos
+    status: candidate
+    executable: false
+    title: GDAL HDF5 GeoEOS fixture
+    provider: GDAL project
+    license:
+      verification: review-required
+      label: Review required — fixture source does not assert dataset terms
+    attribution: GDAL HDF5 test fixture; attribution and dataset terms require review before activation.
+    source_page: https://github.com/OSGeo/gdal/tree/c38804752886b887e67affbc9820f12564912793/autotest/gdrivers/data/hdf5
+    url: https://raw.githubusercontent.com/OSGeo/gdal/c38804752886b887e67affbc9820f12564912793/autotest/gdrivers/data/hdf5/dummy_HDFEOS_with_geo_projection.h5
+    transport: bounded-spool
+    format: hdf5
+    connector:
+      state: planned
+      reason: Scientific formats are reserved for an isolated bounded-spool worker.
+    activation:
+      state: review-blocked
+      reason: The source is immutable, but its fixture provenance and data terms are not asserted on the fixture page.
+    content:
+      kind: object
+      revision: upstream commit c38804752886b887e67affbc9820f12564912793
+      expected_length: 41072
+
+  - id: gdal-netcdf-era5-t2m
+    status: candidate
+    executable: false
+    title: GDAL NetCDF ERA5 temperature fixture
+    provider: GDAL project
+    license:
+      verification: review-required
+      label: Review required — fixture source does not assert dataset terms
+    attribution: GDAL NetCDF test fixture; attribution and dataset terms require review before activation.
+    source_page: https://github.com/OSGeo/gdal/tree/c38804752886b887e67affbc9820f12564912793/autotest/gdrivers/data/netcdf
+    url: https://raw.githubusercontent.com/OSGeo/gdal/c38804752886b887e67affbc9820f12564912793/autotest/gdrivers/data/netcdf/era5_t2m.nc
+    transport: bounded-spool
+    format: netcdf
+    connector:
+      state: planned
+      reason: Scientific formats are reserved for an isolated bounded-spool worker.
+    activation:
+      state: review-blocked
+      reason: The source is immutable, but its fixture provenance and data terms are not asserted on the fixture page.
+    content:
+      kind: object
+      revision: upstream commit c38804752886b887e67affbc9820f12564912793
+      expected_length: 22179
+
+  - id: gdal-geopackage-poly
+    status: candidate
+    executable: false
+    title: GDAL GeoPackage polygon fixture
+    provider: GDAL project
+    license:
+      verification: review-required
+      label: Review required — fixture source does not assert dataset terms
+    attribution: GDAL GeoPackage fixture; attribution and dataset terms require review before activation.
+    source_page: https://github.com/OSGeo/gdal/tree/c38804752886b887e67affbc9820f12564912793/doc/data
+    url: https://raw.githubusercontent.com/OSGeo/gdal/c38804752886b887e67affbc9820f12564912793/doc/data/poly.gpkg
+    transport: bounded-spool
+    format: geopackage
+    connector:
+      state: planned
+      reason: The public demo needs a bounded SQLite-compatible reader before it can expose remote GeoPackages.
+    activation:
+      state: review-blocked
+      reason: The fixture object is immutable, but its data provenance and terms are not asserted on the fixture page.
+    content:
+      kind: object
+      revision: upstream commit c38804752886b887e67affbc9820f12564912793
+      expected_length: 114688
+      expected_strong_etag: '"984e1604cebe22e54099c29980b4b1761b8ca5ef00e6db9c73889a396b265980"'
+
+  - id: flatgeobuf-countries
+    status: candidate
+    executable: false
+    title: FlatGeobuf countries fixture
+    provider: FlatGeobuf project
+    license:
+      verification: review-required
+      label: Review required — fixture source does not assert dataset terms
+    attribution: FlatGeobuf countries fixture; attribution and dataset terms require review before activation.
+    source_page: https://flatgeobuf.org/
+    url: https://flatgeobuf.org/test/data/countries.fgb
+    transport: range-native
+    format: flatgeobuf
+    connector:
+      state: planned
+      reason: The public demo does not yet expose the FlatGeobuf range connector.
+    activation:
+      state: review-blocked
+      reason: The object is a useful format fixture, but dataset provenance and terms are not stated by the fixture page.
+    content:
+      kind: object
+      revision: fixture URL; capture a fresh identity before activation
+      expected_length: 205680
+
+  - id: pmtiles-florence
+    status: candidate
+    executable: false
+    title: Florence vector tiles — PMTiles fixture
+    provider: PMTiles project
+    license:
+      verification: review-required
+      label: Review required — fixture URL does not state the underlying data terms
+    attribution: PMTiles Florence fixture; underlying data attribution and terms require review before activation.
+    source_page: https://pmtiles.io/
+    url: https://pmtiles.io/protomaps(vector)ODbL_firenze.pmtiles
+    transport: range-native
+    format: pmtiles
+    connector:
+      state: planned
+      reason: The public demo does not yet expose the PMTiles connector.
+    activation:
+      state: review-blocked
+      reason: The archive is a useful range-reading fixture, but its underlying data attribution must be established before activation.
+    content:
+      kind: object
+      revision: fixture URL; capture a fresh identity before activation
+      expected_length: 6601156

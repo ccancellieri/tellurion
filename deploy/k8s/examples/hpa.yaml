@@ -1,0 +1,73 @@
+# Example HorizontalPodAutoscaler. Deliberately an example, not an overlay: an
+# HPA and a kustomize `replicas:` setting fight over the same field, and
+# autoscaling thresholds are a per-deployment capacity decision that nobody
+# should inherit from a repo default. Copy it, tune it, apply it next to the
+# `ha` component (whose PodDisruptionBudget keeps voluntary disruptions to one
+# pod at a time while the HPA moves the replica count).
+#
+# Apply with:
+#
+#   kubectl apply -f deploy/k8s/examples/hpa.yaml
+#
+# Before raising minReplicas above 1, read docs/deployment-topologies.md
+# §"Running more than one replica": read serving fans out safely, background
+# outbox consumers do not yet elect a leader.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: tellurion
+  labels:
+    app.kubernetes.io/name: tellurion
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: tellurion
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    # CPU utilisation works on any cluster running metrics-server, with no
+    # Prometheus in the path — the portable floor. It is a percentage of the
+    # base deployment's 250m request, so 70 means "scale out at ~175m".
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+    # Tellurion's own saturation signal, exported on /metrics: per-tenant
+    # admission queue depth (see "Per-tenant admission control" in the README).
+    # A queue that is persistently non-empty means requests are waiting for a
+    # fair-share slot, which is a better scale-out trigger than CPU on a
+    # workload that also waits on the database.
+    #
+    # Requires prometheus-adapter (or any custom.metrics.k8s.io provider) to be
+    # installed and configured to surface `tenant_admission_queue_depth` as a
+    # pods metric — an optional external component, exactly like the Prometheus
+    # server itself. DELETE THIS BLOCK if no adapter is installed: an
+    # unresolvable metric makes the whole HPA report ScalingActive=False and
+    # stop acting on the CPU metric above too.
+    - type: Pods
+      pods:
+        metric:
+          name: tenant_admission_queue_depth
+        target:
+          type: AverageValue
+          averageValue: "1"
+
+  behavior:
+    scaleDown:
+      # Tile and feature responses are cached in-process (L1); a pod that has
+      # just been removed takes its warm cache with it. Scale down slowly.
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60

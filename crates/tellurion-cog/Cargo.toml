@@ -1,0 +1,71 @@
+[package]
+name = "tellurion-cog"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Cloud-Optimized GeoTIFF storage driver for the Tellurion geospatial serving engine: serves PNG raster tiles directly from local tiled GeoTIFFs with overviews."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+tellurion-http-source = { path = "../tellurion-http-source", features = ["administrative-compat"] }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+# Pure-Rust TIFF/BigTIFF decoder. Default features pull in JPEG (zune-jpeg)
+# and CCITT fax (fax34) decompression, both explicitly out of scope for this
+# driver (see src/reader.rs's own doc) -- disabling defaults and enabling
+# only `lzw`/`deflate` keeps those codecs (and the crates behind them) out
+# of the dependency graph entirely rather than merely unused at runtime.
+tiff = { version = "0.11", default-features = false, features = ["lzw", "deflate"] }
+# Pure-Rust DEFLATE for the authoring path's own output tiles (`author.rs`)
+# and for decompressing a just-built level's own tiles while building the
+# next overview from them. `default-features = false, features =
+# ["rust_backend"]` matches `tellurion-zarr`'s own selection exactly (its
+# `Cargo.toml` gives the full evaluation for why this backend over the
+# `zarrs` crate's C dependency) -- this crate's `tiff` dependency above
+# already resolves the same backend transitively for *decoding* Deflate, so
+# this adds one direct dependency, not a second DEFLATE implementation.
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+# The mosaic manifest (`#254`) is a YAML sidecar `ingest` authors and this
+# driver reads back -- one struct (`manifest.rs`'s `MosaicManifest`) shared by
+# both halves, so the schema has exactly one owner. `serde` was already a
+# transitive dependency of this crate through `tellurion-core` (whose own
+# `AppConfig` is a `serde` document) and `serde_yaml` was already a
+# dev-dependency here; promoting them to real dependencies adds no crate to
+# the graph that a `tellurion-cog` build did not already compile.
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+# SHA-256 over each constituent COG's own bytes -- the "measured, not
+# declared" half of the manifest's provenance fields (`#254`). Already in the
+# graph via `tellurion-core` (`sigv4::sha256_hex`, `asset::digest`,
+# `ConfigVersion`), so this is a direct edge to a crate this build already
+# compiles, not a new dependency; pure Rust, no C toolchain, matching this
+# crate's own bar.
+sha2 = { workspace = true }
+
+[dev-dependencies]
+bytes = { workspace = true }
+# `tempfile` (`#254`): the mosaic manifest tests author a real sidecar beside
+# real COG bytes on disk and read it back through the driver -- the manifest
+# is a FILE contract (its `path` entries resolve relative to its own
+# directory), so an in-memory fixture would prove the wrong thing.
+tempfile = "3"
+
+[features]
+# Pulls in nothing extra today (the fixture writer below is hand-rolled TIFF
+# bytes, not the `tiff` crate's own encoder -- see examples/gen_fixture.rs's
+# doc for why); kept as a feature flag anyway so it follows the same
+# "regenerate the fixture" invocation convention as every other driver crate
+# in this workspace (tellurion-pmtiles's own `fixture-gen`).
+fixture-gen = []
+
+[[example]]
+name = "gen_fixture"
+required-features = ["fixture-gen"]

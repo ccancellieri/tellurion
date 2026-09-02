@@ -1,0 +1,47 @@
+version = 1
+
+root_files = [
+  ".dockerignore",
+  ".gitignore",
+  "CHANGELOG.md",
+  "CLA.md",
+  "COMMERCIAL-LICENSE.md",
+  "CONTRIBUTING.md",
+  "COPYRIGHT.md",
+  "Cargo.lock",
+  "Cargo.toml",
+  "LICENSE",
+  "README.md",
+  "SECURITY.md",
+  "SUPPORT.md",
+  "bench/data/README.md",
+  "bench/data/ingest-osm.sh",
+  "bench/data/prepare.sh",
+  "bench/data/profiles.env",
+  "bench/lib/tilewalk.awk",
+  "bench/load_shed.sh",
+  "bench/mesh_limits.sh",
+  "bench/scenarios.sh",
+  "bench/summarize.sh",
+  "render.yaml",
+  "rust-toolchain.toml",
+]
+
+include_directories = [
+  ".github",
+  "config",
+  "crates",
+  "demo",
+  "deploy",
+  "distribution",
+  "docker",
+  "docs",
+  "scripts",
+  "ui",
+]
+
+exclude_globs = [
+  "docs/design/**",
+  "**/node_modules/**",
+  "**/target/**",
+]

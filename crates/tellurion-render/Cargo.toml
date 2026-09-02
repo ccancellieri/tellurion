@@ -1,0 +1,40 @@
+[package]
+name = "tellurion-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Rendering for the Tellurion geospatial serving engine: MVT-to-PNG rasterization, MapLibre-styled tiles, and footprint extrusion to GLB."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+geozero = { workspace = true }
+tiny-skia = { workspace = true }
+bytes = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+# `#174`: the colormap goldens (`tests/golden_colormaps.rs`) drive the real
+# `RasterSource::raster_tile` of both raster drivers, because a colormap
+# golden that did not run a driver's own classification code would pin
+# nothing about it. Each driver's `colormap` module is private to its own
+# crate (deliberately — see either crate's `lib.rs`), so the only honest
+# way to reach that code from outside is the public driver contract, which
+# is exactly what a served PNG tile goes through anyway. DEV-dependencies
+# only: nothing in this crate's own library depends on a driver, and the
+# real dependency arrow still points the way it always did — the drivers
+# know nothing about rendering, and neither of them gains a dependency here.
+tellurion-core = { workspace = true }
+tellurion-cog = { workspace = true }
+tellurion-zarr = { workspace = true }
+serde_yaml = { workspace = true }
+# `RasterSource::raster_tile` is an `async_trait` method and both drivers
+# offload their own decode onto `tokio::task::spawn_blocking`, so calling
+# one at all needs a real runtime.
+tokio = { workspace = true }

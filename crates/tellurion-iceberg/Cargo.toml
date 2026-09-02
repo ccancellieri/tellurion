@@ -1,0 +1,93 @@
+[package]
+name = "tellurion-iceberg"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Apache Iceberg storage driver for the Tellurion geospatial serving engine: read-only feature serving over a REST-cataloged table, with snapshot-pinned paging and a cached scan plan."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+moka = { workspace = true }
+# Shares the workspace's single `geozero` pin, same features
+# `tellurion-geoparquet` turns on for the same reason: `with-wkb` decodes the
+# WKB bytes this driver's declared geometry column carries (see
+# `location.rs`), `with-geojson` turns a decoded geometry into the GeoJSON
+# shape every driver's `FeatureSource::items`/`item` returns.
+geozero = { workspace = true, features = ["with-wkb", "with-geojson"] }
+# The official Apache Iceberg Rust project, plus its REST catalog client —
+# the only catalog transport this driver speaks (no SQL catalog, no AWS/
+# Glue). Neither crate declares any optional Cargo feature (both `[features]`
+# tables are empty upstream), so there is nothing to opt in or out of here.
+# Both pull their own arrow/parquet tree pinned to ^57.1 — a second,
+# separately compiled instance alongside this workspace's own parquet 59.1
+# (`tellurion-geoparquet`). Accepted duplicate-tree cost: unifying the two is
+# out of scope, and cargo happily resolves both side by side.
+iceberg = "0.9"
+iceberg-catalog-rest = "0.9"
+# Only for downcasting the `RecordBatch`es `iceberg::arrow::ArrowReader`
+# hands back into concrete arrays (`items`/`item`'s row decode) — both are
+# already transitive dependencies of `iceberg` itself, but Cargo requires a
+# direct dependency to name a crate in `use`. Version "57" (no pinned patch)
+# so it resolves to the exact tree `iceberg` 0.9 already pulls in rather than
+# adding a third compiled instance alongside `tellurion-geoparquet`'s 59.x.
+arrow-array = { version = "57", default-features = false }
+arrow-schema = { version = "57", default-features = false }
+# `iceberg`'s `Storage`/`StorageFactory` traits are declared
+# `#[typetag::serde]` so a `FileIO` can cross a process boundary; an impl
+# without the matching attribute does not compile, so this crate's own
+# storage backend (`fileio.rs`) needs both crates named directly. Both are
+# already transitive dependencies of `iceberg` itself — nothing new enters
+# the dependency tree here. Nothing in this driver ever actually serializes
+# a `FileIO`, and every field of the types involved is `#[serde(skip)]`.
+typetag = "0.2"
+serde = { workspace = true }
+# The byte buffers `PathAddressedObjectStore` hands back — the same
+# workspace `bytes` pin `tellurion-core`'s object-store port itself uses,
+# so a buffer crosses that boundary without a copy or a version mismatch.
+bytes = { workspace = true }
+
+[dev-dependencies]
+# Builds a real, disk-backed Iceberg table fixture per test (Iceberg's own
+# in-process memory catalog + local-fs `FileIO`, then real writer/append
+# calls), then serves it over a real HTTP loopback listener speaking just
+# enough of the REST catalog protocol (`GET /v1/config`, `GET /v1/
+# namespaces/{ns}/tables/{table}`) for this driver's own `RestCatalog`
+# client to load it — see `test_support.rs`. Iceberg metadata embeds
+# absolute file paths and a fresh UUID per commit, so unlike this
+# workspace's other file drivers a single committed binary fixture can't
+# work here; every test builds its own, and no test ever reaches a real
+# network service.
+tempfile = "3"
+axum = { workspace = true }
+serde_yaml = { workspace = true }
+# Only for building the fixture's Arrow `RecordBatch`es and Parquet writer
+# properties directly (`PARQUET_FIELD_ID_META_KEY`, `WriterProperties`) —
+# both are transitive dependencies of `iceberg` itself already, but Cargo
+# requires a direct dependency to name a crate in `use`. Version "57" (no
+# pinned patch) so it resolves to the exact tree `iceberg` 0.9 already pulls
+# in rather than adding a third compiled instance alongside `iceberg`'s own
+# 57.x and `tellurion-geoparquet`'s 59.x.
+parquet = { version = "57", default-features = false, features = ["arrow"] }
+
+[[test]]
+# The live external-REST-catalog validation (`#123`). Skips itself (as a
+# PASS) unless `TELLURION_ICEBERG_LIVE_TEST_LOCATOR` points at a real
+# catalog, the same shape `tellurion-postgis`'s own `tests/live.rs` uses —
+# so it compiles and runs in every CI job while never needing a network
+# service. Named explicitly rather than left to auto-discovery so it stays
+# visible in this manifest alongside the fixture dev-dependencies it does
+# NOT use.
+name = "live"
+path = "tests/live.rs"

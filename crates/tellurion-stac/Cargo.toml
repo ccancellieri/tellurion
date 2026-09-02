@@ -1,0 +1,66 @@
+[package]
+name = "tellurion-stac"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "STAC API implementation for the Tellurion geospatial serving engine: the STAC Catalog landing page, STAC Collections, and STAC Items, mapped from the driver-agnostic collection descriptor and feature source."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+bytes = { workspace = true }
+# `#181`: the `stac_search_q_fallthrough_total` counter — same facade the
+# rest of the workspace already emits through (`tellurion-core`'s cache/
+# admission counters); the exporter still lives in `tellurion-server` alone.
+metrics = { workspace = true }
+# Only for downcasting `axum::body::to_bytes`'s error to `LengthLimitError`
+# (`asset_handlers.rs`'s own `read_capped_body`, mirroring `#91`'s write-lane
+# helper) so a body-size refusal names the limit precisely. Same direct
+# dependency `tellurion-features` already carries for the identical reason.
+http-body-util = "0.1"
+
+[dev-dependencies]
+tokio = { workspace = true }
+tower = { workspace = true, features = ["util"] }
+async-trait = { workspace = true }
+serde_yaml = { workspace = true }
+# `test-support` unlocks `InMemoryAssetRecordStore`/`InMemoryObjectStore`
+# for `tests/asset_handlers.rs`'s in-memory HTTP-level tests — never linked
+# into a production build (dev-dependency only).
+tellurion-core = { workspace = true, features = ["test-support"] }
+tempfile = "3"
+# Test-only (`#36`): captures the `tracing` output of the projection
+# override-disagreement log so its once-per-collection contract is pinned by
+# a test rather than asserted in prose.
+tracing-subscriber = { workspace = true }
+# Test-only (`#221`): `AssetRecord::id` is a `Uuid` (`tellurion-core`'s own
+# asset model), so building a record in a unit test needs the type. This
+# crate's production code never mints or reads one — an internal asset id is
+# never serialized to a client, see `AssetRecord::id`'s own doc.
+uuid = { workspace = true }
+# Test-only, for the `#71` sync-pinning test in `src/lib.rs`: proves the
+# shared CQL2 conformance set is identical in both crates' declared output,
+# not just present in each independently.
+tellurion-features = { workspace = true }
+# Test-only, for `tests/live.rs`'s real-PostGIS `intersects` round trip —
+# this crate's own production code (src/) never depends on a concrete
+# driver, same zero-database-dependency contract every protocol crate
+# follows; only the integration test needs a real backend to prove
+# `intersects` genuinely narrows through PostGIS's own ST_Intersects, not
+# just that the request parses and composes a Filter tree correctly (the
+# in-memory fake in `tests/handlers.rs` already proves that part).
+# `test-support` adds `test_harness` (`#138`): these live tests share one
+# database with `tellurion-postgis`'s own, so they connect and apply their
+# fixture DDL through the same harness — same named refusal when the server
+# is down, same per-fixture advisory lock.
+tellurion-postgis = { workspace = true, features = ["test-support"] }
+tokio-postgres = { workspace = true }

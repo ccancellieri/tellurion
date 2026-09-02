@@ -1,0 +1,60 @@
+control_store:
+  backend: postgres
+  url_env: DATABASE_URL
+  poll_interval_ms: 1000
+  pooled_proxy: false
+
+allow_empty_platform: true
+
+# Italy OSM demo configuration. Keep the seeded example in
+# config/example-geopackage.yaml as the default no-network quickstart.
+#
+# Prepare the extract first:
+#   ./bench/data/prepare.sh --profile italy --download
+# Then load its `lines` and `multipolygons` layers with bench/data/ingest-osm.sh.
+# The Europe profile uses the same shape with a different data root and is
+# intentionally opt-in after an external-disk free-space check.
+
+server:
+  port: 8080
+
+cache:
+  memory_percent: 25.0
+
+storages:
+  - id: main
+    driver: postgis
+    url_env: DATABASE_URL
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: italy_lines
+    catalog: default
+    storage: main
+    table: italy_lines
+    geometry: geom
+    pk: ogc_fid
+    style:
+      stroke: "#6b7280"
+      stroke_width: 1.0
+    settings:
+      tile_properties: ["name", "highway", "waterway", "railway"]
+
+  - id: italy_multipolygons
+    catalog: default
+    storage: main
+    table: italy_multipolygons
+    geometry: geom
+    pk: ogc_fid
+    style:
+      fill: "#3388ff66"
+      stroke: "#3366cc"
+      stroke_width: 1.0
+    settings:
+      tile_properties: ["name", "building", "landuse", "natural", "leisure"]

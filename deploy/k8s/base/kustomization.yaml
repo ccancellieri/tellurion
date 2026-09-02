@@ -1,0 +1,26 @@
+# Also consumable by `podman kube play` once rendered to plain YAML, e.g.:
+#
+#   kubectl kustomize deploy/k8s/base > /tmp/tellurion.yaml
+#   podman kube play /tmp/tellurion.yaml
+#
+# (or, without kubectl: `kustomize build deploy/k8s/base | podman kube play -`)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+
+configMapGenerator:
+  - name: tellurion-config
+    files:
+      - config.yaml=config/config.yaml
+      # ConfigMap keys can't contain '/'; deployment.yaml's volume `items`
+      # remap this flat key back to styles/default.json inside the mount so
+      # it lands where config.yaml's `styles[].path` expects it.
+      - styles-default.json=config/styles/default.json
+
+images:
+  - name: tellurion
+    newName: ghcr.io/ccancellieri/tellurion
+    newTag: latest

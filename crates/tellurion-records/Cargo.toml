@@ -1,0 +1,25 @@
+[package]
+name = "tellurion-records"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Read-only OGC API - Records surface for the Tellurion geospatial serving engine: geometry-less record collections as a third projection of the canonical collection descriptor."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+serde_yaml = { workspace = true }
+tellurion-memory = { workspace = true }
+tower = { workspace = true }

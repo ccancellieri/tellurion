@@ -1,0 +1,65 @@
+control_store:
+  backend: postgres
+  url_env: DATABASE_URL
+  poll_interval_ms: 1000
+  pooled_proxy: false
+
+# Deployment config for the compose stack — mirrors config/example.yaml's
+# minimal derived shape: `table`/`geometry`/`pk`/`datetime`/`tiles` are all
+# omitted below because they derive from the `main` storage's catalog at
+# boot (see config/example.yaml's own comment and the driver-contract design
+# doc, section 2). `style`/`places3d` stay explicit, same as the example,
+# since they are operator overrides rather than anything derivable.
+#
+# `styles[].path` is absolute here (unlike config/example.yaml's
+# repo-relative path) because the server's working directory inside the
+# container (/var/lib/tellurion) is not where the config volume is mounted;
+# see docker-compose.yml's `./config:/etc/tellurion:ro` mount.
+
+server:
+  port: 8080
+  request_timeout_s: 60
+  log_json: false
+  drain_timeout_s: 10
+  readiness_probe_interval_s: 5
+  readiness_probe_timeout_s: 2
+  metrics_tenant_allowlist: []
+  metrics_collection_allowlist: []
+
+cache:
+  memory_percent: 25.0
+
+settings:
+  slow_request_ms: 1000
+
+storages:
+  - id: main
+    driver: postgis
+    url_env: DATABASE_URL
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+collections:
+  - id: demo
+    catalog: default
+    storage: main
+    style:
+      fill: "#3388ff66"
+      stroke: "#3366cc"
+      stroke_width: 1.0
+    # No `height` column exists on the seeded demo table, so every extruded
+    # footprint falls back to `default_height` — enough to exercise the Glb
+    # lane end to end without new ingest work.
+    places3d:
+      height_property: "height"
+      default_height: 8.0
+
+# MapLibre Style JSON documents for the styled-tile lane and the read-only
+# OGC API — Styles surface (/styles).
+styles:
+  - id: default
+    path: /etc/tellurion/styles/default.json

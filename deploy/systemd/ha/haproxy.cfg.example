@@ -1,0 +1,38 @@
+# Optional companion to keepalived.conf.example. keepalived alone gives
+# failover (the VIP moves, one node serves); adding HAProxy on both nodes turns
+# the same two hosts into active/active, with the VIP only deciding which
+# proxy instance receives the traffic.
+#
+# Install as /etc/haproxy/haproxy.cfg on BOTH nodes — the config is identical
+# on each, which is why the frontend binds 0.0.0.0 rather than the VIP (no
+# `net.ipv4.ip_nonlocal_bind` sysctl needed on the node that does not hold it).
+
+global
+    log /dev/log local0
+    maxconn 4096
+
+defaults
+    mode http
+    log global
+    option httplog
+    option dontlognull
+    timeout connect 5s
+    timeout client 60s
+    # Tile and feature requests can be long; keep the server timeout above the
+    # slowest expected response rather than the default 50s.
+    timeout server 120s
+
+frontend tellurion
+    bind :80
+    default_backend tellurion
+
+backend tellurion
+    balance roundrobin
+    # /readyz, again: a draining or dependency-degraded instance is pulled out
+    # of rotation without waiting for connections to fail. `observe layer7`
+    # additionally ejects a server that starts returning 5xx between checks.
+    option httpchk GET /readyz
+    http-check expect status 200
+    default-server inter 2s fall 2 rise 2 observe layer7 error-limit 5 on-error mark-down
+    server node1 192.0.2.11:8080 check
+    server node2 192.0.2.12:8080 check

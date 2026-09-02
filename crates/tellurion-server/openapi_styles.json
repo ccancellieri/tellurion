@@ -1,0 +1,184 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tellurion \u2014 OGC API Styles (read-only)",
+    "description": "OGC API \u2014 Common (Core, landing page, conformance, OpenAPI) plus a read-only OGC API \u2014 Styles surface (draft spec; MapLibre Style JSON) for one catalog. Mounted at /{tenant}/styles/catalogs/{catalog}.",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Landing page",
+        "operationId": "getLandingPage",
+        "responses": {
+          "200": {
+            "description": "Links to the API description, conformance declaration, and data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/conformance": {
+      "get": {
+        "summary": "Conformance classes this server implements",
+        "operationId": "getConformanceDeclaration",
+        "responses": {
+          "200": {
+            "description": "List of conformance class URIs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conformsTo": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api": {
+      "get": {
+        "summary": "This OpenAPI document",
+        "operationId": "getApiDescription",
+        "responses": {
+          "200": {
+            "description": "The OpenAPI 3.0 document describing this API.",
+            "content": {
+              "application/vnd.oai.openapi+json;version=3.0": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/styles": {
+      "get": {
+        "summary": "List the registered style documents",
+        "operationId": "getStyles",
+        "responses": {
+          "200": {
+            "description": "Style summaries, each with a `stylesheet` link (the raw document) and a `describedby` link (metadata).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/styles/{styleId}": {
+      "get": {
+        "summary": "Fetch a style document",
+        "operationId": "getStyle",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/styleId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The raw MapLibre Style JSON document, served as `application/vnd.mapbox.style+json` \u2014 the media type OGC API \u2014 Styles' (draft) mapbox-styles requirement class names; there is no IANA-registered media type for this format.",
+            "content": {
+              "application/vnd.mapbox.style+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    },
+    "/styles/{styleId}/metadata": {
+      "get": {
+        "summary": "Fetch style metadata (title, stylesheet links, layer ids)",
+        "operationId": "getStyleMetadata",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/styleId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Style metadata derived from the document (title, native stylesheet link, layer ids).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "collectionId": {
+        "name": "collectionId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "styleId": {
+        "name": "styleId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "badRequest": {
+        "description": "Invalid request parameter.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "notFound": {
+        "description": "Unknown collection or feature, or the driver doesn't support this capability.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

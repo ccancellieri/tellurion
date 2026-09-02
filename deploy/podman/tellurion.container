@@ -1,0 +1,66 @@
+# Podman Quadlet unit — the container-shaped sibling of
+# deploy/systemd/tellurion.service. systemd starts and supervises a rootless
+# container; there is no orchestrator and no daemon in the path.
+#
+# Rootless install (no root anywhere in this flow):
+#
+#   mkdir -p ~/.config/containers/systemd
+#   cp deploy/podman/tellurion.container ~/.config/containers/systemd/
+#   systemctl --user daemon-reload
+#   systemctl --user start tellurion
+#
+# System-wide instead: copy to /etc/containers/systemd/ and drop `--user`.
+# For a rootless unit to keep running after logout:  loginctl enable-linger
+#
+# Quadlet generates a .service unit from this file at daemon-reload time; it is
+# never installed as a unit itself, which is why there is no [Install] WantedBy
+# beyond the one below.
+
+[Unit]
+Description=Tellurion geospatial serving engine (rootless container)
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/ccancellieri/tellurion:latest
+AutoUpdate=registry
+
+# Config and styles, read-only. `:Z` relabels for SELinux; drop it on systems
+# without SELinux. The paths follow the compose stack's layout, so
+# deploy/compose/config/ can be copied verbatim.
+Volume=%h/.config/tellurion:/etc/tellurion:ro,Z
+
+Environment=TELLURION_CONFIG=/etc/tellurion/config.yaml
+Environment=PORT=8080
+
+# DATABASE_URL lives here, not above: it is a secret, and this file is meant to
+# be committable. Create it with mode 0600 containing e.g.
+#   DATABASE_URL=postgres://user:pass@host:5432/tellurion
+EnvironmentFile=%h/.config/tellurion/env
+
+PublishPort=8080:8080
+
+# The same security posture the Kubernetes base asserts (PSS `restricted`):
+# no privilege escalation, no capabilities, read-only root filesystem. The
+# image already runs as a non-root, arbitrary UID, so nothing needs mapping
+# here — under rootless Podman it is additionally namespaced to the invoking
+# user.
+NoNewPrivileges=true
+DropCapability=ALL
+ReadOnly=true
+SecurityLabelType=container_t
+
+HealthCmd=curl --fail --silent --max-time 2 http://127.0.0.1:8080/healthz
+HealthInterval=15s
+HealthTimeout=5s
+HealthRetries=3
+
+[Service]
+Restart=on-failure
+RestartSec=2s
+# The default 10s drain plus process shutdown, matching the Kubernetes base's
+# 15s termination grace period.
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target

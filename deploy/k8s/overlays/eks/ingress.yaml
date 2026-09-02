@@ -1,0 +1,22 @@
+# Annotation stub for the AWS Load Balancer Controller; the controller (and
+# any AWS SDK it uses) lives in the cluster add-on, never in this repo.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tellurion
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tellurion
+                port:
+                  name: http

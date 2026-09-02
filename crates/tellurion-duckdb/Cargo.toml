@@ -1,0 +1,40 @@
+[package]
+name = "tellurion-duckdb"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+license-file = "../../LICENSE"
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Embedded DuckDB analytical storage driver for the Tellurion geospatial serving engine: read-only OGC Features over a local .duckdb file, bundled engine, no external service."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+# Embedded analytical SQL engine. `default-features = false` + explicit
+# `bundled`: statically compiles DuckDB's own C++ core from the vendored
+# amalgamation source this crate ships (no system libduckdb), matching this
+# driver's whole point (a single binary plus a single `.duckdb` file,
+# nothing else installed) — the same posture `tellurion-geopackage` takes
+# for `rusqlite`'s own `bundled` feature. This pulls in no DuckDB
+# *extension* (spatial, parquet, httpfs, ...) — see `driver.rs`'s crate docs
+# for why this driver's geometry column is a plain WKB `BLOB`, never the
+# `spatial` extension's native `GEOMETRY` type.
+duckdb = { version = "1", default-features = false, features = ["bundled"] }
+# Shares the workspace's single `geozero` pin. `with-wkb` decodes the WKB
+# bytes this driver's geometry column stores; `with-geojson` turns a decoded
+# geometry into the same GeoJSON shape `tellurion-geoparquet`'s driver
+# produces (WKB is that crate's fixed geometry encoding too, so both drivers
+# decode through the identical writer).
+geozero = { workspace = true, features = ["with-wkb", "with-geojson"] }
+
+[dev-dependencies]
+serde_yaml = { workspace = true }
+tempfile = "3"

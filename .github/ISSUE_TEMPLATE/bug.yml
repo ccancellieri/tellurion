@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a reproducible Tellurion defect without confidential data.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for making the problem reproducible. Do not include credentials,
+        private URLs, customer data, or security-sensitive details here. Use GitHub
+        private vulnerability reporting for a security issue.
+  - type: input
+    id: version
+    attributes:
+      label: Tellurion version
+      description: Provide a release tag or full commit identifier.
+      placeholder: v0.4.0 or full commit identifier
+    validations:
+      required: true
+  - type: textarea
+    id: deployment
+    attributes:
+      label: Build and deployment
+      description: Name the enabled Cargo features, operating system, and deployment shape.
+      placeholder: Self-built binary, Linux x86_64, GeoPackage feature only
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: List the smallest safe sequence that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include sanitized output and status codes; remove sensitive values.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Public-data check
+      options:
+        - label: I removed credentials, private URLs, confidential data, and personal information.
+          required: true

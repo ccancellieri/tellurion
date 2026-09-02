@@ -1,0 +1,55 @@
+[package]
+name = "tellurion-postgis"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "PostGIS storage driver for the Tellurion geospatial serving engine: catalog introspection, feature queries, and MVT tile production via ST_AsMVT."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# Exposes `test_harness` — the shared live-test harness (`#138`): fixture
+# DDL under a database-wide advisory lock, a named refusal when the server
+# is unreachable, and the skip message every live test prints. Default OFF,
+# so none of it is linked into a production binary. Mirrors
+# `tellurion-core`'s own `test-support` feature, and is enabled the same
+# way by every crate whose live tests share this database.
+test-support = []
+
+[dependencies]
+tellurion-core = { workspace = true }
+tellurion-render = { workspace = true }
+tokio = { workspace = true }
+tokio-postgres = { workspace = true }
+deadpool-postgres = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+bytes = { workspace = true }
+futures = { workspace = true }
+metrics = { workspace = true }
+# Asset internal ids (`asset_sql.rs`) and declared-`id_type` pk values
+# (`sql.rs`'s `PkValue`) — bound to Postgres as `text::uuid` (this crate's
+# own `$N::text::<cast>` idiom, see `write_sql.rs`'s doc), so this is for
+# parsing/formatting on the Rust side only, not a `tokio-postgres`
+# wire-type feature.
+uuid = { workspace = true }
+
+[dev-dependencies]
+# This crate's own `tests/*_live.rs` are the harness's biggest consumer, and
+# an integration test links the lib as an external crate — so the feature
+# has to be turned on from the outside even here. A self dev-dependency is
+# the standard way to say that; it creates no build cycle because
+# dev-dependencies are not part of the lib's own dependency graph.
+tellurion-postgis = { path = ".", features = ["test-support"] }
+serde_yaml = { workspace = true }
+# Decodes served MVT tile bytes back into features for the `#90` live
+# vertex-budget tests — the workspace's single `geozero` pin, same crate
+# `tellurion-geopackage` already builds tiles with.
+geozero = { workspace = true }

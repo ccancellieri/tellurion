@@ -1,0 +1,40 @@
+[Unit]
+Description=Tellurion geospatial serving engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=tellurion
+RuntimeDirectory=tellurion
+EnvironmentFile=/etc/tellurion/env
+ExecStart=/usr/local/bin/tellurion
+Restart=on-failure
+RestartSec=2s
+
+# Hardening. ProtectSystem=strict makes the whole filesystem read-only
+# except StateDirectory/RuntimeDirectory above, which systemd bind-mounts
+# writably for the dynamically allocated user.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

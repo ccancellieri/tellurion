@@ -1,0 +1,22 @@
+# Multi-replica hardening, kept as a kustomize Component so every overlay can
+# opt in with two lines instead of duplicating the PDB:
+#
+#   components:
+#     - ../../components/ha
+#
+# It is deliberately not in the base: the base stays a single replica with no
+# policy/v1 object, which keeps `podman kube play` (see the base's
+# kustomization comment) able to consume it unchanged.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - pdb.yaml
+
+# Serving replicas. Read traffic is stateless and safe to fan out; background
+# outbox consumers are not yet leader-elected (see docs/deployment-topologies.md
+# §"Running more than one replica" and the outbox design doc §9), so raise this
+# only in the topologies that document names.
+replicas:
+  - name: tellurion
+    count: 2

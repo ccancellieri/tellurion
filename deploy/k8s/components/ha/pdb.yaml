@@ -1,0 +1,16 @@
+# `maxUnavailable: 1` rather than `minAvailable`: it expresses "drain one node
+# at a time" without ever deadlocking a cluster upgrade. A `minAvailable: 1`
+# budget on a Deployment that has been scaled back to one replica blocks node
+# drains forever; this form degrades to "no protection" in that case, which is
+# the honest behaviour for a single-replica install.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: tellurion
+  labels:
+    app.kubernetes.io/name: tellurion
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tellurion

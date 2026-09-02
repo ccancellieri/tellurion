@@ -1,0 +1,32 @@
+# Gateway API — the vendor-neutral successor to Ingress, and the portable
+# alternative to every controller-specific overlay in this directory
+# (including OpenShift's `Route`, which is a convenience and never a
+# requirement).
+#
+# The Gateway itself is cluster infrastructure, not application state: a
+# platform team provisions one Gateway per listener/IP and application teams
+# attach routes to it. So only the HTTPRoute lives here; point `parentRefs` at
+# the Gateway your cluster already has.
+#
+# Gateway API ships as CRDs, which is why it is an overlay and never part of
+# the base: tellurion itself requires no CRD to run.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: tellurion
+spec:
+  parentRefs:
+    # Name (and, when the Gateway lives elsewhere, `namespace:` and
+    # `sectionName:`) of an existing Gateway.
+    - name: tellurion
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        # backendRefs take the Service port *number*; named service ports are
+        # not part of the HTTPRoute schema, so this is the one place the
+        # base's `port: 8080` is repeated rather than referenced by name.
+        - name: tellurion
+          port: 8080

@@ -1,0 +1,45 @@
+[package]
+name = "tellurion-zarr"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Zarr v2 storage driver for the Tellurion geospatial serving engine: serves a bounded 2D x/y slice of a local Zarr v2 array as PNG raster tiles."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Whole-object HTTP GET reads for a remote (http/https) storage locator
+# (`#37` remote-store follow-up) -- `store.rs`'s `RemoteZarrSource` fetches
+# each metadata document and chunk with a plain GET (never a byte range: a
+# Zarr chunk is the atomic on-wire unit already, unlike a COG's own
+# range-addressable tile stream inside one large TIFF file, so there is
+# nothing to range against). `default-features = false` + `rustls-tls`
+# mirrors `tellurion-cog`'s own remote-source dependency exactly (see that
+# crate's `Cargo.toml` for the full evaluation of the async client over
+# `reqwest::blocking`, and why this workspace resolves `reqwest` 0.12 only
+# once regardless of how many crates declare it); this crate adds no feature
+# beyond what's already compiled in for `tellurion-core`'s own OIDC client.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# Pure-Rust DEFLATE for Zarr v2's `gzip`/`zlib` numcodecs compressors.
+# `default-features = false, features = ["rust_backend"]` selects the
+# miniz_oxide backend -- no C library, no build script -- and matches
+# exactly what the `tiff` crate (tellurion-cog's own GeoTIFF decoder)
+# already resolves for this workspace's Deflate support, so this adds no
+# new codec implementation to the dependency graph, only reuses the one
+# already there (see this crate's `README`/crate doc for the evaluation
+# that led here instead of the `zarrs` crate).
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+
+[dev-dependencies]
+serde_yaml = { workspace = true }
