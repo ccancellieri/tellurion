@@ -11,6 +11,9 @@
 
 set -euo pipefail
 
+# shellcheck source=scripts/rg-compat.sh
+. "$(dirname "$0")/rg-compat.sh"
+
 fixture_root="$(mktemp -d)"
 trap 'rm -rf "$fixture_root"' EXIT
 
