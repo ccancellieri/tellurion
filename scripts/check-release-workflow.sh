@@ -274,7 +274,7 @@ done < <(
 )
 rg -q 'shasum -a 256 -c SHA256SUMS' "$install_guide" \
     || fail "$install_guide does not document aggregate checksum verification"
-rg -q 'gh attestation verify tellurion-v[0-9.]*-aarch64-apple-darwin\.tar\.gz' "$install_guide" \
+rg -Fq "gh attestation verify tellurion-v$version-aarch64-apple-darwin.tar.gz" "$install_guide" \
     || fail "$install_guide does not document GitHub attestation verification"
 rg -q -- '--repo ccancellieri/tellurion' "$install_guide" \
     || fail "$install_guide does not bind attestation verification to this repository"
