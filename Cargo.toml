@@ -33,16 +33,19 @@ members = [
 [workspace.package]
 version = "0.4.0"
 edition = "2021"
+rust-version = "1.97"
 license = "AGPL-3.0-only"
 publish = false
 authors = ["Carlo Cancellieri"]
 repository = "https://github.com/ccancellieri/tellurion"
+homepage = "https://ccancellieri.github.io/tellurion-demos/"
 readme = "README.md"
 keywords = ["gis", "ogc", "tiles", "geospatial", "postgis"]
 categories = ["science::geo"]
 
 [workspace.dependencies]
 tellurion-core = { path = "crates/tellurion-core", version = "0.4.0" }
+tellurion-http-source = { path = "crates/tellurion-http-source", version = "0.4.0" }
 tellurion-vector-tile = { path = "crates/tellurion-vector-tile", version = "0.4.0" }
 tellurion-postgis = { path = "crates/tellurion-postgis", version = "0.4.0" }
 tellurion-pmtiles = { path = "crates/tellurion-pmtiles", version = "0.4.0" }

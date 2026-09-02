@@ -2,10 +2,12 @@
 name = "tellurion-http-source"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "Bounded, pinned HTTPS byte-range objects for public source inspection."
 readme.workspace = true
 keywords.workspace = true

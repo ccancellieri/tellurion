@@ -2,10 +2,12 @@
 name = "tellurion"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "High-performance geospatial serving engine: OGC API Features, Tiles (MVT and PNG), styled maps, and 3D places over routed, pluggable storage drivers."
 readme.workspace = true
 keywords.workspace = true
@@ -127,7 +129,7 @@ tellurion-flatgeobuf = { workspace = true, optional = true }
 tellurion-geoparquet = { workspace = true, optional = true }
 tellurion-shapefile = { workspace = true, optional = true }
 tellurion-cog = { workspace = true, optional = true }
-tellurion-http-source = { path = "../tellurion-http-source", optional = true }
+tellurion-http-source = { workspace = true, optional = true }
 tellurion-zarr = { workspace = true, optional = true }
 tellurion-geopackage = { workspace = true, optional = true }
 tellurion-iceberg = { workspace = true, optional = true }

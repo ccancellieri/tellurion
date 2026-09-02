@@ -1,0 +1,30 @@
+# Explicit crates.io publication order for the Tellurion Community workspace.
+# Keep dependencies before dependants. New workspace members remain private to
+# Cargo until they are deliberately added here and opt in from their manifest.
+tellurion-core
+tellurion-http-source
+tellurion-vector-tile
+tellurion-memory
+tellurion-cog
+tellurion-zarr
+tellurion-render
+tellurion-control
+tellurion-control-sqlite
+tellurion-control-postgres
+tellurion-pmtiles
+tellurion-flatgeobuf
+tellurion-features
+tellurion-geoparquet
+tellurion-shapefile
+tellurion-geopackage
+tellurion-iceberg
+tellurion-duckdb
+tellurion-postgis
+tellurion-tiles
+tellurion-places
+tellurion-styles
+tellurion-records
+tellurion-processes
+tellurion-stac
+tellurion-ingest
+tellurion

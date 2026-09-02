@@ -2,10 +2,12 @@
 name = "tellurion-iceberg"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "Apache Iceberg storage driver for the Tellurion geospatial serving engine: read-only feature serving over a REST-cataloged table, with snapshot-pinned paging and a cached scan plan."
 readme.workspace = true
 keywords.workspace = true

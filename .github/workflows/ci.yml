@@ -357,6 +357,9 @@ jobs:
       - name: License policy audit
         run: |
           ./scripts/audit-license-policy.sh
+      - name: crates.io publication boundary
+        run: |
+          ./scripts/audit-crates-io-policy.sh
       - name: Publication licence audit
         run: |
           ./scripts/audit-publication-license.sh
@@ -373,6 +376,9 @@ jobs:
       - name: Packaged-artifact audit
         run: |
           ./scripts/audit-artifacts.sh
+      - name: Build crates.io package archives
+        run: |
+          cargo +1.97.1 package --workspace --locked --no-verify
       - name: Workflow publication-capability contract
         run: |
           ./scripts/check-release-workflow.sh
@@ -382,6 +388,9 @@ jobs:
       - name: License policy mutation test
         run: |
           ./scripts/test-license-policy.sh
+      - name: crates.io policy mutation tests
+        run: |
+          ./scripts/test-crates-io-policy.sh
       # A release mechanism nobody exercises is not a mechanism. `--dry-run`
       # rewrites nothing, creates no tag and pushes nothing -- it resolves the
       # next version, applies every derivation to a scratch copy and runs the

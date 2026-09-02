@@ -29,6 +29,10 @@ jobs:
         shell: bash
         run: ./scripts/audit-license-policy.sh
 
+      - name: Audit crates.io publication boundary
+        shell: bash
+        run: ./scripts/audit-crates-io-policy.sh
+
       - name: Audit publication licence
         shell: bash
         run: ./scripts/audit-publication-license.sh
