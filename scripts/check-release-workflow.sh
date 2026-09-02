@@ -78,13 +78,13 @@ require_match 'channel[[:space:]]*=[[:space:]]*"1\.97\.1"' rust-toolchain.toml
 # loosening or narrowing is still rejected -- but the pattern now admits every
 # version this repository can ever declare, instead of exactly one.
 #
-# In GitHub's filter syntax `[0-9]+` is one-or-more digits and `.` is literal,
-# so the pinned pattern transcribes to the ERE `^v[0-9]+\.[0-9]+\.[0-9]+$`.
-# `workspace_version` refuses anything that is not MAJOR.MINOR.PATCH, which is
-# what makes "the tag the release script cuts always fires this workflow" an
-# invariant rather than a coincidence -- and what makes the derived archive
-# names below filesystem-safe.
-require_match 'tags:[[:space:]]*\["v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+"\]' "$workflow"
+# In GitHub's filter syntax `[0-9]+` is one-or-more digits and `.` is literal.
+# The two pinned patterns admit stable tags and the only prerelease this
+# repository cuts: `-rc.N`. `workspace_version` rejects all other forms, which
+# makes "the tag the release script cuts always fires this workflow" an
+# invariant rather than a coincidence -- and keeps derived archive names
+# filesystem-safe.
+require_match 'tags:[[:space:]]*\["v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+", "v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+-rc\.\[0-9\]\+"\]' "$workflow"
 version="$(workspace_version)" || fail "workspace version is unusable as a release tag"
 version_resolver_count="$(rg -c '^[[:space:]]*- name: Resolve workspace version$' "$workflow" || true)"
 [ "$version_resolver_count" -eq 2 ] \
@@ -226,7 +226,7 @@ printf '%s\n' "$source_download_step" | rg -q 'path:[[:space:]]*\$\{\{ runner\.t
 # The archive name and the workspace version cannot disagree, because the
 # workflow reads the version out of the workspace manifest rather than
 # repeating it. Pin that derivation: the resolver step must anchor on
-# `[workspace.package]` and accept only MAJOR.MINOR.PATCH, and no naming
+# `[workspace.package]` and accept only MAJOR.MINOR.PATCH[-rc.N], and no naming
 # expression anywhere in the workflow may hard-code a version literal that
 # could then drift from Cargo.toml.
 version_step="$(step_block 'Resolve workspace version')"
@@ -234,7 +234,8 @@ for version_requirement in \
     'id: version' \
     'Get-Content -Raw -Path Cargo\.toml' \
     '\^\\\[workspace\\\.package\\\]' \
-    '\(\\d\+\\\.\\d\+\\\.\\d\+\)' \
+    '\$number = '\''\(\?:0\|\[1-9\]\\d\*\)'\''' \
+    '\$versionPattern = "\$number\\\.\$number\\\.\$number\(\?:-rc\\\.\$number\)\?"' \
     'throw ' \
     '"version=\$version" \| Out-File -FilePath \$env:GITHUB_OUTPUT'; do
     printf '%s\n' "$version_step" | rg -q -- "$version_requirement" \

@@ -13,11 +13,86 @@ set -euo pipefail
 
 # shellcheck source=scripts/rg-compat.sh
 . "$(dirname "$0")/rg-compat.sh"
+# shellcheck source=scripts/workspace-version.sh
+. "$(dirname "$0")/workspace-version.sh"
 
 fixture_root="$(mktemp -d)"
 trap 'rm -rf "$fixture_root"' EXIT
 
 failures=0
+
+expect_valid_version() {
+    local version="$1"
+    if ! is_semver "$version"; then
+        echo "FAIL: expected version to be accepted: $version" >&2
+        failures=$((failures + 1))
+    fi
+}
+
+expect_invalid_version() {
+    local version="$1"
+    if is_semver "$version"; then
+        echo "FAIL: expected version to be rejected: $version" >&2
+        failures=$((failures + 1))
+    fi
+}
+
+expect_forward_transition() {
+    local current="$1"
+    local target="$2"
+    if ! is_forward_release_version "$current" "$target"; then
+        echo "FAIL: expected forward release transition: $current -> $target" >&2
+        failures=$((failures + 1))
+    fi
+}
+
+expect_rejected_transition() {
+    local current="$1"
+    local target="$2"
+    if is_forward_release_version "$current" "$target"; then
+        echo "FAIL: expected release transition to be rejected: $current -> $target" >&2
+        failures=$((failures + 1))
+    fi
+}
+
+# Release candidates are intentionally narrow: only `-rc.N` is accepted, and
+# their ordering must make the promotion path forward-only.
+expect_valid_version '0.4.0'
+expect_valid_version '0.5.0-rc.0'
+expect_valid_version '0.5.0-rc.1'
+for malformed_version in \
+    '0.5.0-rc' \
+    '0.5.0-rc.01' \
+    '00.5.0-rc.1' \
+    '0.5.0-rc.1+build.1' \
+    '0.5.0-beta.1' \
+    'v0.5.0-rc.1'; do
+    expect_invalid_version "$malformed_version"
+done
+
+expect_forward_transition '0.4.0' '0.5.0-rc.1'
+expect_forward_transition '0.5.0-rc.1' '0.5.0-rc.2'
+expect_forward_transition '0.5.0-rc.2' '0.5.0'
+expect_rejected_transition '0.5.0-rc.2' '0.5.0-rc.1'
+expect_rejected_transition '0.5.0' '0.5.0-rc.1'
+expect_rejected_transition '0.5.0' '0.4.9'
+
+if ! rg -Fq 'is_forward_release_version "$current_version" "$target_version"' scripts/release.sh; then
+    echo "FAIL: release script does not use release-candidate ordering" >&2
+    failures=$((failures + 1))
+fi
+
+if ! rg -Fq 'tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"]' \
+    .github/workflows/release-artifacts.yml; then
+    echo "FAIL: release workflow does not accept the canonical release-candidate tag pattern" >&2
+    failures=$((failures + 1))
+fi
+
+if ! rg -Fq '$versionPattern = "$number\.$number\.$number(?:-rc\.$number)?"' \
+    .github/workflows/release-artifacts.yml; then
+    echo "FAIL: release workflow does not resolve release-candidate workspace versions" >&2
+    failures=$((failures + 1))
+fi
 
 expect_rejected() {
     local name="$1"
@@ -142,10 +217,10 @@ expect_rejected() {
         unanchored-version-resolver)
             perl -0pi -e 's#\^\\\[workspace\\\.package\\\]#^\\[package\\]#' "$fixture/workflows/release-artifacts.yml"
             ;;
-        # The resolver must reject anything that is not MAJOR.MINOR.PATCH, or a
-        # version containing `/` could reach a path again.
+        # The resolver must reject anything outside the supported SemVer forms,
+        # or a version containing `/` could reach a path again.
         unconstrained-version-resolver)
-            perl -0pi -e 's#\(\\d\+\\\.\\d\+\\\.\\d\+\)#(.+)#' "$fixture/workflows/release-artifacts.yml"
+            perl -0pi -e 's#^          \$versionPattern = .*$#          \$versionPattern = ".+"#m' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-policy-gate)
             perl -0pi -e 's#\n    needs: \[policy-audit\]##' "$fixture/workflows/release-artifacts.yml"
@@ -154,12 +229,12 @@ expect_rejected() {
             perl -0pi -e 's#shell: bash#shell: pwsh#' "$fixture/workflows/release-artifacts.yml"
             ;;
         broad-release-tag)
-            perl -0pi -e 's#tags: \["v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+"\]#tags: ["v*"]#' "$fixture/workflows/release-artifacts.yml"
+            perl -0pi -e 's#^    tags: .*$#    tags: ["v*"]#m' "$fixture/workflows/release-artifacts.yml"
             ;;
         # Still a pattern, but pointed at a different tag namespace: the
         # release script's `vMAJOR.MINOR.PATCH` tag would never fire it.
         unmatchable-release-tag)
-            perl -0pi -e 's#tags: \["v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+"\]#tags: ["release-[0-9]+.[0-9]+.[0-9]+"]#' "$fixture/workflows/release-artifacts.yml"
+            perl -0pi -e 's#^    tags: .*$#    tags: ["release-[0-9]+.[0-9]+.[0-9]+"]#m' "$fixture/workflows/release-artifacts.yml"
             ;;
         manual-dispatch-blocked)
             perl -0pi -e "s#(policy-audit:\\n    name: license policy audit\\n)#\$1    if: github.ref == 'refs/tags/v0.3.0'\\n#; s#(native-artifacts:\\n    name: \\\$\\{\\{ matrix.target \\\}}\\n)#\$1    if: github.ref == 'refs/tags/v0.3.0'\\n#" "$fixture/workflows/release-artifacts.yml"

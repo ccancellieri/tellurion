@@ -3,10 +3,10 @@ name: Release artifacts
 on:
   push:
     # A semver tag pattern, not one frozen version: `scripts/release.sh` moves
-    # the workspace version and names the matching `vMAJOR.MINOR.PATCH` tag, and
-    # this workflow builds whichever one arrives. It still creates only Actions
+    # the workspace version and names the matching stable or release-candidate
+    # tag; this workflow builds whichever one arrives. It still creates only Actions
     # workflow artifacts -- release publication remains a separate, ungranted decision.
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"]
   workflow_dispatch:
 
 permissions:
@@ -51,10 +51,14 @@ jobs:
         shell: pwsh
         run: |
           $manifest = Get-Content -Raw -Path Cargo.toml
-          $pattern = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"(\d+\.\d+\.\d+)"[ \t\r]*$'
+          $number = '(?:0|[1-9]\d*)'
+          $versionPattern = "$number\.$number\.$number(?:-rc\.$number)?"
+          $prefix = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"('
+          $suffix = ')"[ \t\r]*$'
+          $pattern = $prefix + $versionPattern + $suffix
           $found = [regex]::Match($manifest, $pattern)
           if (-not $found.Success) {
-            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH"'
+            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH[-rc.N]"'
           }
           $version = $found.Groups[1].Value
           Write-Host "workspace version: $version"
@@ -172,15 +176,19 @@ jobs:
           # checked-out manifest -- never from the ref name. A ref name may
           # contain `/` (any branch can start a workflow_dispatch run), so it
           # can never reach a path or an artifact name; the manifest version is
-          # constrained to MAJOR.MINOR.PATCH here and is therefore always
+          # constrained to MAJOR.MINOR.PATCH[-rc.N] here and is therefore always
           # filesystem-safe.
           $manifest = Get-Content -Raw -Path Cargo.toml
           # `[ \t\r]*$` rather than `\s*$`: the Windows leg may check out CRLF,
           # and `\s` would let the match run past the line it is anchored to.
-          $pattern = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"(\d+\.\d+\.\d+)"[ \t\r]*$'
+          $number = '(?:0|[1-9]\d*)'
+          $versionPattern = "$number\.$number\.$number(?:-rc\.$number)?"
+          $prefix = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"('
+          $suffix = ')"[ \t\r]*$'
+          $pattern = $prefix + $versionPattern + $suffix
           $found = [regex]::Match($manifest, $pattern)
           if (-not $found.Success) {
-            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH"'
+            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH[-rc.N]"'
           }
           $version = $found.Groups[1].Value
           Write-Host "workspace version: $version"
