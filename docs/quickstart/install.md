@@ -35,8 +35,8 @@ gh attestation verify tellurion-v0.4.0-aarch64-apple-darwin.tar.gz \
   --repo ccancellieri/tellurion
 ```
 
-If no attestation exists, the artifact is an internal candidate, not an approved
-public binary. The macOS and Linux archives contain the `tellurion` and
+If no attestation exists, the artifact is an internal candidate, not an approved public binary.
+The macOS and Linux archives contain the `tellurion` and
 `tellurion-ingest` executables; extract them into a directory on your `PATH`. On
 Windows, extract the ZIP and add its directory to `PATH` before using `tellurion.exe`
 or `tellurion-ingest.exe`.
