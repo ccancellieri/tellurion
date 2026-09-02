@@ -161,7 +161,7 @@ public_demo_block="$(awk '
     capture { print }
 ' "$ci_workflow")"
 printf '%s\n' "$public_demo_block" | rg -qx '            build_ui: public-demo' \
-    || fail "public-demo-ui feature leg must build the dedicated public-demo ui/dist"
+    || fail "public-demo-ui feature leg must build the dedicated public-demo UI bundle"
 require_match 'npm run build:public-demo' "$ci_workflow"
 
 hosted_ui_test_count="$(rg -c '^[[:space:]]+- run: cd ui && npm ci && npm test$' "$ci_workflow" || true)"
@@ -170,6 +170,14 @@ hosted_ui_test_count="${hosted_ui_test_count:-0}"
 local_ui_test_count="${local_ui_test_count:-0}"
 if [ "$hosted_ui_test_count" -ne 1 ] || [ "$local_ui_test_count" -ne 1 ]; then
     fail "hosted CI workflow and local full mirror must each run npm test exactly once"
+fi
+
+hosted_package_ui_count="$(rg -c 'TELLURION_UI_OPERATOR_READY=1 \./scripts/tests/test_cargo_package_ui\.sh' "$ci_workflow" || true)"
+local_package_ui_count="$(rg -c 'TELLURION_UI_OPERATOR_READY=1 \./scripts/tests/test_cargo_package_ui\.sh' "$local_mirror" || true)"
+hosted_package_ui_count="${hosted_package_ui_count:-0}"
+local_package_ui_count="${local_package_ui_count:-0}"
+if [ "$hosted_package_ui_count" -ne 1 ] || [ "$local_package_ui_count" -ne 1 ]; then
+    fail "hosted CI and its local mirror must each run the packaged UI boundary check once"
 fi
 
 publication_audit_count="$(rg -c '^[[:space:]]*\./scripts/audit-publication-license\.sh$' "$ci_workflow" || true)"

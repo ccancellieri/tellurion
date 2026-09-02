@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 COPY . .
-COPY --from=ui-builder /build/ui/dist /build/ui/dist
+COPY --from=ui-builder /build/crates/tellurion-server/ui/public-demo-dist /build/crates/tellurion-server/ui/public-demo-dist
 
 RUN cargo build --release --locked -p tellurion \
         --no-default-features --features public-demo,ui \

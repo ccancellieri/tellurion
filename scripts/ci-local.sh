@@ -221,20 +221,25 @@ phase_feature_matrix() {
         name="${leg%%:*}"
         flags="${leg#*:}"
         case "$name" in
-            public-demo-ui)
-                printf '  building dedicated public-demo ui/dist for the %s leg\n' "$name"
+            public-demo-ui | all-features)
+                printf '  building the crate-local public-demo UI for the %s leg\n' "$name"
                 (cd ui && npm ci && npm run build:public-demo) || {
-                    printf '  FAIL feature leg %s (public-demo ui/dist build)\n' "$name"
+                    printf '  FAIL feature leg %s (crate-local public-demo UI build)\n' "$name"
                     failed=1
                     continue
                 }
                 ;;
-            ui | all-features)
+            ui)
                 # `build.rs` fails with a clear message naming this command
-                # when the `ui` feature is on and `ui/dist` does not exist.
-                printf '  building ui/dist for the %s leg\n' "$name"
+                # when the selected crate-local UI bundle does not exist.
+                printf '  building the crate-local operator UI for the %s leg\n' "$name"
                 (cd ui && npm ci && npm run build) || {
-                    printf '  FAIL feature leg %s (ui/dist build)\n' "$name"
+                    printf '  FAIL feature leg %s (crate-local operator UI build)\n' "$name"
+                    failed=1
+                    continue
+                }
+                TELLURION_UI_OPERATOR_READY=1 ./scripts/tests/test_cargo_package_ui.sh || {
+                    printf '  FAIL feature leg %s (packaged UI boundary)\n' "$name"
                     failed=1
                     continue
                 }

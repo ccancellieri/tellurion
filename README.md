@@ -586,7 +586,7 @@ available for existing configurations.
 | `zarr` | off | `tellurion-zarr` | catalog, raster tiles (read-only) |
 | `iceberg` | off | `tellurion-iceberg` | catalog, features (read-only) — REST catalog; table files on the local filesystem or any S3-protocol store |
 | `duckdb` | off | `tellurion-duckdb` | catalog, features (read-only), embedded analytical engine |
-| `ui` | off | — | embeds the demo UI (`ui/dist`) into the binary |
+| `ui` | off | — | embeds the crate-local operator or public-demo UI into the binary |
 | `valkey` | off | — | L2 tile-cache backend |
 
 The `tellurion` server crate's `postgis` feature pulls in the PostGIS driver crate.
@@ -736,7 +736,8 @@ Build the static bundle:
 ```sh
 cd ui
 npm ci
-npm run build   # outputs ui/dist
+npm run build               # operator: crates/tellurion-server/ui/dist
+npm run build:public-demo   # public demo: crates/tellurion-server/ui/public-demo-dist
 ```
 
 Embed it in the server binary and serve it at `/ui` (default-off `ui` feature):
@@ -745,8 +746,11 @@ Embed it in the server binary and serve it at `/ui` (default-off `ui` feature):
 cargo build -p tellurion --features ui
 ```
 
-Building with `--features ui` before `ui/dist` exists fails fast with a message naming
-the `npm ci && npm run build` step above — the embed has nothing to embed otherwise.
+Both generated bundles are tracked because a Cargo package cannot run the UI toolchain
+when it compiles. Refresh and commit both directories with the commands above whenever the
+UI sources change. `--features ui` embeds the operator shell; `--features public-demo,ui`
+embeds the restricted public-demo shell. A missing selected bundle fails fast with a
+message naming its generation step.
 
 ## Deployment pyramid
 

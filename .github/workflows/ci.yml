@@ -239,7 +239,7 @@ jobs:
           # `tellurion-geoparquet`'s.
           - name: iceberg
             flags: --no-default-features --features iceberg
-          # The embedded demo UI. Needs `ui/dist` built first (below) —
+          # The embedded operator UI. Its crate-local bundle is built below —
           # this is the leg that would have caught the stale `AppContext`
           # fixture arity, since the `ui` feature is default-off and no
           # other job compiles it.
@@ -255,8 +255,10 @@ jobs:
             build_ui: public-demo
           - name: valkey
             flags: --no-default-features --features valkey
-          # Every leg together, proving the combination itself compiles —
-          # also needs `ui/dist`. Kept as compile+test coverage only: the
+          # Every leg together, proving the combination itself compiles.
+          # Because `public-demo` is enabled, this selects the tracked
+          # crate-local public-demo bundle. Kept as compile+test coverage
+          # only: the
           # `postgis`-backed acceptance tests in `tests/binary.rs` skip
           # themselves (pass, not fail) without a `DATABASE_URL`, which
           # this job deliberately doesn't provide — the `test` job above,
@@ -264,7 +266,7 @@ jobs:
           # those.
           - name: all-features
             flags: --all-features
-            build_ui: true
+            build_ui: public-demo
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Free runner disk
@@ -293,6 +295,9 @@ jobs:
           else
             npm run build
           fi
+      - name: Verify packaged UI boundary
+        if: matrix.name == 'ui'
+        run: TELLURION_UI_OPERATOR_READY=1 ./scripts/tests/test_cargo_package_ui.sh
       - run: cargo test -p tellurion --locked ${{ matrix.flags }}
       # `tellurion`'s `valkey` feature is just `tellurion-core/valkey`, so the
       # leg above proves the server builds against the L2 backend -- but it is

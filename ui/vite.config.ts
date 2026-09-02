@@ -14,8 +14,8 @@ import { defineConfig } from 'vite';
 // follow the same selected application origin too. Not used by `vite build`.
 const API_ROUTES = ['/public', '/metrics', '/_control', '/_auth', '/demo'];
 
-export default defineConfig(() => ({
-  // Relative asset paths: the exact same `ui/dist` bundle then works
+export default defineConfig(({ mode }) => ({
+  // Relative asset paths: each generated bundle then works
   // whether it's embedded by the server at `/ui/` or hosted standalone at
   // the root of any static file server — an absolute `/ui/` base would
   // break the latter. Relative paths only resolve correctly against a
@@ -32,5 +32,13 @@ export default defineConfig(() => ({
   },
   build: {
     target: 'es2022',
+    // The server crate owns both generated bundles so its Cargo package is
+    // self-contained. They remain separate because the public-demo feature
+    // must never embed the operator shell (or vice versa).
+    outDir:
+      mode === 'public-demo'
+        ? '../crates/tellurion-server/ui/public-demo-dist'
+        : '../crates/tellurion-server/ui/dist',
+    emptyOutDir: true,
   },
 }));

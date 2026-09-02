@@ -109,6 +109,12 @@ expect_rejected() {
         missing-local-ui-test)
             perl -0pi -e 's/\n[[:space:]]*\(cd ui && npm ci && npm test\)//' "$fixture/ci-local.sh"
             ;;
+        missing-hosted-package-ui-check)
+            perl -0pi -e 's#\n      - name: Verify packaged UI boundary\n        if: matrix\.name == '\''ui'\''\n        run: TELLURION_UI_OPERATOR_READY=1 \./scripts/tests/test_cargo_package_ui\.sh##' "$fixture/workflows/ci.yml"
+            ;;
+        missing-local-package-ui-check)
+            perl -0pi -e 's#\n[[:space:]]*TELLURION_UI_OPERATOR_READY=1 \./scripts/tests/test_cargo_package_ui\.sh \|\| \{\n[[:space:]]*printf '\''  FAIL feature leg %s \(packaged UI boundary\)\\n'\'' "\$name"\n[[:space:]]*failed=1\n[[:space:]]*continue\n[[:space:]]*\}##' "$fixture/ci-local.sh"
+            ;;
         missing-publication-license-audit)
             perl -0pi -e 's#^[[:space:]]*\./scripts/audit-publication-license\.sh\n##m' "$fixture/workflows/ci.yml"
             ;;
@@ -170,6 +176,8 @@ for mutation in \
     missing-hosted-ui-test \
     duplicate-hosted-ui-test \
     missing-local-ui-test \
+    missing-hosted-package-ui-check \
+    missing-local-package-ui-check \
     missing-publication-license-audit \
     missing-local-publication-license-audit \
     missing-ci-gate \

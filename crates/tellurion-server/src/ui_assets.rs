@@ -1,18 +1,18 @@
-//! Serves the demo UI (`ui/`, built with `npm ci && npm run build` into
-//! `ui/dist`) embedded in the binary, mounted at `/ui`. Gated behind the
-//! default-off `ui` feature so a deployment that never wants the demo UI
-//! carries zero rust-embed/mime_guess in its dependency graph — `build.rs`
-//! fails the build early, with a message naming the npm command, if
-//! `ui/dist` doesn't exist yet.
+//! Serves a UI built from the workspace's `ui/` sources and embedded in the
+//! binary, mounted at `/ui`. The ordinary `ui` feature selects the operator
+//! bundle in this crate's `ui/dist`; combining it with `public-demo` selects
+//! `ui/public-demo-dist` instead. Keeping the bundles distinct means packaged
+//! builds cannot silently serve the wrong shell. `build.rs` fails early, with
+//! the matching npm command, if the selected bundle does not exist.
 //!
 //! `rust-embed`'s `debug-embed` feature (see this crate's `Cargo.toml`) is
 //! on so the embed is unconditional in every build profile, not just
 //! release — the point of this feature is a self-contained binary
 //! regardless of how it was built.
 //!
-//! `ui/vite.config.ts` builds with a relative asset base (`./assets/...`)
+//! The workspace's `ui/vite.config.ts` builds with a relative asset base (`./assets/...`)
 //! rather than an absolute `/ui/assets/...` one, so the exact same
-//! `ui/dist` bundle also works hosted standalone at the root of any static
+//! bundles also work hosted standalone at the root of any static
 //! file server, not just embedded here. Relative paths only resolve
 //! correctly against a document URL ending in `/`, which is why bare
 //! `/ui` redirects to `/ui/` below instead of serving the shell directly.
@@ -29,7 +29,13 @@ use rust_embed::RustEmbed;
 use tellurion_core::AppContext;
 
 #[derive(RustEmbed)]
-#[folder = "../../ui/dist"]
+#[cfg(not(feature = "public-demo"))]
+#[folder = "ui/dist"]
+struct UiAssets;
+
+#[derive(RustEmbed)]
+#[cfg(feature = "public-demo")]
+#[folder = "ui/public-demo-dist"]
 struct UiAssets;
 
 const INDEX_HTML: &str = "index.html";
@@ -70,7 +76,7 @@ async fn serve_path(Path(path): Path<String>) -> Response {
 /// Builds the `/ui` route table. Mounted directly into the server's
 /// top-level router (not nested under a prefix) so `serve_path`'s
 /// wildcard capture receives the path exactly as `UiAssets::get` expects
-/// it — relative to `ui/dist`, no leading `/ui`.
+/// it — relative to the selected crate-local bundle, no leading `/ui`.
 pub fn router() -> Router<Arc<AppContext>> {
     Router::new()
         .route("/ui", get(|| async { Redirect::permanent("/ui/") }))
