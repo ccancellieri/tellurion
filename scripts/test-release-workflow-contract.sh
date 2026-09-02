@@ -501,6 +501,43 @@ else
     echo "ok: unmutated workflows accepted"
 fi
 
+# GitHub's Ubuntu runner uses GNU grep, which rejects a combined ERE and
+# fixed-string matcher. Exercise the no-ripgrep shim through the exact
+# CODEOWNERS lookup flags so a local BSD grep cannot mask that CI failure.
+no_rg_path="$fixture_root/no-rg-fixed-string-bin"
+mkdir -p "$no_rg_path"
+for tool in bash grep; do
+    tool_path="$(command -v "$tool")"
+    ln -s "$tool_path" "$no_rg_path/$tool"
+done
+if ! PATH="$no_rg_path" "$no_rg_path/bash" -c '
+    set -euo pipefail
+    grep() {
+        local arg has_extended=0 has_fixed=0
+        for arg in "$@"; do
+            case "$arg" in
+                -*E*) has_extended=1 ;;
+            esac
+            case "$arg" in
+                -*F*) has_fixed=1 ;;
+            esac
+        done
+        if [ "$has_extended" -eq 1 ] && [ "$has_fixed" -eq 1 ]; then
+            echo "grep: conflicting matchers specified" >&2
+            return 2
+        fi
+        command grep "$@"
+    }
+    . scripts/rg-compat.sh
+    printf "%s\\n" "/distribution/public-core.toml @ccancellieri" \
+        | rg -Fqx -- "/distribution/public-core.toml @ccancellieri"
+'; then
+    echo "FAIL: no-ripgrep fixed-string lookup is incompatible with GNU grep" >&2
+    failures=$((failures + 1))
+else
+    echo "ok: no-ripgrep fixed-string lookup supports combined -Fqx"
+fi
+
 if [ "$failures" -ne 0 ]; then
     exit 1
 fi
