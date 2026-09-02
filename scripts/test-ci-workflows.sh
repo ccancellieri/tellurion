@@ -115,6 +115,13 @@ expect_rejected() {
         missing-local-publication-license-audit)
             perl -0pi -e 's#^[[:space:]]*\./scripts/audit-publication-license\.sh[[:space:]]*&&\n##m' "$fixture/ci-local.sh"
             ;;
+        missing-ci-gate)
+            perl -0pi -e 's#\n  ci-gate:\n.*\z#\n#s' "$fixture/workflows/ci.yml"
+            ;;
+        ci-gate-missing-*)
+            ci_job="${name#ci-gate-missing-}"
+            perl -0pi -e "s#\\n      - \\Q$ci_job\\E##" "$fixture/workflows/ci.yml"
+            ;;
         *)
             echo "unknown mutation: $name" >&2
             exit 2
@@ -164,7 +171,16 @@ for mutation in \
     duplicate-hosted-ui-test \
     missing-local-ui-test \
     missing-publication-license-audit \
-    missing-local-publication-license-audit; do
+    missing-local-publication-license-audit \
+    missing-ci-gate \
+    ci-gate-missing-fmt \
+    ci-gate-missing-clippy \
+    ci-gate-missing-test \
+    ci-gate-missing-smoke \
+    ci-gate-missing-ui-test \
+    ci-gate-missing-feature-matrix \
+    ci-gate-missing-deploy-manifests \
+    ci-gate-missing-artifact-audit; do
     expect_rejected "$mutation"
 done
 

@@ -74,6 +74,51 @@ if rg -q '^    tags:' "$ci_workflow" || rg -q '^  schedule:' "$ci_workflow"; the
     fail "CI must not run for tags or on a schedule"
 fi
 
+# A single stable aggregate check is the only check branch protection and
+# deployments need to follow. It deliberately runs even if a dependency
+# failed, then turns every non-successful substantive job into a red gate.
+ci_gate_block="$(awk '
+    $0 == "  ci-gate:" { capture = 1 }
+    capture && $0 ~ /^  [^[:space:]]/ && $0 != "  ci-gate:" { exit }
+    capture { print }
+' "$ci_workflow")"
+if [ -z "$ci_gate_block" ]; then
+    fail "CI must define the ci-gate aggregate job"
+fi
+
+printf '%s\n' "$ci_gate_block" | rg -qx '    name: CI gate' \
+    || fail "ci-gate must expose the stable CI gate check name"
+printf '%s\n' "$ci_gate_block" | rg -qx '    if: always\(\)' \
+    || fail "ci-gate must run after failed dependencies"
+
+ci_gate_needs="$(printf '%s\n' "$ci_gate_block" | awk '
+    $0 == "    needs:" { capture = 1; next }
+    capture && $0 ~ /^      - / {
+        job = $0
+        sub(/^      - /, "", job)
+        print job
+        next
+    }
+    capture { exit }
+')"
+expected_ci_gate_needs="$(printf '%s\n' \
+    fmt \
+    clippy \
+    test \
+    smoke \
+    ui-test \
+    feature-matrix \
+    deploy-manifests \
+    artifact-audit)"
+if [ "$ci_gate_needs" != "$expected_ci_gate_needs" ]; then
+    fail "ci-gate must depend on every substantive CI job"
+fi
+
+for ci_job in $expected_ci_gate_needs; do
+    printf '%s\n' "$ci_gate_block" | rg -q "needs\\.${ci_job}\\.result" \
+        || fail "ci-gate must fail when $ci_job does not succeed"
+done
+
 hosted_feature_legs="$(awk '
     $0 == "        include:" { in_matrix = 1; next }
     in_matrix && $0 == "    steps:" { exit }
