@@ -1,5 +1,9 @@
 # Tellurion
 
+<p align="center">
+  <img src="assets/brand/tellurion-mark.svg" width="176" alt="Tellurion product mark">
+</p>
+
 **A native Rust geospatial serving engine.** OGC API — Features and OGC API — Tiles
 (MVT + PNG) served through routed, pluggable storage drivers by a single native binary.
 Out of the box that's a single `.gpkg` file, no services attached; PostGIS is the
