@@ -148,6 +148,7 @@ for source_evidence_requirement in \
     'npm run build:public-demo' \
     'scripts/generate-ui-third-party-notices\.py' \
     'cmp .*THIRD_PARTY_NOTICES\.txt' \
+    'ui/third-party-notice-sha256\.txt' \
     'cp crates/tellurion-server/ui/THIRD_PARTY_NOTICES\.txt "\$public_core/THIRD_PARTY_NOTICES\.txt"' \
     'cp "\$public_core/THIRD_PARTY_NOTICES\.txt" dist/THIRD_PARTY_NOTICES\.txt'; do
     printf '%s\n' "$source_job" | rg -q -- "$source_evidence_requirement" \
@@ -193,6 +194,10 @@ fi
 if printf '%s\n' "$native_job" | rg -q 'git archive'; then
     fail "release workflow must create exactly one source archive outside the native matrix"
 fi
+
+native_gate_step="$(step_block 'Gate prebuilt native binary release')"
+printf '%s\n' "$native_gate_step" | rg -q 'scripts/check-native-binary-release-readiness\.sh' \
+    || fail "native matrix must gate prebuilt binary release readiness"
 
 build_step="$(step_block 'Build default-feature binaries')"
 printf '%s\n' "$build_step" | rg -q \

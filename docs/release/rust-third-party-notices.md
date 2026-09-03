@@ -1,29 +1,20 @@
-# Rust third-party notice release gate
+# Rust third-party notice release gates
 
-Tellurion's UI archive carries a generated, hash-recorded third-party notice
-file. The Rust dependency inventory is different: at the current locked
-workspace it contains hundreds of registry packages across the publishable
-crate family and native binary feature sets. The existing JSON inventory is
-useful evidence, but it is not a substitute for the license, copyright, and
-NOTICE text for each shipped Rust dependency.
+Tellurion source crates and prebuilt native archives have different notice
+boundaries.
 
-Until that evidence is generated and reviewed, crates.io publication is
-blocked by `./scripts/check-crates-io-release-readiness.sh`. This is an
-intentional release gate, not a claim that the existing JSON inventory is a
-complete legal notice.
+`./scripts/check-crates-io-release-readiness.sh` checks that the generated UI
+third-party notice is present, contains no contact address, and is included in
+the `tellurion` source crate. It does not claim that the workspace's Rust
+dependency inventory is complete legal notice material.
 
-To remove the gate, the maintainer must:
+`./scripts/check-native-binary-release-readiness.sh` intentionally blocks
+prebuilt native archives. A binary release needs a deterministic,
+feature-resolved union of Cargo registry license, copyright, and NOTICE text
+for the exact binaries it ships. The existing JSON inventory is useful review
+evidence, but it is not that union.
 
-1. Define the exact binary and crate feature sets being published.
-2. Generate a deterministic, lock-hash-recorded union of the corresponding
-   Cargo registry license, copyright, and NOTICE files.
-3. Fail closed for absent or non-text files, allowing only version-pinned,
-   source-linked reviewed fallbacks.
-4. Put the resulting text in every affected crate archive and native release
-   archive, and verify byte identity in CI.
-5. Replace the blocking script with checks that prove the generated Rust
-   notice file is current, packaged, and byte-identical.
-
-The publisher records the review decision and any exception with the release
-candidate before running `cargo publish`. This project does not provide legal
-advice.
+To unblock native binaries, the maintainer must define the archive feature
+sets, generate and review the corresponding Rust notice text, package it in
+each archive, and replace the native gate with a currentness and byte-identity
+check. The project does not provide legal advice.

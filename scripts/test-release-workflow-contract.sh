@@ -106,6 +106,9 @@ expect_rejected() {
         windows-shell)
             perl -0pi -e 's#(- name: Build default-feature binaries\n)#$1        shell: pwsh\n        run: |\n          target=windows-target\n#' "$fixture/workflows/release-artifacts.yml"
             ;;
+        missing-native-release-gate)
+            perl -0pi -e 's#\n      - name: Gate prebuilt native binary release\n        run: \./scripts/check-native-binary-release-readiness\.sh\n##' "$fixture/workflows/release-artifacts.yml"
+            ;;
         smoke-directory)
             perl -0pi -e 's#\n          New-Item -ItemType Directory -Force -Path \$smoke_dir \| Out-Null##' "$fixture/workflows/release-artifacts.yml"
             ;;
@@ -406,6 +409,9 @@ expect_rejected() {
         missing-native-notice|missing-native-ui-notice)
             expected_message='release package'
             ;;
+        missing-native-release-gate)
+            expected_message='gate prebuilt binary release readiness'
+            ;;
         missing-notice-checksum)
             expected_message='aggregate checksum'
             ;;
@@ -460,6 +466,7 @@ FINAL_FIX_MUTATIONS=(
     missing-source-upload-notice
     missing-native-notice
     missing-native-ui-notice
+    missing-native-release-gate
     missing-notice-checksum
     tag-version-mismatch-accepted
 )

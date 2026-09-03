@@ -32,46 +32,71 @@ def sha256_tree(path: Path) -> str:
     return digest.hexdigest()
 
 
-def redact_email_addresses(text: str) -> str:
-    return EMAIL_PATTERN.sub("[email address redacted]", text)
+def read_notice_text(path: Path) -> str:
+    """Read UTF-8 notice text without newline or whitespace transformation."""
+
+    return path.read_bytes().decode("utf-8")
 
 
-def normalize_notice_text(text: str) -> str:
-    return "\n".join(line.rstrip() for line in redact_email_addresses(text).splitlines())
-
-
-def load_fallbacks(path: Path) -> dict[tuple[str, str], tuple[str, str]]:
+def load_fallbacks(path: Path) -> dict[tuple[str, str], tuple[str, str, str, str, tuple[str, ...]]]:
     document = json.loads(path.read_text(encoding="utf-8"))
     if (
         not isinstance(document, dict)
         or set(document) != {"schema_version", "fallbacks"}
-        or document["schema_version"] != 1
+        or document["schema_version"] != 2
         or not isinstance(document["fallbacks"], list)
     ):
         raise ValueError("invalid fallback schema")
-    fallbacks: dict[tuple[str, str], tuple[str, str]] = {}
+    fallbacks: dict[tuple[str, str], tuple[str, str, str, str, tuple[str, ...]]] = {}
     for item in document["fallbacks"]:
-        if not isinstance(item, dict) or set(item) != {"name", "version", "source", "sha256"}:
+        required_fields = {
+            "name",
+            "version",
+            "source",
+            "integrity",
+            "package_json_sha256",
+            "notice_file",
+            "notice_sha256",
+        }
+        if not isinstance(item, dict) or set(item) not in (required_fields, required_fields | {"attribution"}):
             raise ValueError("invalid fallback schema")
         name = item.get("name")
         version = item.get("version")
         source = item.get("source")
-        expected_hash = item.get("sha256")
+        integrity = item.get("integrity")
+        package_json_hash = item.get("package_json_sha256")
+        notice_file = item.get("notice_file")
+        notice_hash = item.get("notice_sha256")
+        attribution = item.get("attribution", [])
         parsed_source = urlsplit(source) if isinstance(source, str) else None
         if (
-            not all(isinstance(value, str) and value for value in (name, version, source, expected_hash))
+            not all(
+                isinstance(value, str) and value
+                for value in (name, version, source, integrity, package_json_hash, notice_file, notice_hash)
+            )
             or parsed_source is None
             or parsed_source.scheme != "https"
             or not parsed_source.hostname
             or parsed_source.username is not None
             or parsed_source.password is not None
-            or not SHA256_PATTERN.fullmatch(expected_hash)
+            or not isinstance(integrity, str)
+            or not integrity.startswith("sha512-")
+            or not SHA256_PATTERN.fullmatch(package_json_hash)
+            or not SHA256_PATTERN.fullmatch(notice_hash)
+            or not isinstance(attribution, list)
+            or any(not isinstance(line, str) or not line or EMAIL_PATTERN.search(line) for line in attribution)
         ):
             raise ValueError("invalid fallback schema")
+        notice_path = (path.parent / notice_file).resolve()
+        if path.parent.resolve() not in notice_path.parents or not notice_path.is_file():
+            raise ValueError("invalid fallback path")
+        notice_text = read_notice_text(notice_path)
+        if not notice_text or sha256_file(notice_path) != notice_hash or EMAIL_PATTERN.search(notice_text):
+            raise ValueError("invalid fallback text")
         key = (name, version)
         if key in fallbacks:
             raise ValueError("duplicate fallback")
-        fallbacks[key] = (source, expected_hash)
+        fallbacks[key] = (source, integrity, package_json_hash, notice_text, tuple(attribution))
     return fallbacks
 
 
@@ -91,12 +116,12 @@ def package_license_expression(package_json: dict[str, Any]) -> str | None:
     return None
 
 
-def shipped_packages(lockfile: Path, package_root: Path) -> list[tuple[str, str, str, Path]]:
+def shipped_packages(lockfile: Path, package_root: Path) -> list[tuple[str, str, str, Path, str | None, str | None]]:
     document = json.loads(lockfile.read_text(encoding="utf-8"))
     packages = document.get("packages") if isinstance(document, dict) else None
     if document.get("lockfileVersion") != 3 or not isinstance(packages, dict):
         raise ValueError("unsupported package lock")
-    shipped: list[tuple[str, str, str, Path]] = []
+    shipped: list[tuple[str, str, str, Path, str | None, str | None]] = []
     for lock_path, metadata in packages.items():
         if (
             not isinstance(lock_path, str)
@@ -127,7 +152,13 @@ def shipped_packages(lockfile: Path, package_root: Path) -> list[tuple[str, str,
             )
         ):
             raise ValueError("invalid shipped package")
-        shipped.append((name, version, expression, package_path))
+        resolved = metadata.get("resolved")
+        integrity = metadata.get("integrity")
+        if (resolved is not None and not isinstance(resolved, str)) or (
+            integrity is not None and not isinstance(integrity, str)
+        ):
+            raise ValueError("invalid shipped package")
+        shipped.append((name, version, expression, package_path, resolved, integrity))
     if not shipped:
         raise ValueError("empty shipped package selection")
     return sorted(shipped, key=lambda package: (package[0], package[1], package[3].as_posix()))
@@ -154,17 +185,20 @@ def render_notice(
         "Tellurion UI third-party notices",
         "",
         "This file is generated from the locked production dependency union.",
-        "Email addresses in upstream notice text are redacted from this public copy.",
+        "Sections with `notice-origin: package:*` reproduce the source UTF-8 text unchanged.",
+        "Sections with `notice-origin: reviewed-fallback` are pinned, privacy-safe curated",
+        "notices. Each fallback identifies its provenance and any omission in its own text.",
         f"package-lock-sha256: {sha256_file(lockfile)}",
         f"operator-bundle-sha256: {sha256_tree(operator_bundle)}",
         f"public-demo-bundle-sha256: {sha256_tree(public_demo_bundle)}",
         f"production-package-count: {len(packages)}",
     ]
-    for name, version, expression, package_path in packages:
+    for name, version, expression, package_path, resolved, integrity in packages:
         files = package_notice_files(package_path)
-        if files:
+        requires_fallback = any(EMAIL_PATTERN.search(read_notice_text(path)) for path in files)
+        if files and not requires_fallback:
             notices = [
-                (f"package:{path.name}", None, normalize_notice_text(path.read_text(encoding="utf-8")))
+                (f"package:{path.name}", None, read_notice_text(path))
                 for path in files
             ]
         else:
@@ -172,17 +206,17 @@ def render_notice(
             if fallback is None:
                 raise ValueError("unreviewed package text")
             package_json = package_path / "package.json"
-            if sha256_file(package_json) != fallback[1]:
+            if (
+                resolved != fallback[0]
+                or integrity != fallback[1]
+                or sha256_file(package_json) != fallback[2]
+            ):
                 raise ValueError("unreviewed package metadata")
-            # Some npm packages publish neither a LICENSE nor a NOTICE file.
-            # An explicit, version-pinned review record is then the only safe
-            # exception: carry the package's own verbatim metadata rather than
-            # inventing a copyright notice or silently omitting the package.
             notices = [
                 (
-                    "reviewed-package-metadata",
+                    "reviewed-fallback",
                     fallback[0],
-                    normalize_notice_text(package_json.read_text(encoding="utf-8")),
+                    "\n".join((*fallback[4], "", fallback[3])) if fallback[4] else fallback[3],
                 )
             ]
         if any(not text for _, _, text in notices):
@@ -192,7 +226,7 @@ def render_notice(
             lines.append(f"notice-origin: {origin}")
             if source is not None:
                 lines.append(f"source: {source}")
-            lines.extend(("", text.rstrip("\n")))
+            lines.extend(("", text))
     return "\n".join(lines) + "\n"
 
 

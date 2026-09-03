@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-# The explicit crates.io gate must refuse publication until Rust dependency
-# license texts have the same auditable treatment as the packaged UI.
+# Source-crate publication is gated on the vendored UI notice, not on native
+# binary dependency evidence.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 output="$(mktemp)"
 trap 'rm -f "$output"' EXIT
 
-if "$ROOT/scripts/check-crates-io-release-readiness.sh" >"$output" 2>&1; then
-    echo 'FAIL: crates.io readiness accepted an unresolved Rust notice gate' >&2
+if ! "$ROOT/scripts/check-crates-io-release-readiness.sh" >"$output" 2>&1; then
+    cat "$output" >&2
+    echo 'FAIL: crates.io readiness rejected the packaged UI notice' >&2
     exit 1
 fi
 
-rg -Fq 'Rust third-party notice coverage is not yet complete' "$output" \
-    || { echo 'FAIL: readiness gate did not state the Rust notice blocker' >&2; exit 1; }
+rg -Fq 'crates.io source readiness passed' "$output" \
+    || { echo 'FAIL: readiness gate did not confirm source-crate scope' >&2; exit 1; }
 
-echo 'crates.io readiness keeps the Rust notice blocker explicit'
+echo 'crates.io readiness accepts the packaged UI notice'

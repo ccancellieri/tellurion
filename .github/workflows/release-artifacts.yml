@@ -64,6 +64,9 @@ jobs:
             --fallbacks ui/third-party-notice-fallbacks.json \
             --output "$generated_notice"
           cmp "$generated_notice" crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt
+          expected_notice_sha256="$(tr -d '[:space:]' < ui/third-party-notice-sha256.txt)"
+          actual_notice_sha256="$(shasum -a 256 "$generated_notice" | awk '{print $1}')"
+          test "$actual_notice_sha256" = "$expected_notice_sha256"
 
       - name: Resolve workspace version
         id: version
@@ -224,6 +227,9 @@ jobs:
       - name: Install musl build dependencies
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: sudo apt-get update && sudo apt-get install -y musl-tools cmake pkg-config
+
+      - name: Gate prebuilt native binary release
+        run: ./scripts/check-native-binary-release-readiness.sh
 
       - name: Build default-feature binaries
         env:
