@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 NOTICE_PREFIXES = ("license", "licence", "copyright", "notice")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+AND_OPERATOR_PATTERN = re.compile(r"(?:^|[\s(])AND(?:[\s)])")
 
 
 def sha256_file(path: Path) -> str:
@@ -172,6 +173,12 @@ def package_notice_files(path: Path) -> list[Path]:
     )
 
 
+def license_expression_requires_fallback(expression: str) -> bool:
+    """Return whether one or more package files cannot prove full coverage."""
+
+    return AND_OPERATOR_PATTERN.search(expression) is not None
+
+
 def render_notice(
     lockfile: Path,
     package_root: Path,
@@ -195,7 +202,9 @@ def render_notice(
     ]
     for name, version, expression, package_path, resolved, integrity in packages:
         files = package_notice_files(package_path)
-        requires_fallback = any(EMAIL_PATTERN.search(read_notice_text(path)) for path in files)
+        requires_fallback = license_expression_requires_fallback(expression) or any(
+            EMAIL_PATTERN.search(read_notice_text(path)) for path in files
+        )
         if files and not requires_fallback:
             notices = [
                 (f"package:{path.name}", None, read_notice_text(path))

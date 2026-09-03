@@ -174,6 +174,55 @@ class UiThirdPartyNoticeTests(unittest.TestCase):
         self.assertEqual("ui third-party notice generation unavailable\n", completed.stderr)
         self.assertFalse(self.output.exists())
 
+    def test_composite_and_license_requires_reviewed_fallback(self) -> None:
+        document = json.loads(self.lockfile.read_text(encoding="utf-8"))
+        document["packages"]["node_modules/fixture"]["license"] = "(MIT AND Zlib)"
+        self.lockfile.write_text(json.dumps(document), encoding="utf-8")
+        package = self.package_root / "fixture"
+        (package / "package.json").write_text(
+            json.dumps(
+                {
+                    "name": "fixture",
+                    "version": "1.0.0",
+                    "license": "(MIT AND Zlib)",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (package / "LICENSE").write_text("MIT terms only\n", encoding="utf-8")
+        fallback_text = "MIT terms\n\nZlib terms\n"
+        fallback_file = self.root / "fixture-1.0.0.txt"
+        fallback_file.write_text(fallback_text, encoding="utf-8")
+        self.fallbacks.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "fallbacks": [
+                        {
+                            "name": "fixture",
+                            "version": "1.0.0",
+                            "source": "https://registry.example.invalid/fixture-1.0.0.tgz",
+                            "integrity": "sha512-fixture",
+                            "package_json_sha256": hashlib.sha256(
+                                (package / "package.json").read_bytes()
+                            ).hexdigest(),
+                            "notice_file": fallback_file.name,
+                            "notice_sha256": hashlib.sha256(fallback_text.encode()).hexdigest(),
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        completed = self.run_generator()
+
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        rendered = self.output.read_text(encoding="utf-8")
+        self.assertIn("notice-origin: reviewed-fallback", rendered)
+        self.assertIn("MIT terms\n\nZlib terms", rendered)
+        self.assertNotIn("MIT terms only", rendered)
+
     def test_notice_text_preserves_upstream_whitespace_and_line_endings(self) -> None:
         package = self.package_root / "fixture"
         (package / "LICENSE").write_bytes(b"Fixture notice   \r\n")

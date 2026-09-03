@@ -56,6 +56,15 @@
       "notice_sha256": "ce0c72f1e3e0f658f1e0baf7bc1379a5af9de081c7f298d529b8dc7a818e3349"
     },
     {
+      "name": "pako",
+      "version": "1.0.11",
+      "source": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
+      "integrity": "sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==",
+      "package_json_sha256": "0014f350a6834ed6a2d1211e0a2e3aa471cb426edf63379c785f9647ea2b4e01",
+      "notice_file": "third-party-notices/fallbacks/pako-1.0.11.txt",
+      "notice_sha256": "93d1c8411951f960a054413f95db5b5450b67680878997e652d3d9a075b3605a"
+    },
+    {
       "name": "zstd-codec",
       "version": "0.1.5",
       "source": "https://registry.npmjs.org/zstd-codec/-/zstd-codec-0.1.5.tgz",
