@@ -136,6 +136,8 @@ jobs:
             exit 1
           fi
           echo "no live test skipped: the database-backed suite genuinely ran"
+      - name: Compile packaged server and ingest sources offline
+        run: ./scripts/tests/test_cargo_package_install.sh
 
   smoke:
     name: demo smokes
