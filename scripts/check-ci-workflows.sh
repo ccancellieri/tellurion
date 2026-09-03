@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Enforces one PR/main/manual full gate and one release gate.
+# Enforces one PR/main/manual full gate, one artifact gate, and one separately
+# guarded manual crates.io publication workflow.
 
 set -euo pipefail
 
@@ -9,6 +10,7 @@ set -euo pipefail
 workflow_dir="${WORKFLOW_DIR:-.github/workflows}"
 ci_workflow="$workflow_dir/ci.yml"
 release_workflow="$workflow_dir/release-artifacts.yml"
+publish_workflow="$workflow_dir/publish-crates.yml"
 local_mirror="${CI_LOCAL_SCRIPT:-scripts/ci-local.sh}"
 
 fail() {
@@ -25,6 +27,7 @@ require_match() {
 [ -d "$workflow_dir" ] || fail "missing workflow directory: $workflow_dir"
 [ -f "$ci_workflow" ] || fail "missing CI workflow: $ci_workflow"
 [ -f "$release_workflow" ] || fail "missing release workflow: $release_workflow"
+[ -f "$publish_workflow" ] || fail "missing crates.io publish workflow: $publish_workflow"
 [ -f "$local_mirror" ] || fail "missing local CI mirror: $local_mirror"
 
 # CI runs for pull requests targeting main, main pushes, and explicit manual
@@ -34,14 +37,16 @@ workflow_names="$(
         | sed 's#^.*/##' \
         | sort
 )"
-expected_workflow_names="$(printf '%s\n' ci.yml release-artifacts.yml | sort)"
+expected_workflow_names="$(printf '%s\n' ci.yml publish-crates.yml release-artifacts.yml | sort)"
 if [ "$workflow_names" != "$expected_workflow_names" ]; then
-    fail "hosted workflows must be exactly ci.yml and release-artifacts.yml"
+    fail "hosted workflows must be exactly ci.yml, publish-crates.yml, and release-artifacts.yml"
 fi
 
 python3 scripts/check-workflow-permissions.py \
     --read-only-workflow "$ci_workflow" \
     || fail "CI workflow permissions must be an exact read-only mapping"
+bash scripts/check-crates-io-publish-workflow.sh \
+    || fail "crates.io publication workflow contract must hold"
 
 require_match '^permissions:$' "$ci_workflow"
 require_match '^  contents: read$' "$ci_workflow"

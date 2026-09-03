@@ -61,7 +61,7 @@ while IFS=$'\t' read -r action comment; do
         fail "workflow action must use canonical bare block-style uses: syntax: $comment"
     fi
     case "$action:$comment" in
-        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1:v7.0.1|actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a:v7.0.1|actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0:v5|anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610:v0|actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6:v4|dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5:1.97.1|Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6:v2.9.2)
+        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1:v7.0.1|actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a:v7.0.1|actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0:v5|anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610:v0|actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6:v4|dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5:1.97.1|Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6:v2.9.2|rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18:v1)
             ;;
         *)
             fail "unapproved workflow action or version comment: $action # $comment"
@@ -413,11 +413,22 @@ publication_patterns=(
     'docker/(login|build-push)-action'
     'git[[:space:]]+push\b'
 )
+publish_workflow="$workflow_dir/publish-crates.yml"
 for pattern in "${publication_patterns[@]}"; do
-    if rg -n -i -- "$pattern" "${workflows[@]}"; then
+    pattern_workflows=("${workflows[@]}")
+    if [ "$pattern" = 'cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?publish\b' ]; then
+        pattern_workflows=()
+        for workflow_file in "${workflows[@]}"; do
+            [ "$workflow_file" = "$publish_workflow" ] || pattern_workflows+=("$workflow_file")
+        done
+    fi
+    if [ "${#pattern_workflows[@]}" -gt 0 ] && rg -n -i -- "$pattern" "${pattern_workflows[@]}"; then
         fail "release-publication capability found in workflow files"
     fi
 done
+
+bash scripts/check-crates-io-publish-workflow.sh \
+    || fail "crates.io publication workflow contract does not hold"
 
 python3 scripts/check-workflow-permissions.py \
     --workflow-dir "$workflow_dir" \

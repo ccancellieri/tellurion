@@ -1,0 +1,137 @@
+name: Publish crates to crates.io
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact workspace version, for example 0.5.0-rc.1
+        required: true
+        type: string
+      commit:
+        description: Exact 40-character commit on main and tagged v<version>
+        required: true
+        type: string
+      confirmation:
+        description: Enter publish <version> from <commit>
+        required: true
+        type: string
+      resume_from:
+        description: First crate to reconsider after a partial run; leave empty normally
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crates-io-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: verify immutable crates.io candidate
+    if: github.repository == 'ccancellieri/tellurion' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+
+      - name: Validate manual publication request
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_COMMIT: ${{ inputs.commit }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$REQUESTED_COMMIT"
+          test "$CONFIRMATION" = "publish $REQUESTED_VERSION from $REQUESTED_COMMIT"
+          ./scripts/verify-crates-io-release.sh "$REQUESTED_VERSION" "$REQUESTED_COMMIT"
+
+      - name: Run publication policy gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/audit-license-policy.sh
+          ./scripts/audit-publication-license.sh
+          ./scripts/audit-crates-io-policy.sh
+          ./scripts/test-license-policy.sh
+          ./scripts/test-crates-io-policy.sh
+          ./scripts/test-crates-io-publish-workflow.sh
+          ./scripts/check-crates-io-publisher.sh
+          ./scripts/test-verify-crates-io-release.sh
+
+      - name: Run workspace tests
+        run: cargo +1.97.1 test --workspace --locked
+
+      - name: Build all registry packages
+        run: cargo +1.97.1 package --workspace --locked --no-verify
+
+      - name: Preflight registry state
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_COMMIT: ${{ inputs.commit }}
+          RESUME_FROM: ${{ inputs.resume_from }}
+        run: |
+          ./scripts/publish-crates-io.sh \
+            --preflight \
+            --version "$REQUESTED_VERSION" \
+            --commit "$REQUESTED_COMMIT" \
+            --resume-from "$RESUME_FROM"
+
+  publish:
+    name: publish ordered crate set
+    needs: [verify]
+    if: github.repository == 'ccancellieri/tellurion' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: crates-io
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
+
+      - name: Revalidate immutable release identity
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_COMMIT: ${{ inputs.commit }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$REQUESTED_COMMIT"
+          test "$CONFIRMATION" = "publish $REQUESTED_VERSION from $REQUESTED_COMMIT"
+          ./scripts/verify-crates-io-release.sh "$REQUESTED_VERSION" "$REQUESTED_COMMIT"
+          ./scripts/audit-license-policy.sh
+          ./scripts/audit-publication-license.sh
+          ./scripts/audit-crates-io-policy.sh
+
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1
+
+      - name: Publish or safely resume
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_COMMIT: ${{ inputs.commit }}
+          RESUME_FROM: ${{ inputs.resume_from }}
+        run: |
+          ./scripts/publish-crates-io.sh \
+            --execute \
+            --registry crates-io \
+            --version "$REQUESTED_VERSION" \
+            --commit "$REQUESTED_COMMIT" \
+            --resume-from "$RESUME_FROM"

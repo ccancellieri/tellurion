@@ -49,6 +49,9 @@ expect_rejected() {
         missing-release-workflow)
             rm "$fixture/workflows/release-artifacts.yml"
             ;;
+        missing-publish-workflow)
+            rm "$fixture/workflows/publish-crates.yml"
+            ;;
         ci-has-schedule)
             perl -0pi -e 's/(  workflow_dispatch:\n)/$1  schedule:\n    - cron: "17 3 * * *"\n/' "$fixture/workflows/ci.yml"
             ;;
@@ -156,6 +159,7 @@ for mutation in \
     unexpected-pr-workflow \
     unexpected-push-workflow \
     missing-release-workflow \
+    missing-publish-workflow \
     ci-has-schedule \
     ci-has-unexpected-read-scope \
     ci-job-permission-override \

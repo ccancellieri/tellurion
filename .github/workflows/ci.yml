@@ -396,6 +396,18 @@ jobs:
       - name: crates.io policy mutation tests
         run: |
           ./scripts/test-crates-io-policy.sh
+      - name: crates.io publication workflow mutation tests
+        run: |
+          ./scripts/test-crates-io-publish-workflow.sh
+      - name: crates.io publication workflow contract
+        run: |
+          ./scripts/check-crates-io-publish-workflow.sh
+      - name: crates.io ordered publisher contract
+        run: |
+          ./scripts/check-crates-io-publisher.sh
+      - name: crates.io release identity tests
+        run: |
+          ./scripts/test-verify-crates-io-release.sh
       # A release mechanism nobody exercises is not a mechanism. `--dry-run`
       # rewrites nothing, creates no tag and pushes nothing -- it resolves the
       # next version, applies every derivation to a scratch copy and runs the

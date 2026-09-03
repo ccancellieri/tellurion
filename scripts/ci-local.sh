@@ -274,7 +274,12 @@ phase_artifact_audit() { # ci.yml job: artifact-audit
         ./scripts/audit-artifacts.sh &&
         ./scripts/check-release-workflow.sh &&
         ./scripts/test-release-workflow-contract.sh &&
-        ./scripts/test-license-policy.sh
+        ./scripts/test-license-policy.sh &&
+        ./scripts/test-crates-io-policy.sh &&
+        ./scripts/test-crates-io-publish-workflow.sh &&
+        ./scripts/check-crates-io-publish-workflow.sh &&
+        ./scripts/check-crates-io-publisher.sh &&
+        ./scripts/test-verify-crates-io-release.sh
 }
 
 # --- guard-script coverage audit --------------------------------------------
@@ -333,6 +338,7 @@ phase_audit() {
     local -a workflows=(
         ".github/workflows/ci.yml"
         ".github/workflows/release-artifacts.yml"
+        ".github/workflows/publish-crates.yml"
     )
 
     # The same question one level down: not "does a job run this script" but
