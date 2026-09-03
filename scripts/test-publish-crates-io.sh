@@ -70,6 +70,20 @@ path="${url#https://crates.io/api/v1/crates/}"
 package="${path%%/*}"
 if [ "$path" = "$package" ]; then
     [ -f "$TEST_STATE/names/$package" ] && printf 200 || printf 404
+elif [ "$path" = "$package/owners" ]; then
+    if [ "$package" = "${TEST_OWNER_ENDPOINT_ERROR:-}" ]; then
+        printf '{"errors":[{"detail":"registry unavailable"}]}\n' > "$output"
+        printf 503
+    elif [ "$package" = "${TEST_WRONG_OWNER:-}" ]; then
+        printf '{"users":[{"login":"unrelated-owner"}],"teams":[]}\n' > "$output"
+        printf 200
+    elif [ "$package" = "${TEST_OWNER_AS_TEAM:-}" ]; then
+        printf '{"users":[],"teams":[{"login":"ccancellieri"}]}\n' > "$output"
+        printf 200
+    else
+        printf '{"users":[{"login":"ccancellieri"}],"teams":[{"login":"github:example:maintainers"}]}\n' > "$output"
+        printf 200
+    fi
 elif [ -f "$TEST_STATE/versions/$package" ]; then
     cp "$TEST_STATE/versions/$package" "$output"
     printf 200
@@ -93,15 +107,48 @@ run_publisher() {
         ./scripts/publish-crates-io.sh "$@")
 }
 
-run_publisher --preflight --version 0.5.0-rc.1 --commit "$commit" >/dev/null
+TEST_OWNER_AS_TEAM=crate-27 run_publisher --preflight \
+    --version 0.5.0-rc.1 --commit "$commit" >/dev/null
 [ "$(cat "$state/package-count")" -eq 1 ] && [ ! -e "$state/published" ] \
     && [ -f "$state/source-readiness-ran" ]
+
+if TEST_WRONG_OWNER=crate-11 run_publisher --execute \
+    --version 0.5.0-rc.1 --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: a crate owned by another account was accepted" >&2
+    exit 1
+fi
+[ ! -e "$state/published" ] || {
+    echo "FAIL: ownership rejection happened after an upload" >&2
+    exit 1
+}
+
+if TEST_OWNER_ENDPOINT_ERROR=crate-19 run_publisher --execute \
+    --version 0.5.0-rc.1 --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: an owners endpoint error was accepted" >&2
+    exit 1
+fi
+[ ! -e "$state/published" ] || {
+    echo "FAIL: owners endpoint failure happened after an upload" >&2
+    exit 1
+}
 
 run_publisher --execute --version 0.5.0-rc.1 --commit "$commit" >/dev/null
 [ "$(wc -l < "$state/published" | tr -d ' ')" -eq 27 ]
 run_publisher --execute --version 0.5.0-rc.1 --commit "$commit" >/dev/null
 [ "$(wc -l < "$state/published" | tr -d ' ')" -eq 27 ]
-[ "$(cat "$state/package-count")" -eq 3 ]
+[ "$(cat "$state/package-count")" -eq 5 ]
+
+rm "$state/names/crate-27"
+if run_publisher --execute --version 0.5.0-rc.1 \
+    --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: execute mode accepted an unclaimed crate name" >&2
+    exit 1
+fi
+published_before_bootstrap="$(wc -l < "$state/published" | tr -d ' ')"
+TELLURION_BOOTSTRAP_CONFIRM="publish first crates for 0.5.0-rc.1 from $commit" \
+    run_publisher --bootstrap --version 0.5.0-rc.1 --commit "$commit" >/dev/null
+[ "$(wc -l < "$state/published" | tr -d ' ')" -eq "$published_before_bootstrap" ]
+: > "$state/names/crate-27"
 
 rm "$state/versions/crate-05" "$state/versions/crate-06"
 if TEST_FAIL_PUBLISH=crate-05 run_publisher --execute --version 0.5.0-rc.1 \
@@ -118,4 +165,4 @@ if TEST_OMIT_PACKAGE=crate-10 run_publisher --preflight --version 0.5.0-rc.1 \
     exit 1
 fi
 
-echo "crates.io package graph and resume tests passed"
+echo "crates.io package graph, ownership, and resume tests passed"

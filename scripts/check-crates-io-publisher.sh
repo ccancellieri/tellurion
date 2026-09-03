@@ -25,6 +25,12 @@ require 'verify-canonical-ci\.sh "\$commit"'
 require '\[ "\$registry" = crates-io \]'
 require 'GITHUB_ACTIONS.*!= true'
 require 'Trusted Publishing cannot perform these first publications'
+require "expected_owner='ccancellieri'"
+require 'command -v jq'
+require 'api/v1/crates/\$package/owners'
+require '\[ "\$owner_status" = 200 \]'
+require '\.users \+ \.teams'
+require 'not owned by expected crates.io account \$expected_owner'
 require 'cmp -s "\$archive" "\$remote"'
 require '\[ "\$index" -lt "\$resume_index" \]'
 workspace_package_count="$(rg -c 'cargo \+1\.97\.1 package --workspace --locked --no-verify' "$publisher" || true)"
@@ -38,6 +44,12 @@ require 'for attempt in 1 2 3 4 5 6 7 8 9 10 11 12'
 require 'Rerun with --resume-from \$package'
 require 'Cargo returned \$publish_status even though \$package \$version is now byte-identical'
 require_readiness '^[[:space:]]*\.[[:space:]].*rg-compat\.sh'
+
+owner_preflight_line="$(awk '/api\/v1\/crates\/\$package\/owners/ { print NR; exit }' "$publisher")"
+publish_line="$(awk '/cargo \+1\.97\.1 publish --locked --registry crates-io/ { print NR; exit }' "$publisher")"
+[ -n "$owner_preflight_line" ] && [ -n "$publish_line" ] \
+    && [ "$owner_preflight_line" -lt "$publish_line" ] \
+    || fail "ownership verification must happen before the first possible upload"
 
 if rg -q -- '--allow-dirty|cargo.*publish.*--no-verify' "$publisher"; then
     fail "publisher weakens Cargo publication verification"

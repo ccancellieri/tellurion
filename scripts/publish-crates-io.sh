@@ -111,6 +111,7 @@ if [ -n "$resume_from" ]; then
 fi
 
 user_agent='tellurion-crates-publisher/0.5 (+https://github.com/ccancellieri/tellurion)'
+expected_owner='ccancellieri'
 http_get() {
     local url="$1"
     local output="$2"
@@ -118,15 +119,36 @@ http_get() {
         --user-agent "$user_agent" --output "$output" --write-out '%{http_code}' "$url"
 }
 
-# Trusted Publishing cannot create a crate. Discover every unclaimed/missing
-# name before authentication so a new name cannot cause a mid-sequence upload.
+command -v jq >/dev/null 2>&1 || {
+    echo "FAIL: crates.io ownership verification requires jq" >&2
+    exit 1
+}
+
+# Trusted Publishing cannot create a crate. Resolve every name and verify every
+# existing owner before any possible upload, so the sequence fails atomically
+# when a name has been claimed by another account.
 missing_names=()
 probe="$(mktemp)"
 trap 'rm -f "$probe"' EXIT
 for package in "${packages[@]}"; do
     status="$(http_get "https://crates.io/api/v1/crates/$package" "$probe")"
     case "$status" in
-        200) ;;
+        200)
+            owner_status="$(http_get "https://crates.io/api/v1/crates/$package/owners" "$probe")"
+            [ "$owner_status" = 200 ] || {
+                echo "FAIL: crates.io returned HTTP $owner_status while checking owners for $package" >&2
+                exit 1
+            }
+            jq -e --arg owner "$expected_owner" '
+                if ((.users | type) == "array" and (.teams | type) == "array")
+                then any((.users + .teams)[]?; .login? == $owner)
+                else false
+                end
+            ' "$probe" >/dev/null || {
+                echo "FAIL: $package is not owned by expected crates.io account $expected_owner" >&2
+                exit 1
+            }
+            ;;
         404) missing_names+=("$package") ;;
         *) echo "FAIL: crates.io returned HTTP $status while checking $package" >&2; exit 1 ;;
     esac

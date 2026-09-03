@@ -73,8 +73,17 @@ tellurion-processes
 ```
 
 Name availability is first-come, first-served and must be checked again at the
-time of release. The workflow preflight refuses all uploads while any allowlist
-name is absent, avoiding a predictable mid-run failure.
+time of release. Before any upload, the publisher queries the crates.io
+`/api/v1/crates/<name>/owners` endpoint for every existing allowlist name. Its
+JSON response must contain the exact login `ccancellieri` in either the `users`
+or `teams` array. A different owner, malformed response, or any non-200 owners
+response stops the complete sequence before its first `cargo publish`.
+
+A 404 from the crate-name endpoint is treated as an unclaimed name, never as
+proof of ownership. The manual OIDC workflow refuses all uploads while any
+allowlist name is absent; only the explicitly confirmed local `--bootstrap`
+mode permits those 404 names so their first publication can take place. The
+local bootstrap host therefore needs both `curl` and `jq`.
 
 For the first release only, the crates.io owner must use a short-expiry API
 token with the minimum available operations from a clean checkout of the tagged
