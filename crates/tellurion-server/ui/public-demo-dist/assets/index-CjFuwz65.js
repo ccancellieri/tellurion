@@ -1306,6 +1306,28 @@ in vec3 view_direction;uniform vec3 u_sun_pos;uniform vec3 u_globe_position;unif
         <div>
           <p class="app-header__eyebrow">Tellurion public preview</p>
           <h1>Open a remote map where it already lives.</h1>
-          <p>Enter a public HTTPS resource, inspect it through bounded byte-range reads, and view its short-lived layer without creating a tenant or catalog.</p>
+          <p>Enter a public HTTPS resource, inspect it through bounded byte-range reads, and view its temporary layer without creating a tenant or catalog.</p>
         </div>
-      `}),Object.assign(document.createElement(`main`),{className:`public-demo-shell`}),fa());let t=e.querySelector(`main`);if(!t)throw Error(`public demo shell is missing its main region`);t.append(document.createElement(`tellurion-demo-source-workflow`),document.createElement(`tellurion-demo-map-viewer`))}var ma=la(location.pathname,`public-demo`);ma?(da(document.body,ma),document.body.append(fa())):pa(document.body);
+      `}),Object.assign(document.createElement(`main`),{className:`public-demo-shell`}),fa());let t=e.querySelector(`main`);if(!t)throw Error(`public demo shell is missing its main region`);let n=document.createElement(`section`);n.className=`public-demo-shell__resources`,n.setAttribute(`aria-labelledby`,`public-demo-resources-title`),n.innerHTML=`
+    <div class="public-demo-shell__resources-heading">
+      <h2 id="public-demo-resources-title">Continue from the field desk</h2>
+      <p>Try a source here, then use the project materials that match your next question.</p>
+    </div>
+    <nav aria-label="Tellurion resources">
+      <ul>
+        <li>
+          <span class="public-demo-shell__resource-mark public-demo-shell__resource-mark--source" aria-hidden="true"></span>
+          <a href="https://github.com/ccancellieri/tellurion#quickstart" target="_blank" rel="noopener noreferrer">Build from source</a>
+        </li>
+        <li>
+          <span class="public-demo-shell__resource-mark public-demo-shell__resource-mark--demo" aria-hidden="true"></span>
+          <a href="https://ccancellieri.github.io/tellurion-demos/" target="_blank" rel="noopener noreferrer">Verified demos</a>
+        </li>
+        <li>
+          <span class="public-demo-shell__resource-mark public-demo-shell__resource-mark--feedback" aria-hidden="true"></span>
+          <a href="https://github.com/ccancellieri/tellurion/issues/new?template=evaluation.yml" target="_blank" rel="noopener noreferrer">Share evaluation feedback</a>
+        </li>
+      </ul>
+    </nav>
+    <p class="public-demo-shell__boundary"><strong>Public HTTPS resources only.</strong> Temporary layers expire within 15 minutes. No account, upload, persistent tenant, or catalog is created.</p>
+  `,t.append(document.createElement(`tellurion-demo-source-workflow`),document.createElement(`tellurion-demo-map-viewer`),n)}var ma=la(location.pathname,`public-demo`);ma?(da(document.body,ma),document.body.append(fa())):pa(document.body);
