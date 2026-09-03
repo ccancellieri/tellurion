@@ -287,6 +287,7 @@ DATA_ONLY=("dependency-license-overrides.json")
 SOURCED_ONLY=("rg-compat.sh" "workspace-version.sh")
 # Guards CI reaches through another script rather than invoking directly.
 INDIRECT=(
+    "check-crates-io-release-readiness.sh:publish-crates-io.sh"
     "check-pss-restricted.py:validate-deploy-manifests.sh"
     "check-workflow-permissions.py:check-ci-workflows.sh"
 )
