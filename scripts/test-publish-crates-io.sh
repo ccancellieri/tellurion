@@ -158,7 +158,14 @@ if run_publisher --execute --version 0.5.0-rc.1 \
     exit 1
 fi
 published_before_bootstrap="$(wc -l < "$state/published" | tr -d ' ')"
-TELLURION_BOOTSTRAP_CONFIRM="publish first crates for 0.5.0-rc.1 from $commit" \
+if GITHUB_ACTIONS=true \
+    TELLURION_BOOTSTRAP_CONFIRM="publish first crates for 0.5.0-rc.1 from $commit" \
+    run_publisher --bootstrap --version 0.5.0-rc.1 --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: GitHub Actions accepted first-publication bootstrap" >&2
+    exit 1
+fi
+GITHUB_ACTIONS=false \
+    TELLURION_BOOTSTRAP_CONFIRM="publish first crates for 0.5.0-rc.1 from $commit" \
     run_publisher --bootstrap --version 0.5.0-rc.1 --commit "$commit" >/dev/null
 [ "$(wc -l < "$state/published" | tr -d ' ')" -eq "$published_before_bootstrap" ]
 : > "$state/names/crate-27"
