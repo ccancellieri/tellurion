@@ -13,13 +13,14 @@
 //! The workspace's `ui/vite.config.ts` builds with a relative asset base (`./assets/...`)
 //! rather than an absolute `/ui/assets/...` one, so the exact same
 //! bundles also work hosted standalone at the root of any static
-//! file server, not just embedded here. Relative paths only resolve
-//! correctly against a document URL ending in `/`, which is why bare
-//! `/ui` redirects to `/ui/` below instead of serving the shell directly.
+//! file server, not just embedded here. The server therefore exposes
+//! shell routes only at document URLs whose relative assets resolve under
+//! `/ui/`; trailing-slash and deeper control paths redirect to their
+//! canonical, file-like route before the shell is served.
 
 use std::sync::Arc;
 
-use axum::extract::Path;
+use axum::extract::{Path, RawQuery};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::get;
@@ -49,20 +50,7 @@ fn asset_response(path: &str) -> Response {
             file.data.into_owned(),
         )
             .into_response(),
-        // Any path this embed doesn't recognize falls back to the shell
-        // (the same "index fallback" a static-file server gives a
-        // single-page app) rather than a bare 404 — this UI has no
-        // client-side router yet, but a bookmarked/refreshed `/ui/...`
-        // deep link should still load something instead of dead-ending.
-        None => match UiAssets::get(INDEX_HTML) {
-            Some(index) => (
-                StatusCode::OK,
-                [(header::CONTENT_TYPE, "text/html".to_string())],
-                index.data.into_owned(),
-            )
-                .into_response(),
-            None => StatusCode::NOT_FOUND.into_response(),
-        },
+        None => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
@@ -83,6 +71,22 @@ async fn serve_path(Path(path): Path<String>) -> Response {
     asset_response(&path)
 }
 
+fn redirect_with_query(path: &str, query: Option<&str>) -> Redirect {
+    let location = match query {
+        Some(query) if !query.is_empty() => format!("{path}?{query}"),
+        _ => path.to_string(),
+    };
+    Redirect::permanent(&location)
+}
+
+async fn redirect_control(RawQuery(query): RawQuery) -> Redirect {
+    redirect_with_query("/ui/control", query.as_deref())
+}
+
+async fn redirect_control_demo(RawQuery(query): RawQuery) -> Redirect {
+    redirect_with_query("/ui/control-demo", query.as_deref())
+}
+
 /// Builds the `/ui` route table. Mounted directly into the server's
 /// top-level router (not nested under a prefix) so `serve_path`'s
 /// wildcard capture receives the path exactly as `UiAssets::get` expects
@@ -91,6 +95,12 @@ pub fn router() -> Router<Arc<AppContext>> {
     Router::new()
         .route("/ui", get(|| async { Redirect::permanent("/ui/") }))
         .route("/ui/", get(serve_index))
+        .route("/ui/control", get(serve_index))
+        .route("/ui/control/", get(redirect_control))
+        .route("/ui/control/{*path}", get(redirect_control))
+        .route("/ui/control-demo", get(serve_index))
+        .route("/ui/control-demo/", get(redirect_control_demo))
+        .route("/ui/control-demo/{*path}", get(redirect_control_demo))
         .route(
             "/ui/THIRD_PARTY_NOTICES.txt",
             get(serve_third_party_notices),
@@ -193,12 +203,59 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn unknown_path_falls_back_to_the_index_shell() {
+    async fn control_routes_canonicalize_before_serving_relative_assets() {
+        let app = test_app();
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/ui/control/")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(response.status().is_redirection());
+        assert_eq!(response.headers()[header::LOCATION], "/ui/control");
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/ui/control/tenants/acme?panel=settings&scope=effective")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(response.status().is_redirection());
+        assert_eq!(
+            response.headers()[header::LOCATION],
+            "/ui/control?panel=settings&scope=effective"
+        );
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/ui/control-demo/tenants/fixture?panel=plugins")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert!(response.status().is_redirection());
+        assert_eq!(
+            response.headers()[header::LOCATION],
+            "/ui/control-demo?panel=plugins"
+        );
+    }
+
+    #[tokio::test]
+    async fn canonical_control_route_serves_the_index_shell() {
         let app = test_app();
         let response = app
             .oneshot(
                 Request::builder()
-                    .uri("/ui/does/not/exist")
+                    .uri("/ui/control")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -207,5 +264,20 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         assert!(String::from_utf8_lossy(&body).contains("Tellurion"));
+    }
+
+    #[tokio::test]
+    async fn unknown_asset_path_is_not_served_as_html() {
+        let app = test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/ui/assets/does-not-exist.js")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }
