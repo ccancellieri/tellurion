@@ -14,9 +14,16 @@ const map = vi.hoisted(() => ({
   removeSource: vi.fn(),
 }));
 
+const tileTransport = vi.hoisted(() => ({
+  activate: vi.fn((sourceId: string) =>
+    `tellurion-demo:///demo/sources/${sourceId}/tiles/WebMercatorQuad/{z}/{y}/{x}.png`),
+  clear: vi.fn(),
+  destroy: vi.fn(),
+}));
+
 vi.mock('../lib/map', () => ({
   createMap: vi.fn(() => map),
-  setDemoImageRequestLimit: vi.fn(),
+  createDemoTileTransport: vi.fn(() => tileTransport),
   demoRasterMapHandoff: vi.fn((source: { id: string; attribution: string; extent: unknown }) => ({
     sourceId: `demo-source-${source.id}`,
     layerId: `demo-layer-${source.id}`,
@@ -37,7 +44,7 @@ vi.mock('../lib/map', () => ({
 }));
 
 import './demo-map-viewer';
-import { fitToExtent, setDemoImageRequestLimit } from '../lib/map';
+import { createDemoTileTransport, fitToExtent } from '../lib/map';
 
 const source = {
   id: 'opaque-source',
@@ -66,8 +73,9 @@ function mount(): HTMLElement {
 
 beforeEach(() => {
   Object.values(map).forEach((mock) => mock.mockReset());
+  Object.values(tileTransport).forEach((mock) => mock.mockClear());
   vi.mocked(fitToExtent).mockReset();
-  vi.mocked(setDemoImageRequestLimit).mockReset();
+  vi.mocked(createDemoTileTransport).mockClear();
   map.isStyleLoaded.mockReturnValue(true);
   map.getLayer.mockReturnValue(undefined);
   map.getSource.mockReturnValue(undefined);
@@ -86,13 +94,18 @@ describe('temporary demo map viewer', () => {
 
     expect(map.addSource).toHaveBeenCalledWith('demo-source-opaque-source', {
       type: 'raster',
-      tiles: ['https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png'],
+      tiles: ['tellurion-demo:///demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png'],
       tileSize: 256,
       minzoom: 0,
       maxzoom: 22,
     });
-    expect(setDemoImageRequestLimit).toHaveBeenCalledWith(2);
-    expect(vi.mocked(setDemoImageRequestLimit).mock.invocationCallOrder[0]).toBeLessThan(
+    expect(tileTransport.activate).toHaveBeenCalledWith(
+      'opaque-source',
+      location.origin,
+      'https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png',
+      2,
+    );
+    expect(tileTransport.activate.mock.invocationCallOrder[0]).toBeLessThan(
       map.addSource.mock.invocationCallOrder[0],
     );
     expect(map.addLayer).toHaveBeenCalledWith({
@@ -157,6 +170,7 @@ describe('temporary demo map viewer', () => {
     element.remove();
 
     expect(map.remove).toHaveBeenCalledOnce();
+    expect(tileTransport.destroy).toHaveBeenCalledOnce();
     document.dispatchEvent(new CustomEvent('tellurion-demo-map', { detail: { source, opacity: 1 } }));
     expect(map.addSource).not.toHaveBeenCalled();
   });
@@ -211,6 +225,7 @@ describe('temporary demo map viewer', () => {
 
       expect(map.removeLayer).toHaveBeenCalledWith('demo-layer-opaque-source');
       expect(map.removeSource).toHaveBeenCalledWith('demo-source-opaque-source');
+      expect(tileTransport.clear).toHaveBeenCalled();
       expect(element.textContent).toContain('Temporary source expired');
       expect(expired).toHaveBeenCalledOnce();
     } finally {
