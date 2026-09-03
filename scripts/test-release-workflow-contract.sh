@@ -564,8 +564,9 @@ expect_guide_rejected() {
 }
 
 if [ "$mutation_partition" = all ] || [ "$mutation_partition" = guide ]; then
+    current_version="$(workspace_version)"
     expect_guide_rejected stale-install-guide \
-        's/tellurion-v[0-9.]*-aarch64/tellurion-v9.9.9-aarch64/'
+        "s/tellurion-v$current_version-aarch64/tellurion-v9.9.9-aarch64/"
     expect_guide_rejected undocumented-target \
         '/x86_64-pc-windows-msvc/d'
 fi
