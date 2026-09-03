@@ -17,6 +17,7 @@ NOTICE_PREFIXES = ("license", "licence", "copyright", "notice")
 SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 EMAIL_PATTERN = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 AND_OPERATOR_PATTERN = re.compile(r"(?:^|[\s(])AND(?:[\s)])")
+BUNDLED_NOTICE_PATH = "THIRD_PARTY_NOTICES.txt"
 
 
 def sha256_file(path: Path) -> str:
@@ -25,7 +26,11 @@ def sha256_file(path: Path) -> str:
 
 def sha256_tree(path: Path) -> str:
     digest = hashlib.sha256()
-    for child in sorted(candidate for candidate in path.rglob("*") if candidate.is_file()):
+    for child in sorted(
+        candidate
+        for candidate in path.rglob("*")
+        if candidate.is_file() and candidate.relative_to(path).as_posix() != BUNDLED_NOTICE_PATH
+    ):
         relative = child.relative_to(path).as_posix().encode("utf-8")
         digest.update(len(relative).to_bytes(8, "big"))
         digest.update(relative)

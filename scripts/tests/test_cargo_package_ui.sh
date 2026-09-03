@@ -39,6 +39,12 @@ diff -r -q "$TEST_DIR/public-demo" "$ROOT/crates/tellurion-server/ui/public-demo
 cmp "$TEST_DIR/THIRD_PARTY_NOTICES.txt" \
     "$ROOT/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt" \
     || fail 'tracked UI third-party notice differs from clean generation'
+cmp "$TEST_DIR/operator/THIRD_PARTY_NOTICES.txt" \
+    "$ROOT/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt" \
+    || fail 'operator bundle does not carry the canonical UI third-party notice'
+cmp "$TEST_DIR/public-demo/THIRD_PARTY_NOTICES.txt" \
+    "$ROOT/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt" \
+    || fail 'public-demo bundle does not carry the canonical UI third-party notice'
 
 expected_notice_sha256="$(tr -d '[:space:]' < "$ROOT/ui/third-party-notice-sha256.txt")"
 generated_notice_sha256="$(shasum -a 256 "$TEST_DIR/THIRD_PARTY_NOTICES.txt" | awk '{print $1}')"
@@ -58,6 +64,10 @@ grep -qx 'ui/dist/index.html' "$TEST_DIR/package-list" \
     || fail 'tellurion package does not contain the operator UI'
 grep -qx 'ui/public-demo-dist/index.html' "$TEST_DIR/package-list" \
     || fail 'tellurion package does not contain the public-demo UI'
+grep -qx 'ui/dist/THIRD_PARTY_NOTICES.txt' "$TEST_DIR/package-list" \
+    || fail 'tellurion package does not contain the operator bundle notice'
+grep -qx 'ui/public-demo-dist/THIRD_PARTY_NOTICES.txt' "$TEST_DIR/package-list" \
+    || fail 'tellurion package does not contain the public-demo bundle notice'
 grep -qx 'ui/THIRD_PARTY_NOTICES.txt' "$TEST_DIR/package-list" \
     || fail 'tellurion package does not contain the canonical UI third-party notices'
 

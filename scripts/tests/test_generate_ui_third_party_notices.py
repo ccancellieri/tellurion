@@ -233,6 +233,24 @@ class UiThirdPartyNoticeTests(unittest.TestCase):
         self.assertEqual(0, completed.returncode, completed.stderr)
         self.assertIn(b"Fixture notice   \r\n", self.output.read_bytes())
 
+    def test_bundle_hash_excludes_the_copied_notice_itself(self) -> None:
+        package = self.package_root / "fixture"
+        (package / "LICENSE").write_text("Fixture MIT text\n", encoding="utf-8")
+        self.fallbacks.write_text('{"schema_version": 2, "fallbacks": []}', encoding="utf-8")
+        for bundle in (self.operator_bundle, self.public_demo_bundle):
+            (bundle / "THIRD_PARTY_NOTICES.txt").write_text("first copy\n", encoding="utf-8")
+
+        first = self.run_generator()
+        self.assertEqual(0, first.returncode, first.stderr)
+        rendered = self.output.read_bytes()
+
+        for bundle in (self.operator_bundle, self.public_demo_bundle):
+            (bundle / "THIRD_PARTY_NOTICES.txt").write_text("different copy\n", encoding="utf-8")
+        second = self.run_generator()
+
+        self.assertEqual(0, second.returncode, second.stderr)
+        self.assertEqual(rendered, self.output.read_bytes())
+
 
 if __name__ == "__main__":
     unittest.main()

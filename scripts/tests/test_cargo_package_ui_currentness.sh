@@ -22,6 +22,10 @@ make_fixture() {
     printf 'fresh operator\n' > "$fixture/repo/crates/tellurion-server/ui/dist/index.html"
     printf 'fresh public demo\n' > "$fixture/repo/crates/tellurion-server/ui/public-demo-dist/index.html"
     printf 'fresh notice\n' > "$fixture/repo/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt"
+    cp "$fixture/repo/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt" \
+        "$fixture/repo/crates/tellurion-server/ui/dist/THIRD_PARTY_NOTICES.txt"
+    cp "$fixture/repo/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt" \
+        "$fixture/repo/crates/tellurion-server/ui/public-demo-dist/THIRD_PARTY_NOTICES.txt"
     shasum -a 256 "$fixture/repo/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt" \
         | awk '{print $1}' > "$fixture/repo/ui/third-party-notice-sha256.txt"
 
@@ -45,6 +49,7 @@ make_fixture() {
         'output="${output:-$default}"' \
         'mkdir -p "$output"' \
         'printf "%s\n" "$content" > "$output/index.html"' \
+        'cp "$repo_root/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt" "$output/THIRD_PARTY_NOTICES.txt"' \
         > "$fixture/bin/npm"
 
     printf '%s\n' \
@@ -64,7 +69,7 @@ make_fixture() {
         '#!/bin/sh' \
         'set -eu' \
         'if [ "$1" = package ]; then' \
-        '    printf "%s\n" ui/dist/index.html ui/public-demo-dist/index.html ui/THIRD_PARTY_NOTICES.txt' \
+        '    printf "%s\n" ui/dist/index.html ui/dist/THIRD_PARTY_NOTICES.txt ui/public-demo-dist/index.html ui/public-demo-dist/THIRD_PARTY_NOTICES.txt ui/THIRD_PARTY_NOTICES.txt' \
         'fi' \
         > "$fixture/bin/cargo"
 

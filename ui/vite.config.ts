@@ -1,4 +1,25 @@
-import { defineConfig } from 'vite';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, type Plugin } from 'vite';
+
+const THIRD_PARTY_NOTICES = readFileSync(
+  fileURLToPath(
+    new URL('../crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt', import.meta.url),
+  ),
+);
+
+function thirdPartyNoticesPlugin(): Plugin {
+  return {
+    name: 'tellurion-third-party-notices',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'THIRD_PARTY_NOTICES.txt',
+        source: THIRD_PARTY_NOTICES,
+      });
+    },
+  };
+}
 
 // Dev-only convenience: the demo panels call the Tellurion API with
 // root-absolute paths under the tenant-scoped route tree (e.g.
@@ -22,6 +43,7 @@ export default defineConfig(({ mode }) => ({
   // document URL that ends in `/`, which is why the server redirects bare
   // `/ui` to `/ui/` before serving the shell (see `ui_assets.rs`).
   base: './',
+  plugins: [thirdPartyNoticesPlugin()],
   server: {
     proxy: Object.fromEntries(
       API_ROUTES.map((path) => [
