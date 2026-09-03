@@ -69,6 +69,7 @@ rendered_images="$work_dir/rendered-images.txt"
 public_demo_dockerfile="docker/Dockerfile.public-demo"
 for required in \
     'npm ci' \
+    'COPY crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt /build/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt' \
     'npm run build:public-demo' \
     '--no-default-features --features public-demo,ui' \
     'COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion' \
@@ -92,12 +93,19 @@ fi
 # every local runtime input must survive `.dockerignore` or Render will fail
 # before the first build stage runs.
 public_demo_config="docker/public-demo.render.yaml"
+public_demo_notice="crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt"
 public_demo_context="$work_dir/public-demo-context.tar"
-if ! tar -cf "$public_demo_context" --exclude-from=.dockerignore "$public_demo_config" \
-    || ! tar -tf "$public_demo_context" | grep -Fxq "$public_demo_config"; then
-    echo "FAIL $public_demo_dockerfile: $public_demo_config is excluded from the Docker build context"
+if ! tar -cf "$public_demo_context" --exclude-from=.dockerignore \
+    "$public_demo_config" "$public_demo_notice"; then
+    echo "FAIL $public_demo_dockerfile: required inputs cannot be added to the Docker build context"
     fail=1
 fi
+for required_input in "$public_demo_config" "$public_demo_notice"; do
+    if ! tar -tf "$public_demo_context" | grep -Fxq "$required_input"; then
+        echo "FAIL $public_demo_dockerfile: $required_input is excluded from the Docker build context"
+        fail=1
+    fi
+done
 
 runtime_copies="$(awk '
     toupper($1) == "FROM" {

@@ -11,6 +11,7 @@ RUN npm ci
 
 COPY ui/ ./
 COPY demo/sources/public-examples.yaml /build/demo/sources/public-examples.yaml
+COPY crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt /build/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt
 RUN npm run build:public-demo
 
 FROM rust:1.97-bookworm AS rust-builder
