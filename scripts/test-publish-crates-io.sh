@@ -77,11 +77,14 @@ elif [ "$path" = "$package/owners" ]; then
     elif [ "$package" = "${TEST_WRONG_OWNER:-}" ]; then
         printf '{"users":[{"login":"unrelated-owner"}],"teams":[]}\n' > "$output"
         printf 200
+    elif [ "$package" = "${TEST_MALFORMED_OWNERS:-}" ]; then
+        printf '{"users":{"login":"ccancellieri"}}\n' > "$output"
+        printf 200
     elif [ "$package" = "${TEST_OWNER_AS_TEAM:-}" ]; then
-        printf '{"users":[],"teams":[{"login":"ccancellieri"}]}\n' > "$output"
+        printf '{"teams":[{"login":"ccancellieri"}]}\n' > "$output"
         printf 200
     else
-        printf '{"users":[{"login":"ccancellieri"}],"teams":[{"login":"github:example:maintainers"}]}\n' > "$output"
+        printf '{"users":[{"login":"ccancellieri"}]}\n' > "$output"
         printf 200
     fi
 elif [ -f "$TEST_STATE/versions/$package" ]; then
@@ -132,11 +135,21 @@ fi
     exit 1
 }
 
+if TEST_MALFORMED_OWNERS=crate-23 run_publisher --execute \
+    --version 0.5.0-rc.1 --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: a malformed owners response was accepted" >&2
+    exit 1
+fi
+[ ! -e "$state/published" ] || {
+    echo "FAIL: malformed ownership rejection happened after an upload" >&2
+    exit 1
+}
+
 run_publisher --execute --version 0.5.0-rc.1 --commit "$commit" >/dev/null
 [ "$(wc -l < "$state/published" | tr -d ' ')" -eq 27 ]
 run_publisher --execute --version 0.5.0-rc.1 --commit "$commit" >/dev/null
 [ "$(wc -l < "$state/published" | tr -d ' ')" -eq 27 ]
-[ "$(cat "$state/package-count")" -eq 5 ]
+[ "$(cat "$state/package-count")" -eq 6 ]
 
 rm "$state/names/crate-27"
 if run_publisher --execute --version 0.5.0-rc.1 \

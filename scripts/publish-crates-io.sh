@@ -140,8 +140,10 @@ for package in "${packages[@]}"; do
                 exit 1
             }
             jq -e --arg owner "$expected_owner" '
-                if ((.users | type) == "array" and (.teams | type) == "array")
-                then any((.users + .teams)[]?; .login? == $owner)
+                (.users // []) as $users
+                | (.teams // []) as $teams
+                | if (($users | type) == "array" and ($teams | type) == "array")
+                then any(($users + $teams)[]?; .login? == $owner)
                 else false
                 end
             ' "$probe" >/dev/null || {
