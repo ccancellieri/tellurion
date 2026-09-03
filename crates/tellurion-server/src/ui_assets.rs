@@ -39,6 +39,7 @@ struct UiAssets;
 struct UiAssets;
 
 const INDEX_HTML: &str = "index.html";
+const THIRD_PARTY_NOTICES: &str = include_str!("../ui/THIRD_PARTY_NOTICES.txt");
 
 fn asset_response(path: &str) -> Response {
     match UiAssets::get(path) {
@@ -69,6 +70,15 @@ async fn serve_index() -> Response {
     asset_response(INDEX_HTML)
 }
 
+async fn serve_third_party_notices() -> Response {
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+        THIRD_PARTY_NOTICES,
+    )
+        .into_response()
+}
+
 async fn serve_path(Path(path): Path<String>) -> Response {
     asset_response(&path)
 }
@@ -81,6 +91,10 @@ pub fn router() -> Router<Arc<AppContext>> {
     Router::new()
         .route("/ui", get(|| async { Redirect::permanent("/ui/") }))
         .route("/ui/", get(serve_index))
+        .route(
+            "/ui/THIRD_PARTY_NOTICES.txt",
+            get(serve_third_party_notices),
+        )
         .route("/ui/{*path}", get(serve_path))
 }
 
@@ -152,6 +166,30 @@ mod tests {
         );
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         assert!(String::from_utf8_lossy(&body).contains("Tellurion"));
+    }
+
+    #[tokio::test]
+    async fn notices_route_serves_the_canonical_notice_file() {
+        let app = test_app();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/ui/THIRD_PARTY_NOTICES.txt")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get(header::CONTENT_TYPE).unwrap(),
+            "text/plain; charset=utf-8"
+        );
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(
+            body.as_ref(),
+            include_bytes!("../ui/THIRD_PARTY_NOTICES.txt")
+        );
     }
 
     #[tokio::test]

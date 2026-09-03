@@ -22,6 +22,7 @@ fn main() {
     // an npm build. Cargo only tracks the directory's own mtime this way,
     // not every file inside it recursively, but Vite re-creates the directory.
     println!("cargo:rerun-if-changed={dist_dir}");
+    println!("cargo:rerun-if-changed=ui/THIRD_PARTY_NOTICES.txt");
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR")
         .expect("cargo always sets CARGO_MANIFEST_DIR for a build script");
@@ -34,6 +35,15 @@ fn main() {
              then re-run this build.\n\n",
             dist_index.display(),
             build_command,
+        );
+    }
+
+    let notice_file = Path::new(&manifest_dir).join("ui/THIRD_PARTY_NOTICES.txt");
+    if !notice_file.is_file() {
+        panic!(
+            "\n\nthe `ui` feature requires ui/THIRD_PARTY_NOTICES.txt.\n\
+             Build both UI bundles and generate the notice file first:\n\n    \
+             ./scripts/tests/test_cargo_package_ui.sh\n\n"
         );
     }
 }

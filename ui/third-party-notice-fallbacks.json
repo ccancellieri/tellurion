@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "fallbacks": [
+    {
+      "name": "@nodable/entities",
+      "version": "3.0.0",
+      "source": "https://registry.npmjs.org/%40nodable%2Fentities/3.0.0",
+      "sha256": "548526ce0e1cad9ffe904fba19067013c9fea336eafd3cd52a337ec44406c9ed"
+    },
+    {
+      "name": "brotli",
+      "version": "1.3.3",
+      "source": "https://registry.npmjs.org/brotli/1.3.3",
+      "sha256": "387b47d00ea96cab9b4c521629fbcdc7621053ac061812526f3c69700924cef5"
+    },
+    {
+      "name": "draco3d",
+      "version": "1.5.7",
+      "source": "https://registry.npmjs.org/draco3d/1.5.7",
+      "sha256": "6ef40efeb553eb7c2794228b52b22af1110b3d1ff4945ac8d5c29955df3a3c55"
+    },
+    {
+      "name": "isarray",
+      "version": "1.0.0",
+      "source": "https://registry.npmjs.org/isarray/1.0.0",
+      "sha256": "93165ce56e458216c18240cd961a522af5b18e51da06f55d88ac552234455d95"
+    },
+    {
+      "name": "lz4js",
+      "version": "0.2.0",
+      "source": "https://registry.npmjs.org/lz4js/0.2.0",
+      "sha256": "683538e928de4f5c7a884450dad938980896414a9ea75ec28dc4b215fcd31bdb"
+    },
+    {
+      "name": "murmurhash-js",
+      "version": "1.0.0",
+      "source": "https://registry.npmjs.org/murmurhash-js/1.0.0",
+      "sha256": "e4b3531abcc7da48f732a058112686b44af66004c38d98a8014619542e767cb4"
+    },
+    {
+      "name": "zstd-codec",
+      "version": "0.1.5",
+      "source": "https://registry.npmjs.org/zstd-codec/0.1.5",
+      "sha256": "553a62392efa2a819be554947b54012d274cb40bbd7312b649069824f436cc8c"
+    }
+  ]
+}

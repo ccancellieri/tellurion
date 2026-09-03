@@ -15,5 +15,9 @@ describe('public demo shell', () => {
     expect(document.querySelector('tellurion-status-widget')).toBeNull();
     expect(document.querySelector('tellurion-operator-workspace')).toBeNull();
     expect(document.querySelector('.protocol-lab')).toBeNull();
+    expect(
+      document.querySelector<HTMLAnchorElement>('a[href="/ui/THIRD_PARTY_NOTICES.txt"]')
+        ?.textContent,
+    ).toBe('Third-party notices');
   });
 });

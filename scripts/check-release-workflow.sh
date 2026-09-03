@@ -143,7 +143,13 @@ for source_evidence_requirement in \
     'python3 scripts/generate-third-party-notices\.py' \
     '--inventory "\$dependency_inventory"' \
     '--output "\$public_core/THIRD_PARTY_NOTICES\.json"' \
-    'cp "\$public_core/THIRD_PARTY_NOTICES\.json" dist/THIRD_PARTY_NOTICES\.json'; do
+    'cp "\$public_core/THIRD_PARTY_NOTICES\.json" dist/THIRD_PARTY_NOTICES\.json' \
+    'npm ci' \
+    'npm run build:public-demo' \
+    'scripts/generate-ui-third-party-notices\.py' \
+    'cmp .*THIRD_PARTY_NOTICES\.txt' \
+    'cp crates/tellurion-server/ui/THIRD_PARTY_NOTICES\.txt "\$public_core/THIRD_PARTY_NOTICES\.txt"' \
+    'cp "\$public_core/THIRD_PARTY_NOTICES\.txt" dist/THIRD_PARTY_NOTICES\.txt'; do
     printf '%s\n' "$source_job" | rg -q -- "$source_evidence_requirement" \
         || fail "clean source evidence flow is missing $source_evidence_requirement"
 done
@@ -163,6 +169,8 @@ printf '%s\n' "$source_job" | rg -q 'tellurion-v\$\{version\}-source-\$\{build_i
     || fail "source archive name must derive from workspace version and revision"
 printf '%s\n' "$source_job" | rg -q 'dist/THIRD_PARTY_NOTICES\.json' \
     || fail "source evidence upload must carry THIRD_PARTY_NOTICES.json"
+printf '%s\n' "$source_job" | rg -q 'dist/THIRD_PARTY_NOTICES\.txt' \
+    || fail "source evidence upload must carry THIRD_PARTY_NOTICES.txt"
 
 for sbom_requirement in \
     'anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610[[:space:]]+# v0' \
@@ -205,6 +213,7 @@ for package_requirement in \
     'Copy-Item LICENSE, COPYRIGHT\.md, README\.md' \
     'Copy-Item COMMERCIAL-LICENSE\.md' \
     'Copy-Item .*THIRD_PARTY_NOTICES\.json' \
+    'Copy-Item .*THIRD_PARTY_NOTICES\.txt' \
     'example-geopackage\.yaml' \
     'Copy-Item docs/licensing\.md' \
     'Join-Path \$package_dir "docs"' \
@@ -352,11 +361,13 @@ for checksum_requirement in \
     '\$\{#native_archives\[@\]\}.*-ne 3' \
     'test -f dist/tellurion\.spdx\.json' \
     'test -f dist/THIRD_PARTY_NOTICES\.json' \
+    'test -f dist/THIRD_PARTY_NOTICES\.txt' \
     'unzip -Z1 .*source_archives.*THIRD_PARTY_NOTICES\.json' \
+    'unzip -Z1 .*source_archives.*THIRD_PARTY_NOTICES\.txt' \
     'tar -tzf .*THIRD_PARTY_NOTICES' \
     'for archive in dist/tellurion-v\*-pc-windows-msvc\.zip' \
     'unzip -Z1 "\$archive".*THIRD_PARTY_NOTICES' \
-    'shasum -a 256 .*THIRD_PARTY_NOTICES\.json.*SHA256SUMS' \
+    'shasum -a 256 .*THIRD_PARTY_NOTICES\.json THIRD_PARTY_NOTICES\.txt.*SHA256SUMS' \
     'shasum -a 256 .*SHA256SUMS'; do
     printf '%s\n' "$checksum_step" | rg -q -- "$checksum_requirement" \
         || fail "aggregate checksum step is missing $checksum_requirement"

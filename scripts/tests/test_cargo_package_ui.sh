@@ -27,6 +27,14 @@ else
     (cd "$ROOT/ui" && npm ci && npm run build && npm run build:public-demo)
 fi
 
+python3 "$ROOT/scripts/generate-ui-third-party-notices.py" \
+    --lockfile "$ROOT/ui/package-lock.json" \
+    --package-root "$ROOT/ui/node_modules" \
+    --operator-bundle "$ROOT/crates/tellurion-server/ui/dist" \
+    --public-demo-bundle "$ROOT/crates/tellurion-server/ui/public-demo-dist" \
+    --fallbacks "$ROOT/ui/third-party-notice-fallbacks.json" \
+    --output "$ROOT/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt"
+
 cargo package \
     --manifest-path "$ROOT/crates/tellurion-server/Cargo.toml" \
     --allow-dirty \
@@ -40,6 +48,8 @@ grep -qx 'ui/dist/index.html' "$TEST_DIR/package-list" \
     || fail 'tellurion package does not contain the operator UI'
 grep -qx 'ui/public-demo-dist/index.html' "$TEST_DIR/package-list" \
     || fail 'tellurion package does not contain the public-demo UI'
+grep -qx 'ui/THIRD_PARTY_NOTICES.txt' "$TEST_DIR/package-list" \
+    || fail 'tellurion package does not contain the canonical UI third-party notices'
 
 # A stale legacy bundle must not be able to make the feature compile. Moving
 # it aside demonstrates that rust-embed and build.rs resolve within the

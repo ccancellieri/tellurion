@@ -321,14 +321,20 @@ expect_rejected() {
         missing-generated-notice)
             perl -0pi -e 's#python3 scripts/generate-third-party-notices\.py#true \##' "$fixture/workflows/release-artifacts.yml"
             ;;
+        missing-ui-notice-verification)
+            perl -0pi -e 's#python3 scripts/generate-ui-third-party-notices\.py#true \##' "$fixture/workflows/release-artifacts.yml"
+            ;;
         missing-source-upload-notice)
             perl -0pi -e 's#^[[:space:]]*dist/THIRD_PARTY_NOTICES\.json\n##m' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-native-notice)
             perl -0pi -e 's#^[[:space:]]*Copy-Item .*THIRD_PARTY_NOTICES\.json.*\n##m' "$fixture/workflows/release-artifacts.yml"
             ;;
+        missing-native-ui-notice)
+            perl -0pi -e 's#^[[:space:]]*Copy-Item .*THIRD_PARTY_NOTICES\.txt.*\n##m' "$fixture/workflows/release-artifacts.yml"
+            ;;
         missing-notice-checksum)
-            perl -0pi -e 's#tellurion\.spdx\.json THIRD_PARTY_NOTICES\.json > SHA256SUMS#tellurion.spdx.json > SHA256SUMS#' "$fixture/workflows/release-artifacts.yml"
+            perl -0pi -e 's# THIRD_PARTY_NOTICES\.txt(?= > SHA256SUMS)##' "$fixture/workflows/release-artifacts.yml"
             ;;
         tag-version-mismatch-accepted)
             perl -0pi -e 's#GITHUB_REF_NAME -ne#GITHUB_REF_NAME -eq#' "$fixture/workflows/release-artifacts.yml"
@@ -385,7 +391,7 @@ expect_rejected() {
         missing-codeowner-coverage)
             expected_message='CODEOWNERS'
             ;;
-        source-export-bypassed|missing-generated-notice)
+        source-export-bypassed|missing-generated-notice|missing-ui-notice-verification)
             expected_message='clean source evidence flow'
             ;;
         source-sbom-private-checkout)
@@ -397,7 +403,7 @@ expect_rejected() {
         missing-source-upload-notice)
             expected_message='source evidence upload'
             ;;
-        missing-native-notice)
+        missing-native-notice|missing-native-ui-notice)
             expected_message='release package'
             ;;
         missing-notice-checksum)
@@ -450,8 +456,10 @@ FINAL_FIX_MUTATIONS=(
     source-sbom-private-checkout
     source-archive-private-checkout
     missing-generated-notice
+    missing-ui-notice-verification
     missing-source-upload-notice
     missing-native-notice
+    missing-native-ui-notice
     missing-notice-checksum
     tag-version-mismatch-accepted
 )

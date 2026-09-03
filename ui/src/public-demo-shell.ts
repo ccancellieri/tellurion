@@ -1,3 +1,5 @@
+import { thirdPartyNoticesLink } from './legal';
+
 /** Mounts the intentionally narrow browser surface shipped with the public
  * demo image. The workflow and map viewer are registered by the entrypoint. */
 export function mountPublicDemoShell(root: HTMLElement): void {
@@ -13,6 +15,7 @@ export function mountPublicDemoShell(root: HTMLElement): void {
       `,
     }),
     Object.assign(document.createElement('main'), { className: 'public-demo-shell' }),
+    thirdPartyNoticesLink(),
   );
   const main = root.querySelector('main');
   if (!main) throw new Error('public demo shell is missing its main region');
