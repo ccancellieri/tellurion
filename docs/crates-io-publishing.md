@@ -41,12 +41,14 @@ documentation](https://doc.rust-lang.org/cargo/reference/publishing.html).
    **Trusted Publishing Only** mode for every crate and revoke obsolete API
    tokens.
 
-The publish job grants only `contents: read` and `id-token: write`. The latter
-lets the official `rust-lang/crates-io-auth-action` exchange GitHub's OIDC
-identity for a temporary crates.io token; the action revokes that token when
-the job ends. GitHub documents that `id-token: write` grants token-request
-ability, not repository write access. crates.io binds the publisher to the
-repository, workflow filename, and optional environment.
+Both jobs grant only `actions: read` and `contents: read`; the publish job also
+grants `id-token: write`. Actions read access verifies the exact successful
+`ci.yml` push run for the requested SHA. The OIDC permission lets the official
+`rust-lang/crates-io-auth-action` exchange GitHub's identity for a temporary
+crates.io token; the action revokes that token when the job ends. GitHub
+documents that `id-token: write` grants token-request ability, not repository
+write access. crates.io binds the publisher to the repository, workflow
+filename, and optional environment.
 
 ## First publication of new names
 
@@ -76,8 +78,10 @@ name is absent, avoiding a predictable mid-run failure.
 
 For the first release only, the crates.io owner must use a short-expiry API
 token with the minimum available operations from a clean checkout of the tagged
-commit. Export it only in that terminal; never save it in the repository or
-GitHub:
+commit. Canonical `origin/main` and the remote tag must both point to that
+commit, and its completed `ci.yml` push run on `main` must be successful before
+the script will use the token. Export it only in that terminal; never save it
+in the repository or GitHub:
 
 ```bash
 read -rsp 'Temporary crates.io token: ' CARGO_REGISTRY_TOKEN && printf '\n'
@@ -92,8 +96,9 @@ export TELLURION_BOOTSTRAP_CONFIRM='publish first crates for 0.5.0-rc.1 from <40
 unset CARGO_REGISTRY_TOKEN TELLURION_BOOTSTRAP_CONFIRM
 ```
 
-The bootstrap mode refuses to run inside GitHub Actions. It still verifies the
-clean tree, exact tag, version, commit, crate order, and byte identity of any
+The bootstrap mode refuses to run inside GitHub Actions. It verifies the clean
+tree, exact local and remote tag, canonical remote `main`, successful canonical
+CI, version, commit, every licence gate, crate order, and byte identity of any
 already-present version. Revoke the temporary token immediately afterward,
 then add the trusted publisher above to each newly created crate. Future
 releases use OIDC only.
@@ -112,10 +117,13 @@ workflow**, select `main`, and enter:
   reconsideration after a partial run.
 
 The ungated verification job checks the immutable identity, publication and
-licence policies, their mutation tests, the full workspace tests, all crate
-packages, and live registry state. The publish job starts only after those
-checks and the `crates-io` environment approval succeed. It repeats the
-identity and policy checks before requesting its temporary token.
+licence policies, their mutation tests, the exact successful canonical CI run,
+the complete 27-crate package graph, and live registry state. It does not rerun
+the workspace suite: canonical CI already includes its database-skip assertion,
+feature matrix, demos, and other required gates. The publish job starts only
+after those checks and the `crates-io` environment approval succeed. It repeats
+the origin, CI, identity, and policy checks before requesting its temporary
+token.
 
 ## Partial publication and safe resume
 
@@ -128,9 +136,13 @@ For every already-published crate/version, the script rebuilds the `.crate`
 from the tagged commit and compares it byte-for-byte with crates.io. An exact
 match is skipped. A mismatch stops the run because the immutable version cannot
 be repaired. Every crate before `resume_from` must already exist and match;
-missing predecessors are rejected. After each upload, the script verifies the
-remote bytes even when Cargo reports a timeout, because Cargo documents that a
-polling timeout does not mean the upload failed.
+missing predecessors are rejected. The script packages the full workspace once
+before comparing any version, then requires every expected archive to exist.
+After each upload, it verifies the remote bytes even when Cargo reports a
+timeout, because Cargo documents that a polling timeout does not mean the
+upload failed. If Cargo returns nonzero but matching bytes appear remotely, the
+run still stops: rerun the same commit and resume safely rather than allowing
+an ambiguous command result to advance to another crate.
 
 Never change source while resuming. If an uploaded crate is wrong, stop, assess
 whether it must be yanked, fix forward under a new version, and keep the

@@ -16,8 +16,13 @@ AGGREGATION = {
     "id-token": "write",
 }
 PUBLISH = {
+    "actions": "read",
     "contents": "read",
     "id-token": "write",
+}
+PUBLISH_VERIFY = {
+    "actions": "read",
+    "contents": "read",
 }
 JOB_KEY = re.compile(r"  ([A-Za-z0-9_-]+):$")
 PERMISSION_ENTRY = re.compile(r"([a-z][a-z-]*): (read|write|none)$")
@@ -301,7 +306,10 @@ def require_release(path: Path) -> None:
 
 def require_publish(path: Path) -> None:
     workflow_blocks, job_blocks = permission_blocks(path)
-    if workflow_blocks != [READ_ONLY] or job_blocks != {"publish": [PUBLISH]}:
+    if workflow_blocks != [READ_ONLY] or job_blocks != {
+        "publish": [PUBLISH],
+        "verify": [PUBLISH_VERIFY],
+    }:
         raise ValueError("publish permissions are not exact canonical mappings")
 
 

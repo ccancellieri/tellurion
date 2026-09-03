@@ -60,7 +60,13 @@ if [ "$mode" = --bootstrap ]; then
 fi
 
 ./scripts/verify-crates-io-release.sh "$version" "$commit"
+./scripts/audit-license-policy.sh
+./scripts/audit-publication-license.sh
 ./scripts/audit-crates-io-policy.sh
+if [ "$mode" != --preflight ]; then
+    ./scripts/verify-canonical-origin.sh "$version" "$commit"
+    ./scripts/verify-canonical-ci.sh "$commit"
+fi
 
 package_list="release/crates-io-packages.txt"
 packages=()
@@ -71,6 +77,22 @@ done < <(awk '!/^[[:space:]]*($|#)/ { print $1 }' "$package_list")
     echo "FAIL: expected exactly 27 ordered crates, found ${#packages[@]}" >&2
     exit 1
 }
+
+# Package the complete workspace graph before inspecting individual registry
+# versions. Cargo can resolve path+version dependencies from this temporary
+# workspace registry even when this exact version has not been published yet.
+archive_dir="target/package"
+for package in "${packages[@]}"; do
+    rm -f "$archive_dir/$package-$version.crate"
+done
+cargo +1.97.1 package --workspace --locked --no-verify
+for package in "${packages[@]}"; do
+    archive="$archive_dir/$package-$version.crate"
+    [ -f "$archive" ] || {
+        echo "FAIL: workspace packaging did not create $archive" >&2
+        exit 1
+    }
+done
 
 resume_index=0
 if [ -n "$resume_from" ]; then
@@ -115,14 +137,10 @@ if [ "${#missing_names[@]}" -ne 0 ] && [ "$mode" != --bootstrap ]; then
     exit 1
 fi
 
-archive_dir="target/package"
 for index in "${!packages[@]}"; do
     package="${packages[$index]}"
     archive="$archive_dir/$package-$version.crate"
     remote="$(mktemp)"
-    rm -f "$archive"
-    cargo +1.97.1 package --locked --no-verify -p "$package"
-    [ -f "$archive" ] || { echo "FAIL: Cargo did not create $archive" >&2; exit 1; }
 
     status="$(http_get "https://crates.io/api/v1/crates/$package/$version/download" "$remote")"
     if [ "$status" = 200 ]; then
@@ -179,6 +197,11 @@ for index in "${!packages[@]}"; do
     if [ "$verified" != true ]; then
         echo "FAIL: could not verify $package $version after cargo exit $publish_status" >&2
         echo "Rerun with --resume-from $package; existing byte-identical versions are skipped." >&2
+        exit 1
+    fi
+    if [ "$publish_status" -ne 0 ]; then
+        echo "STOP: Cargo returned $publish_status even though $package $version is now byte-identical on crates.io." >&2
+        echo "Rerun the same commit with --resume-from $package; do not advance automatically." >&2
         exit 1
     fi
 done

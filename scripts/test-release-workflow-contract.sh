@@ -135,6 +135,15 @@ expect_rejected() {
         cargo-publish-publication)
             printf '\n      - run: cargo +1.97.1 publish -p tellurion-core\n' >> "$fixture/workflows/release-artifacts.yml"
             ;;
+        crates-publisher-outside-publish-workflow)
+            printf '\n      - run: ./scripts/publish-crates-io.sh --execute\n' >> "$fixture/workflows/ci.yml"
+            ;;
+        crates-auth-outside-publish-workflow)
+            printf '\n      - uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1\n' >> "$fixture/workflows/ci.yml"
+            ;;
+        crates-token-outside-publish-workflow)
+            printf '\n      - run: true\n        env:\n          CARGO_REGISTRY_TOKEN: literal\n' >> "$fixture/workflows/ci.yml"
+            ;;
         image-push)
             printf '\n      - run: podman push registry.example/tellurion\n' >> "$fixture/workflows/ci.yml"
             ;;
@@ -477,7 +486,9 @@ FINAL_FIX_MUTATIONS=(
 CORE_CONTRACT_MUTATIONS=(
     windows-shell smoke-directory unsafe-ref-name ref-name-as-version
     release-api gh-release-publication gh-release-action-publication
-    contents-write-publication cargo-publish-publication image-push git-push
+    contents-write-publication cargo-publish-publication
+    crates-publisher-outside-publish-workflow crates-auth-outside-publish-workflow
+    crates-token-outside-publish-workflow image-push git-push
     ci-mutable-action-reference release-mutable-action-reference
     ci-unknown-pinned-action release-unknown-pinned-action
     canonical-local-action canonical-docker-action canonical-reusable-workflow

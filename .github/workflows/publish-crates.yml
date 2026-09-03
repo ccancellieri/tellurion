@@ -33,6 +33,9 @@ jobs:
     name: verify immutable crates.io candidate
     if: github.repository == 'ccancellieri/tellurion' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -52,6 +55,14 @@ jobs:
           test "$GITHUB_SHA" = "$REQUESTED_COMMIT"
           test "$CONFIRMATION" = "publish $REQUESTED_VERSION from $REQUESTED_COMMIT"
           ./scripts/verify-crates-io-release.sh "$REQUESTED_VERSION" "$REQUESTED_COMMIT"
+          ./scripts/verify-canonical-origin.sh "$REQUESTED_VERSION" "$REQUESTED_COMMIT"
+
+      - name: Require successful canonical CI
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REQUESTED_COMMIT: ${{ inputs.commit }}
+        run: ./scripts/verify-canonical-ci.sh "$REQUESTED_COMMIT"
 
       - name: Run publication policy gates
         shell: bash
@@ -64,13 +75,9 @@ jobs:
           ./scripts/test-crates-io-policy.sh
           ./scripts/test-crates-io-publish-workflow.sh
           ./scripts/check-crates-io-publisher.sh
+          ./scripts/test-publish-crates-io.sh
+          ./scripts/test-crates-io-release-bindings.sh
           ./scripts/test-verify-crates-io-release.sh
-
-      - name: Run workspace tests
-        run: cargo +1.97.1 test --workspace --locked
-
-      - name: Build all registry packages
-        run: cargo +1.97.1 package --workspace --locked --no-verify
 
       - name: Preflight registry state
         shell: bash
@@ -92,6 +99,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: crates-io
     permissions:
+      actions: read
       contents: read
       id-token: write
     steps:
@@ -113,9 +121,17 @@ jobs:
           test "$GITHUB_SHA" = "$REQUESTED_COMMIT"
           test "$CONFIRMATION" = "publish $REQUESTED_VERSION from $REQUESTED_COMMIT"
           ./scripts/verify-crates-io-release.sh "$REQUESTED_VERSION" "$REQUESTED_COMMIT"
+          ./scripts/verify-canonical-origin.sh "$REQUESTED_VERSION" "$REQUESTED_COMMIT"
           ./scripts/audit-license-policy.sh
           ./scripts/audit-publication-license.sh
           ./scripts/audit-crates-io-policy.sh
+
+      - name: Revalidate successful canonical CI
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REQUESTED_COMMIT: ${{ inputs.commit }}
+        run: ./scripts/verify-canonical-ci.sh "$REQUESTED_COMMIT"
 
       - name: Authenticate with crates.io
         id: auth

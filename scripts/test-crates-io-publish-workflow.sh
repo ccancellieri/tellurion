@@ -17,6 +17,9 @@ expect_rejected() {
         automatic-trigger)
             perl -0pi -e 's/^  workflow_dispatch:/  push:\n    branches: [main]\n  workflow_dispatch:/m' "$fixture/workflows/publish-crates.yml"
             ;;
+        pull-request-target-trigger)
+            perl -0pi -e 's/^  workflow_dispatch:/  pull_request_target:\n  workflow_dispatch:/m' "$fixture/workflows/publish-crates.yml"
+            ;;
         missing-environment)
             perl -0pi -e 's/^    environment: crates-io\n//m' "$fixture/workflows/publish-crates.yml"
             ;;
@@ -25,6 +28,9 @@ expect_rejected() {
             ;;
         missing-oidc)
             perl -0pi -e 's/^      id-token: write\n//m' "$fixture/workflows/publish-crates.yml"
+            ;;
+        missing-actions-read)
+            perl -0pi -e 's/^      actions: read\n//mg' "$fixture/workflows/publish-crates.yml"
             ;;
         token-secret)
             perl -0pi -e 's/\$\{\{ steps\.auth\.outputs\.token \}\}/\$\{\{ secrets.CARGO_REGISTRY_TOKEN \}\}/' "$fixture/workflows/publish-crates.yml"
@@ -46,6 +52,9 @@ expect_rejected() {
             ;;
         missing-tag-binding)
             perl -0pi -e 's/^.*verify-crates-io-release\.sh.*\n//mg' "$fixture/workflows/publish-crates.yml"
+            ;;
+        missing-ci-binding)
+            perl -0pi -e 's/^.*verify-canonical-ci\.sh.*\n//mg' "$fixture/workflows/publish-crates.yml"
             ;;
         publish-before-gates)
             perl -0pi -e 's/^    needs: \[verify\]\n//m' "$fixture/workflows/publish-crates.yml"
@@ -97,10 +106,20 @@ else
     echo "ok: publisher without byte-identity verification rejected"
 fi
 
+cp scripts/publish-crates-io.sh "$publisher_fixture"
+perl -0pi -e 's/cargo \+1\.97\.1 package --workspace --locked --no-verify/cargo +1.97.1 package --locked --no-verify -p "$package"/' "$publisher_fixture"
+if CRATES_IO_PUBLISHER="$publisher_fixture" bash scripts/check-crates-io-publisher.sh >/dev/null 2>&1; then
+    echo "FAIL: publisher without one workspace package preflight was accepted" >&2
+    failures=$((failures + 1))
+else
+    echo "ok: publisher without one workspace package preflight rejected"
+fi
+
 for mutation in \
-    automatic-trigger missing-environment broad-permissions missing-oidc \
+    automatic-trigger pull-request-target-trigger missing-environment broad-permissions missing-oidc \
+    missing-actions-read \
     token-secret mutable-auth-action missing-version-input missing-commit-input \
-    missing-confirmation unchecked-head missing-tag-binding publish-before-gates \
+    missing-confirmation unchecked-head missing-tag-binding missing-ci-binding publish-before-gates \
     cancelling-publication unapproved-publish-command alternate-registry \
     no-resume-input; do
     expect_rejected "$mutation"

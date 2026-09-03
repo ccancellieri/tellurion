@@ -279,6 +279,8 @@ phase_artifact_audit() { # ci.yml job: artifact-audit
         ./scripts/test-crates-io-publish-workflow.sh &&
         ./scripts/check-crates-io-publish-workflow.sh &&
         ./scripts/check-crates-io-publisher.sh &&
+        ./scripts/test-publish-crates-io.sh &&
+        ./scripts/test-crates-io-release-bindings.sh &&
         ./scripts/test-verify-crates-io-release.sh
 }
 

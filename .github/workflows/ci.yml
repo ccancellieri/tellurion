@@ -405,6 +405,12 @@ jobs:
       - name: crates.io ordered publisher contract
         run: |
           ./scripts/check-crates-io-publisher.sh
+      - name: crates.io package graph and resume tests
+        run: |
+          ./scripts/test-publish-crates-io.sh
+      - name: crates.io canonical release binding tests
+        run: |
+          ./scripts/test-crates-io-release-bindings.sh
       - name: crates.io release identity tests
         run: |
           ./scripts/test-verify-crates-io-release.sh

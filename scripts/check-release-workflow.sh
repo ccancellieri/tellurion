@@ -445,6 +445,16 @@ for pattern in "${publication_patterns[@]}"; do
     fi
 done
 
+# Every crates.io-specific capability is confined to the one workflow whose
+# complete contract is checked below. Other workflows may use OIDC for public
+# attestations, but may not acquire a registry token or invoke its publisher.
+for workflow_file in "${workflows[@]}"; do
+    [ "$workflow_file" = "$publish_workflow" ] && continue
+    if rg -n -i -- '(^|[[:space:]])(\./)?scripts/publish-crates-io\.sh([[:space:]\\]|$)|rust-lang/crates-io-auth-action|CARGO_REGISTRY_TOKEN|cargo[[:space:]]+login\b' "$workflow_file"; then
+        fail "crates.io publication capability is allowed only in publish-crates.yml"
+    fi
+done
+
 bash scripts/check-crates-io-publish-workflow.sh \
     || fail "crates.io publication workflow contract does not hold"
 
