@@ -22,7 +22,9 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use tellurion_core::{AssetKind, AssetRecord, AssetRecordEntry, AssetState, ServiceAssetsMode};
+use tellurion_core::{
+    AssetKind, AssetRecord, AssetRecordEntry, AssetState, ServerConfig, ServiceAssetsMode,
+};
 
 use crate::model::StacAsset;
 
@@ -85,6 +87,7 @@ pub struct AssetCapabilities {
 /// client can actually dereference. `Templated` (the default) keeps every
 /// byte of the pre-`#220` map.
 pub fn collection_assets(
+    server: &ServerConfig,
     tenant_ext: &str,
     catalog_ext: &str,
     collection_ext: &str,
@@ -108,8 +111,9 @@ pub fn collection_assets(
     // the discarded combination was already unreachable through every real
     // caller.
     if caps.has_tiles {
-        let tiles_root =
-            format!("/{tenant_ext}/tiles/catalogs/{catalog_ext}/collections/{collection_ext}");
+        let tiles_root = server.public_href(&format!(
+            "/{tenant_ext}/tiles/catalogs/{catalog_ext}/collections/{collection_ext}"
+        ));
         let tile_template =
             format!("{tiles_root}/tiles/WebMercatorQuad/{{tileMatrix}}/{{tileRow}}/{{tileCol}}");
 
@@ -156,9 +160,9 @@ pub fn collection_assets(
             assets.insert(
                 "glb".to_string(),
                 StacAsset {
-                    href: format!(
+                    href: server.public_href(&format!(
                         "/{tenant_ext}/3dtiles/catalogs/{catalog_ext}/collections/{collection_ext}/3dtiles/tiles/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.glb"
-                    ),
+                    )),
                     media_type: Some(GLB_MEDIA_TYPE.to_string()),
                     title: Some("3D tiles (glTF binary)".to_string()),
                     description: None,
@@ -187,20 +191,22 @@ pub fn collection_assets(
 /// `OriginalUri`, since a managed asset's href is server-computed, not
 /// client-supplied.
 pub fn asset_data_href(
+    server: &ServerConfig,
     tenant_ext: &str,
     catalog_ext: &str,
     collection_ext: &str,
     item_id: Option<&str>,
     key: &str,
 ) -> String {
-    match item_id {
+    let path = match item_id {
         Some(fid) => format!(
             "/{tenant_ext}/stac/catalogs/{catalog_ext}/collections/{collection_ext}/items/{fid}/assets/{key}/data"
         ),
         None => format!(
             "/{tenant_ext}/stac/catalogs/{catalog_ext}/collections/{collection_ext}/assets/{key}/data"
         ),
-    }
+    };
+    server.public_href(&path)
 }
 
 /// Whether a persisted record may be advertised as a usable STAC asset
@@ -234,6 +240,7 @@ fn is_advertisable(record: &AssetRecord) -> bool {
 /// `{tileMatrix}`-style template — the flag exists for the capability-derived
 /// tile assets alone (see [`StacAsset::templated`]).
 fn record_to_stac_asset(
+    server: &ServerConfig,
     tenant_ext: &str,
     catalog_ext: &str,
     collection_ext: &str,
@@ -242,9 +249,14 @@ fn record_to_stac_asset(
     record: &AssetRecord,
 ) -> StacAsset {
     let href = match record.kind {
-        AssetKind::Managed => {
-            asset_data_href(tenant_ext, catalog_ext, collection_ext, Some(item_id), key)
-        }
+        AssetKind::Managed => asset_data_href(
+            server,
+            tenant_ext,
+            catalog_ext,
+            collection_ext,
+            Some(item_id),
+            key,
+        ),
         AssetKind::Remote => record.href.clone().unwrap_or_default(),
     };
     StacAsset {
@@ -310,6 +322,7 @@ impl PageItemAssets {
     /// Folds `records` (one batched read's worth, for a whole page) onto
     /// `shared`. Pure: every I/O already happened in the caller.
     pub fn new(
+        server: &ServerConfig,
         shared: BTreeMap<String, StacAsset>,
         tenant_ext: &str,
         catalog_ext: &str,
@@ -330,6 +343,7 @@ impl PageItemAssets {
                 .insert(
                     entry.key.clone(),
                     record_to_stac_asset(
+                        server,
                         tenant_ext,
                         catalog_ext,
                         collection_ext,
@@ -362,15 +376,26 @@ mod tests {
         }
     }
 
+    fn server() -> ServerConfig {
+        ServerConfig::default()
+    }
+
+    fn canonical_server() -> ServerConfig {
+        ServerConfig {
+            public_base_url: Some("https://geo.example.test/tellurion/".to_string()),
+            ..ServerConfig::default()
+        }
+    }
+
     #[test]
     fn no_capabilities_produces_no_assets() {
-        let assets = collection_assets("public", "default", "demo", &caps(false, false));
+        let assets = collection_assets(&server(), "public", "default", "demo", &caps(false, false));
         assert!(assets.is_empty());
     }
 
     #[test]
     fn tiles_capability_produces_mvt_and_png_but_no_glb() {
-        let assets = collection_assets("public", "default", "demo", &caps(true, false));
+        let assets = collection_assets(&server(), "public", "default", "demo", &caps(true, false));
         assert!(assets.contains_key("mvt"));
         assert!(assets.contains_key("png"));
         assert!(
@@ -393,7 +418,7 @@ mod tests {
     /// call and so never builds this combination in the first place.
     #[test]
     fn places3d_without_a_resolving_tiles_lane_yields_no_glb_asset_either() {
-        let assets = collection_assets("public", "default", "demo", &caps(false, true));
+        let assets = collection_assets(&server(), "public", "default", "demo", &caps(false, true));
         assert!(
             !assets.contains_key("glb"),
             "the 3D tiles route needs a TileSource too; describing it without one \
@@ -404,7 +429,7 @@ mod tests {
 
     #[test]
     fn full_capabilities_produce_mvt_png_and_glb() {
-        let assets = collection_assets("public", "default", "demo", &caps(true, true));
+        let assets = collection_assets(&server(), "public", "default", "demo", &caps(true, true));
         assert!(assets.contains_key("mvt"));
         assert!(assets.contains_key("png"));
         assert!(assets.contains_key("glb"));
@@ -412,7 +437,7 @@ mod tests {
 
     #[test]
     fn mvt_and_png_hrefs_carry_the_correct_tenant_catalog_and_collection_segments() {
-        let assets = collection_assets("acme", "cat1", "roads", &caps(true, false));
+        let assets = collection_assets(&server(), "acme", "cat1", "roads", &caps(true, false));
         let mvt = &assets["mvt"];
         assert_eq!(
             mvt.href,
@@ -435,8 +460,27 @@ mod tests {
     }
 
     #[test]
+    fn a_canonical_base_with_a_path_prefix_qualifies_service_templates() {
+        let assets = collection_assets(
+            &canonical_server(),
+            "acme",
+            "cat1",
+            "roads",
+            &caps(true, true),
+        );
+        assert_eq!(
+            assets["mvt"].href,
+            "https://geo.example.test/tellurion/acme/tiles/catalogs/cat1/collections/roads/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}.mvt"
+        );
+        assert_eq!(
+            assets["glb"].href,
+            "https://geo.example.test/tellurion/acme/3dtiles/catalogs/cat1/collections/roads/3dtiles/tiles/{tileMatrix}/{tileRow}/{tileCol}.glb"
+        );
+    }
+
+    #[test]
     fn glb_href_uses_the_3dtiles_root_not_the_tiles_root() {
-        let assets = collection_assets("acme", "cat1", "roads", &caps(true, true));
+        let assets = collection_assets(&server(), "acme", "cat1", "roads", &caps(true, true));
         let glb = &assets["glb"];
         assert_eq!(
             glb.href,
@@ -451,7 +495,7 @@ mod tests {
             style_ids: vec!["basic".to_string()],
             ..caps(true, false)
         };
-        let assets = collection_assets("public", "default", "demo", &caps);
+        let assets = collection_assets(&server(), "public", "default", "demo", &caps);
         let styled = assets
             .get("style-basic")
             .expect("expected a style-basic asset");
@@ -464,7 +508,7 @@ mod tests {
 
     #[test]
     fn no_declared_styles_means_no_styled_assets() {
-        let assets = collection_assets("public", "default", "demo", &caps(true, false));
+        let assets = collection_assets(&server(), "public", "default", "demo", &caps(true, false));
         assert!(!assets.keys().any(|k| k.starts_with("style-")));
     }
 
@@ -482,7 +526,7 @@ mod tests {
             style_ids: vec!["basic".to_string()],
             ..caps(true, true)
         };
-        let assets = collection_assets("public", "default", "demo", &caps);
+        let assets = collection_assets(&server(), "public", "default", "demo", &caps);
         assert_eq!(
             assets.keys().collect::<Vec<_>>(),
             vec!["glb", "mvt", "png", "style-basic"]
@@ -501,7 +545,7 @@ mod tests {
             service_assets: ServiceAssetsMode::Links,
             ..caps(true, true)
         };
-        let assets = collection_assets("public", "default", "demo", &caps);
+        let assets = collection_assets(&server(), "public", "default", "demo", &caps);
         assert!(
             assets.is_empty(),
             "links mode must leave the service surfaces to typed links: {assets:?}"
@@ -519,7 +563,8 @@ mod tests {
             ..caps(true, false)
         };
         let assets = PageItemAssets::new(
-            collection_assets("public", "default", "demo", &caps),
+            &server(),
+            collection_assets(&server(), "public", "default", "demo", &caps),
             "public",
             "default",
             "demo",
@@ -575,7 +620,8 @@ mod tests {
 
     fn page(records: &[AssetRecordEntry]) -> PageItemAssets {
         PageItemAssets::new(
-            collection_assets("public", "default", "demo", &caps(true, false)),
+            &server(),
+            collection_assets(&server(), "public", "default", "demo", &caps(true, false)),
             "public",
             "default",
             "demo",
@@ -589,7 +635,7 @@ mod tests {
     #[test]
     fn an_item_with_no_records_gets_the_shared_capability_derived_map() {
         let assets = page(&[]);
-        let derived = collection_assets("public", "default", "demo", &caps(true, false));
+        let derived = collection_assets(&server(), "public", "default", "demo", &caps(true, false));
         assert_eq!(
             assets.for_item("a").keys().collect::<Vec<_>>(),
             derived.keys().collect::<Vec<_>>()
@@ -630,6 +676,70 @@ mod tests {
             assets.for_item("a")["cog"].href,
             "/public/stac/catalogs/default/collections/demo/items/a/assets/cog/data"
         );
+    }
+
+    #[test]
+    fn a_canonical_base_qualifies_managed_assets_but_never_rewrites_remote_schemes() {
+        let records = [
+            entry(
+                Some("a"),
+                "managed",
+                record(AssetKind::Managed, AssetState::Available, None),
+            ),
+            entry(
+                Some("a"),
+                "https",
+                record(
+                    AssetKind::Remote,
+                    AssetState::Available,
+                    Some("https://cdn.example.test/a.tif"),
+                ),
+            ),
+            entry(
+                Some("a"),
+                "s3",
+                record(
+                    AssetKind::Remote,
+                    AssetState::Available,
+                    Some("s3://bucket/a.tif"),
+                ),
+            ),
+            entry(
+                Some("a"),
+                "data",
+                record(
+                    AssetKind::Remote,
+                    AssetState::Available,
+                    Some("data:text/plain;base64,QQ=="),
+                ),
+            ),
+            entry(
+                Some("a"),
+                "protocol-relative",
+                record(
+                    AssetKind::Remote,
+                    AssetState::Available,
+                    Some("//cdn.example.test/a.tif"),
+                ),
+            ),
+        ];
+        let assets = PageItemAssets::new(
+            &canonical_server(),
+            BTreeMap::new(),
+            "public",
+            "default",
+            "demo",
+            &records,
+        );
+        let item = assets.for_item("a");
+        assert_eq!(
+            item["managed"].href,
+            "https://geo.example.test/tellurion/public/stac/catalogs/default/collections/demo/items/a/assets/managed/data"
+        );
+        assert_eq!(item["https"].href, "https://cdn.example.test/a.tif");
+        assert_eq!(item["s3"].href, "s3://bucket/a.tif");
+        assert_eq!(item["data"].href, "data:text/plain;base64,QQ==");
+        assert_eq!(item["protocol-relative"].href, "//cdn.example.test/a.tif");
     }
 
     /// Each item's records land on that item and nowhere else — the whole
@@ -704,7 +814,7 @@ mod tests {
         assert!(!assets.for_item("a").contains_key("pending-cog"));
         assert!(!assets.for_item("a").contains_key("failed-cog"));
         // Nothing advertisable landed, so the item keeps the shared map.
-        let derived = collection_assets("public", "default", "demo", &caps(true, false));
+        let derived = collection_assets(&server(), "public", "default", "demo", &caps(true, false));
         assert_eq!(
             assets.for_item("a").keys().collect::<Vec<_>>(),
             derived.keys().collect::<Vec<_>>()
@@ -755,11 +865,11 @@ mod tests {
     #[test]
     fn the_collection_level_data_href_has_no_items_segment() {
         assert_eq!(
-            asset_data_href("acme", "cat1", "roads", None, "thumb"),
+            asset_data_href(&server(), "acme", "cat1", "roads", None, "thumb"),
             "/acme/stac/catalogs/cat1/collections/roads/assets/thumb/data"
         );
         assert_eq!(
-            asset_data_href("acme", "cat1", "roads", Some("f1"), "thumb"),
+            asset_data_href(&server(), "acme", "cat1", "roads", Some("f1"), "thumb",),
             "/acme/stac/catalogs/cat1/collections/roads/items/f1/assets/thumb/data"
         );
     }

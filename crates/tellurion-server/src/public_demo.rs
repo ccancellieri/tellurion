@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use axum::extract::{DefaultBodyLimit, OriginalUri, Path, RawQuery};
+use axum::extract::{DefaultBodyLimit, OriginalUri, Path, RawQuery, State};
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -20,7 +20,8 @@ use uuid::Uuid;
 
 use tellurion_cog::CogDriverFactory;
 use tellurion_core::{
-    CatalogSource, CollectionDecl, FeatureSource, ItemsQuery, RasterSource, TileCoord, TileSource,
+    AppContext, CatalogSource, CollectionDecl, FeatureSource, ItemsQuery, RasterSource,
+    ServerConfig, TileCoord, TileSource,
 };
 use tellurion_geoparquet::{GeoparquetBackend, GeoparquetInput};
 use tellurion_http_source::{PublicHttpsGateway, RangeObject, SourceSession};
@@ -385,6 +386,7 @@ fn router_with_registry(registry: DemoRegistry) -> Router<Arc<tellurion_core::Ap
 }
 
 async fn register_source(
+    State(ctx): State<Arc<AppContext>>,
     Extension(registry): Extension<DemoRegistry>,
     headers: HeaderMap,
     OriginalUri(request_uri): OriginalUri,
@@ -400,7 +402,15 @@ async fn register_source(
             Err(()) => return private(StatusCode::TOO_MANY_REQUESTS.into_response()),
         },
     };
-    let response = register_source_inner(&registry, &session, request_uri.path(), body).await;
+    let state = ctx.current();
+    let response = register_source_inner(
+        &registry,
+        &session,
+        request_uri.path(),
+        &state.config.server,
+        body,
+    )
+    .await;
     let registered = response.status().is_success();
     if minted && registered {
         registry
@@ -418,6 +428,7 @@ async fn register_source_inner(
     registry: &DemoRegistry,
     session: &Arc<DemoSession>,
     request_path: &str,
+    server: &ServerConfig,
     body: RegisterRequest,
 ) -> Response {
     if body.url.len() > MAX_BODY_BYTES {
@@ -463,6 +474,7 @@ async fn register_source_inner(
         request_path,
         registry.state.clock.now(),
         session.created_at,
+        server,
     )
 }
 
@@ -627,6 +639,7 @@ async fn inspect_cog(object: Arc<dyn RangeObject>) -> Result<DemoSource, ()> {
 }
 
 async fn get_source(
+    State(ctx): State<Arc<AppContext>>,
     Extension(registry): Extension<DemoRegistry>,
     headers: HeaderMap,
     Path(source_id): Path<String>,
@@ -635,11 +648,13 @@ async fn get_source(
     let Some((session, source)) = registry.source_for_request(&headers, &source_id).await else {
         return private(StatusCode::NOT_FOUND.into_response());
     };
+    let state = ctx.current();
     private(source_response(
         &source.metadata,
         request_uri.path(),
         registry.state.clock.now(),
         session.created_at,
+        &state.config.server,
     ))
 }
 
@@ -764,6 +779,7 @@ struct DemoFeatureCollection {
 }
 
 async fn list_items(
+    State(ctx): State<Arc<AppContext>>,
     Extension(registry): Extension<DemoRegistry>,
     headers: HeaderMap,
     Path(source_id): Path<String>,
@@ -785,15 +801,22 @@ async fn list_items(
     let Ok(page) = features.items(&source.collection, &query.query).await else {
         return private(StatusCode::BAD_GATEWAY.into_response());
     };
+    let state = ctx.current();
     let path = request_uri.path();
     let mut links = vec![DemoLink {
-        href: items_href(path, &query, None, true),
+        href: state
+            .config
+            .server
+            .public_href(&items_href(path, &query, None, true)),
         rel: "self",
         media_type: GEOJSON_MEDIA_TYPE,
     }];
     if let Some(next) = page.next_token.as_deref() {
         links.push(DemoLink {
-            href: items_href(path, &query, Some(next), false),
+            href: state
+                .config
+                .server
+                .public_href(&items_href(path, &query, Some(next), false)),
             rel: "next",
             media_type: GEOJSON_MEDIA_TYPE,
         });
@@ -1006,6 +1029,7 @@ fn source_response(
     request_path: &str,
     now: Instant,
     created_at: Instant,
+    server: &ServerConfig,
 ) -> Response {
     let source_id = &metadata.id;
     let self_href = if request_path.ends_with(source_id) {
@@ -1013,8 +1037,9 @@ fn source_response(
     } else {
         format!("/demo/sources/{source_id}")
     };
+    let self_href = server.public_href(&self_href);
     let remaining = SESSION_TTL.saturating_sub(now.saturating_duration_since(created_at));
-    let base = format!("/demo/sources/{source_id}");
+    let base = server.public_href(&format!("/demo/sources/{source_id}"));
     let vector = metadata.geometry_type.is_some();
     Json(SourceResponse {
         metadata: metadata.clone(),
@@ -1461,6 +1486,37 @@ mod tests {
         }
     }
 
+    struct PaginatedFeatureSource;
+
+    #[async_trait]
+    impl FeatureSource for PaginatedFeatureSource {
+        async fn items(
+            &self,
+            _collection: &CollectionDecl,
+            query: &ItemsQuery,
+        ) -> tellurion_core::Result<FeaturePage> {
+            Ok(FeaturePage {
+                features_geojson: vec![serde_json::json!({
+                    "type": "Feature",
+                    "id": "1",
+                    "geometry": null,
+                    "properties": {},
+                })],
+                number_matched: Some(2),
+                next_token: query.token.is_none().then(|| "1".to_string()),
+            })
+        }
+
+        async fn item(
+            &self,
+            _collection: &CollectionDecl,
+            _id: &str,
+            _filter: Option<&tellurion_core::Filter>,
+        ) -> tellurion_core::Result<Option<serde_json::Value>> {
+            Ok(None)
+        }
+    }
+
     impl BlockingRegistrar {
         fn new() -> Self {
             Self {
@@ -1492,6 +1548,10 @@ mod tests {
 
     fn test_app_with_registry(registry: DemoRegistry) -> Router {
         let config = AppConfig::default();
+        test_app_with_registry_and_config(registry, config)
+    }
+
+    fn test_app_with_registry_and_config(registry: DemoRegistry, config: AppConfig) -> Router {
         config.validate().unwrap();
         let storage_registry = Registry::new();
         let core_router = CoreRouter::build(&config, &storage_registry).unwrap();
@@ -1507,6 +1567,71 @@ mod tests {
             style_store,
         ));
         router_with_registry(registry).with_state(ctx)
+    }
+
+    #[tokio::test]
+    async fn configured_public_base_is_used_by_real_source_and_items_routes() {
+        let config: AppConfig =
+            serde_yaml::from_str("server: { public_base_url: 'https://demo.example/tellurion/' }")
+                .unwrap();
+        let clock = Arc::new(TestClock::new(Instant::now()));
+        let registrar = Arc::new(FixtureRegistrar::new());
+        let registry = DemoRegistry::with_components(registrar, clock);
+        let app = test_app_with_registry_and_config(registry.clone(), config);
+        let registered = register_fixture(&app, None).await;
+        let cookie = registered.cookie.as_deref().unwrap();
+        let base = format!(
+            "https://demo.example/tellurion/demo/sources/{}",
+            registered.id
+        );
+        let source_document: serde_json::Value = serde_json::from_str(&registered.json).unwrap();
+        assert_eq!(source_document["links"]["self_href"], base);
+
+        let session_id = cookie.split_once('=').unwrap().1;
+        let session = registry
+            .state
+            .sessions
+            .lock()
+            .await
+            .get(session_id)
+            .unwrap()
+            .clone();
+        let mut sources = session.sources.lock().await;
+        let source = sources.get(&registered.id).unwrap().clone();
+        sources.insert(
+            registered.id.clone(),
+            Arc::new(DemoSource {
+                raster: source.raster.clone(),
+                features: Some(Arc::new(PaginatedFeatureSource)),
+                tiles: source.tiles.clone(),
+                collection: source.collection.clone(),
+                metadata: source.metadata.clone(),
+            }),
+        );
+        drop(sources);
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/demo/sources/{}/items?limit=1", registered.id))
+                    .header(header::COOKIE, cookie)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let items: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let links = items["links"].as_array().unwrap();
+        assert_eq!(
+            links.iter().find(|link| link["rel"] == "self").unwrap()["href"],
+            format!("{base}/items?limit=1")
+        );
+        assert_eq!(
+            links.iter().find(|link| link["rel"] == "next").unwrap()["href"],
+            format!("{base}/items?limit=1&token=1")
+        );
     }
 
     fn fixture_app() -> (Router, DemoRegistry, Arc<TestClock>, Arc<FixtureRegistrar>) {

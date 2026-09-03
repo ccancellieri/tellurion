@@ -81,9 +81,10 @@ pub struct MetricCollectionRef {
 pub struct ServerConfig {
     pub port: u16,
     pub request_timeout_s: u64,
-    /// Optional canonical public URL used for links returned by landing and
-    /// directory documents. When absent, Tellurion emits relative links so a
-    /// deployment can remain portable behind arbitrary reverse proxies.
+    /// Optional canonical public URL used for every server-generated link,
+    /// URI template, and resource `Location`. When absent, Tellurion emits
+    /// relative references so a deployment can remain portable behind
+    /// arbitrary reverse proxies.
     ///
     /// Set this explicitly when clients need copy-and-pasteable links (for
     /// example a public demo). Tellurion never derives it from `Host` or
@@ -180,10 +181,12 @@ impl ServerConfig {
     /// A configured base may include a path prefix for a reverse proxy. The
     /// input path, including any query string, is appended without URL
     /// resolution so a leading slash cannot discard that prefix.
-    pub fn public_href(&self, path: &str) -> String {
+    pub fn public_href(&self, href: &str) -> String {
         match self.public_base_url.as_deref() {
-            Some(base) => format!("{}{}", base.trim_end_matches('/'), path),
-            None => path.to_string(),
+            Some(base) if href.starts_with('/') && !href.starts_with("//") => {
+                format!("{}{}", base.trim_end_matches('/'), href)
+            }
+            _ => href.to_string(),
         }
     }
 }
@@ -6288,6 +6291,28 @@ cache:
         assert_eq!(
             config.server.public_href("/public?limit=1"),
             "https://maps.example.test/tellurion/public?limit=1"
+        );
+        for unchanged in [
+            "https://assets.example.test/data.tif?signature=opaque",
+            "s3://bucket/key",
+            "data:application/json,{}",
+            "//cdn.example.test/resource",
+            "relative/resource",
+            "",
+        ] {
+            assert_eq!(config.server.public_href(unchanged), unchanged);
+        }
+        assert_eq!(
+            config
+                .server
+                .public_href("https://maps.example.test/tellurion/public"),
+            "https://maps.example.test/tellurion/public"
+        );
+        assert_eq!(
+            config
+                .server
+                .public_href("/tiles/{tileMatrix}/{tileRow}/{tileCol}?f=mvt"),
+            "https://maps.example.test/tellurion/tiles/{tileMatrix}/{tileRow}/{tileCol}?f=mvt"
         );
         assert!(config.validate().is_ok());
 

@@ -65,6 +65,7 @@ impl CatalogSource for ItemAssetsCatalog {
 /// `tests/sidecar.rs`'s own feature source uses.
 struct ItemAssetsFeatureSource {
     items: Vec<(String, Value)>,
+    on_next_items: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
 
 #[async_trait::async_trait]
@@ -74,6 +75,10 @@ impl FeatureSource for ItemAssetsFeatureSource {
         _collection: &CollectionDecl,
         query: &ItemsQuery,
     ) -> CoreResult<FeaturePage> {
+        let on_next_items = self.on_next_items.lock().unwrap().take();
+        if let Some(on_next_items) = on_next_items {
+            on_next_items();
+        }
         let start = match &query.token {
             Some(token) => self
                 .items
@@ -314,7 +319,31 @@ fn build_app_with(
     records: Vec<RecordSpec<'_>>,
     advertise_assets: bool,
 ) -> (axum::Router, Arc<FakeAssetStore>) {
-    let config: AppConfig = serde_yaml::from_str(&config_yaml(collection_extra)).unwrap();
+    build_app_from_config(
+        &config_yaml(collection_extra),
+        items,
+        records,
+        advertise_assets,
+    )
+}
+
+fn build_app_from_config(
+    config_yaml: &str,
+    items: Vec<&str>,
+    records: Vec<RecordSpec<'_>>,
+    advertise_assets: bool,
+) -> (axum::Router, Arc<FakeAssetStore>) {
+    build_app_from_config_with_reload(config_yaml, None, items, records, advertise_assets)
+}
+
+fn build_app_from_config_with_reload(
+    config_yaml: &str,
+    reload_config_yaml: Option<&str>,
+    items: Vec<&str>,
+    records: Vec<RecordSpec<'_>>,
+    advertise_assets: bool,
+) -> (axum::Router, Arc<FakeAssetStore>) {
+    let config: AppConfig = serde_yaml::from_str(config_yaml).unwrap();
     config.validate().unwrap();
 
     let source = Arc::new(ItemAssetsFeatureSource {
@@ -322,6 +351,7 @@ fn build_app_with(
             .into_iter()
             .map(|id| (id.to_string(), feature(id)))
             .collect(),
+        on_next_items: Mutex::new(None),
     });
     let store = Arc::new(FakeAssetStore {
         records: records
@@ -333,7 +363,7 @@ fn build_app_with(
 
     let mut registry = Registry::new();
     registry.register(Arc::new(ItemAssetsFactory {
-        source,
+        source: source.clone(),
         store: store.clone(),
         advertise_assets,
     }));
@@ -350,6 +380,19 @@ fn build_app_with(
         cache,
         style_store,
     ));
+    if let Some(reload_config_yaml) = reload_config_yaml {
+        let reload_config: AppConfig = serde_yaml::from_str(reload_config_yaml).unwrap();
+        reload_config.validate().unwrap();
+        let reload_router = CoreRouter::build(&reload_config, &registry).unwrap();
+        let reload_resolver: Arc<dyn Resolver> = Arc::new(StaticResolver::build(&reload_config));
+        let weak_ctx = Arc::downgrade(&ctx);
+        *source.on_next_items.lock().unwrap() = Some(Box::new(move || {
+            weak_ctx
+                .upgrade()
+                .unwrap()
+                .reload(reload_config, reload_router, reload_resolver, None);
+        }));
+    }
     (tellurion_stac::router().with_state(ctx), store)
 }
 
@@ -460,6 +503,26 @@ async fn a_managed_record_resolves_to_the_stable_data_resource() {
     assert_eq!(
         body["assets"]["cog"]["href"],
         "/public/stac/catalogs/default/collections/demo/items/a/assets/cog/data"
+    );
+}
+
+#[tokio::test]
+async fn a_managed_record_uses_the_canonical_base_with_its_path_prefix() {
+    let config = format!(
+        "server: {{ public_base_url: 'https://geo.example.test/tellurion/' }}\n{}",
+        config_yaml(OPT_IN)
+    );
+    let (app, _) = build_app_from_config(
+        &config,
+        vec!["a"],
+        vec![(Some("a"), "cog", managed(AssetState::Available))],
+        true,
+    );
+
+    let body = body_json(get(&app, "/collections/demo/items/a").await).await;
+    assert_eq!(
+        body["assets"]["cog"]["href"],
+        "https://geo.example.test/tellurion/public/stac/catalogs/default/collections/demo/items/a/assets/cog/data"
     );
 }
 
@@ -669,6 +732,43 @@ async fn search_projects_the_records_and_batches_them_per_page() {
         "a two-item search page must cost one asset round trip"
     );
     assert_eq!(store.get_calls.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn search_uses_one_public_base_snapshot_when_config_reloads_mid_request() {
+    let old_base = "https://old.example.test/tellurion";
+    let new_base = "https://new.example.test/tellurion";
+    let old_config = format!(
+        "server: {{ public_base_url: '{old_base}/' }}\n{}",
+        config_yaml(OPT_IN)
+    );
+    let new_config = format!(
+        "server: {{ public_base_url: '{new_base}/' }}\n{}",
+        config_yaml(OPT_IN)
+    );
+    let (app, _) = build_app_from_config_with_reload(
+        &old_config,
+        Some(&new_config),
+        vec!["a"],
+        vec![(Some("a"), "cog", managed(AssetState::Available))],
+        true,
+    );
+
+    let first = body_json(get(&app, "/search?collections=demo").await).await;
+    assert_eq!(
+        first["links"][1]["href"],
+        format!("{old_base}/search?collections=demo")
+    );
+    assert_eq!(
+        first["features"][0]["assets"]["cog"]["href"],
+        format!("{old_base}/public/stac/catalogs/default/collections/demo/items/a/assets/cog/data")
+    );
+
+    let second = body_json(get(&app, "/search?collections=demo").await).await;
+    assert_eq!(
+        second["links"][1]["href"],
+        format!("{new_base}/search?collections=demo")
+    );
 }
 
 /// `/search` in `ids` mode walks the `(collections, ids)` cross product one
