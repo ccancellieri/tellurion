@@ -18,4 +18,5 @@ services:
         - crates/**
         - ui/**
         - demo/**
+        - deploy/render/public-demo.yaml
         - docker/Dockerfile.public-demo

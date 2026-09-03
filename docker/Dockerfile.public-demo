@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion
-COPY demo/public-demo.yaml /etc/tellurion/public-demo.yaml
+COPY deploy/render/public-demo.yaml /etc/tellurion/public-demo.yaml
 COPY LICENSE /usr/share/licenses/tellurion/LICENSE
 
 RUN mkdir -p /var/lib/tellurion/tmp/archive-roots \
