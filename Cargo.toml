@@ -31,7 +31,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.5.0-rc.1"
 edition = "2021"
 rust-version = "1.97"
 license = "AGPL-3.0-only"
@@ -44,31 +44,31 @@ keywords = ["gis", "ogc", "tiles", "geospatial", "postgis"]
 categories = ["science::geo"]
 
 [workspace.dependencies]
-tellurion-core = { path = "crates/tellurion-core", version = "0.4.0" }
-tellurion-http-source = { path = "crates/tellurion-http-source", version = "0.4.0" }
-tellurion-vector-tile = { path = "crates/tellurion-vector-tile", version = "0.4.0" }
-tellurion-postgis = { path = "crates/tellurion-postgis", version = "0.4.0" }
-tellurion-pmtiles = { path = "crates/tellurion-pmtiles", version = "0.4.0" }
-tellurion-flatgeobuf = { path = "crates/tellurion-flatgeobuf", version = "0.4.0" }
-tellurion-geoparquet = { path = "crates/tellurion-geoparquet", version = "0.4.0" }
-tellurion-shapefile = { path = "crates/tellurion-shapefile", version = "0.4.0" }
-tellurion-cog = { path = "crates/tellurion-cog", version = "0.4.0" }
-tellurion-zarr = { path = "crates/tellurion-zarr", version = "0.4.0" }
-tellurion-geopackage = { path = "crates/tellurion-geopackage", version = "0.4.0" }
-tellurion-iceberg = { path = "crates/tellurion-iceberg", version = "0.4.0" }
-tellurion-features = { path = "crates/tellurion-features", version = "0.4.0" }
-tellurion-tiles = { path = "crates/tellurion-tiles", version = "0.4.0" }
-tellurion-render = { path = "crates/tellurion-render", version = "0.4.0" }
-tellurion-places = { path = "crates/tellurion-places", version = "0.4.0" }
-tellurion-styles = { path = "crates/tellurion-styles", version = "0.4.0" }
-tellurion-stac = { path = "crates/tellurion-stac", version = "0.4.0" }
-tellurion-records = { path = "crates/tellurion-records", version = "0.4.0" }
-tellurion-processes = { path = "crates/tellurion-processes", version = "0.4.0" }
-tellurion-memory = { path = "crates/tellurion-memory", version = "0.4.0" }
-tellurion-duckdb = { path = "crates/tellurion-duckdb", version = "0.4.0" }
-tellurion-control-sqlite = { path = "crates/tellurion-control-sqlite", version = "0.4.0" }
-tellurion-control-postgres = { path = "crates/tellurion-control-postgres", version = "0.4.0" }
-tellurion-control = { path = "crates/tellurion-control", version = "0.4.0" }
+tellurion-core = { path = "crates/tellurion-core", version = "0.5.0-rc.1" }
+tellurion-http-source = { path = "crates/tellurion-http-source", version = "0.5.0-rc.1" }
+tellurion-vector-tile = { path = "crates/tellurion-vector-tile", version = "0.5.0-rc.1" }
+tellurion-postgis = { path = "crates/tellurion-postgis", version = "0.5.0-rc.1" }
+tellurion-pmtiles = { path = "crates/tellurion-pmtiles", version = "0.5.0-rc.1" }
+tellurion-flatgeobuf = { path = "crates/tellurion-flatgeobuf", version = "0.5.0-rc.1" }
+tellurion-geoparquet = { path = "crates/tellurion-geoparquet", version = "0.5.0-rc.1" }
+tellurion-shapefile = { path = "crates/tellurion-shapefile", version = "0.5.0-rc.1" }
+tellurion-cog = { path = "crates/tellurion-cog", version = "0.5.0-rc.1" }
+tellurion-zarr = { path = "crates/tellurion-zarr", version = "0.5.0-rc.1" }
+tellurion-geopackage = { path = "crates/tellurion-geopackage", version = "0.5.0-rc.1" }
+tellurion-iceberg = { path = "crates/tellurion-iceberg", version = "0.5.0-rc.1" }
+tellurion-features = { path = "crates/tellurion-features", version = "0.5.0-rc.1" }
+tellurion-tiles = { path = "crates/tellurion-tiles", version = "0.5.0-rc.1" }
+tellurion-render = { path = "crates/tellurion-render", version = "0.5.0-rc.1" }
+tellurion-places = { path = "crates/tellurion-places", version = "0.5.0-rc.1" }
+tellurion-styles = { path = "crates/tellurion-styles", version = "0.5.0-rc.1" }
+tellurion-stac = { path = "crates/tellurion-stac", version = "0.5.0-rc.1" }
+tellurion-records = { path = "crates/tellurion-records", version = "0.5.0-rc.1" }
+tellurion-processes = { path = "crates/tellurion-processes", version = "0.5.0-rc.1" }
+tellurion-memory = { path = "crates/tellurion-memory", version = "0.5.0-rc.1" }
+tellurion-duckdb = { path = "crates/tellurion-duckdb", version = "0.5.0-rc.1" }
+tellurion-control-sqlite = { path = "crates/tellurion-control-sqlite", version = "0.5.0-rc.1" }
+tellurion-control-postgres = { path = "crates/tellurion-control-postgres", version = "0.5.0-rc.1" }
+tellurion-control = { path = "crates/tellurion-control", version = "0.5.0-rc.1" }
 
 tokio = { version = "1", features = ["full"] }
 axum = "0.8"

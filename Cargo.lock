@@ -4844,7 +4844,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4905,7 +4905,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-cog"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "bytes",
@@ -4924,7 +4924,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-control"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "serde_yaml",
@@ -4934,7 +4934,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-control-postgres"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "deadpool-postgres",
@@ -4947,7 +4947,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-control-sqlite"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -4961,7 +4961,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-core"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -4995,7 +4995,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-duckdb"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "duckdb",
@@ -5010,7 +5010,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-features"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -5031,7 +5031,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-flatgeobuf"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "flatgeobuf",
@@ -5045,7 +5045,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-geopackage"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -5069,7 +5069,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-geoparquet"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "arrow-array 59.1.0",
  "arrow-schema 59.1.0",
@@ -5090,7 +5090,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-http-source"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5107,7 +5107,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-iceberg"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "arrow-array 57.3.1",
  "arrow-schema 57.3.1",
@@ -5133,7 +5133,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-ingest"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5160,7 +5160,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-memory"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "serde_json",
@@ -5172,7 +5172,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-places"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -5188,7 +5188,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-pmtiles"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5204,7 +5204,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-postgis"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5227,7 +5227,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-processes"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -5243,7 +5243,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-records"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "axum",
  "serde",
@@ -5258,7 +5258,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-render"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "bytes",
  "geozero",
@@ -5275,7 +5275,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-shapefile"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5296,7 +5296,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-stac"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -5320,7 +5320,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-styles"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "axum",
  "serde",
@@ -5334,7 +5334,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-tiles"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -5355,7 +5355,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-vector-tile"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "bytes",
  "geo",
@@ -5368,7 +5368,7 @@ dependencies = [
 
 [[package]]
 name = "tellurion-zarr"
-version = "0.4.0"
+version = "0.5.0-rc.1"
 dependencies = [
  "async-trait",
  "flate2",

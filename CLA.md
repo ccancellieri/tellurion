@@ -1,6 +1,6 @@
 # Contributor rights policy
 
-Tellurion 0.4.0 is distributed under `AGPL-3.0-only` and may also be offered under
+Tellurion 0.5.0-rc.1 is distributed under `AGPL-3.0-only` and may also be offered under
 separate commercial terms. The project therefore needs sufficient rights to relicense
 every accepted contribution.
 

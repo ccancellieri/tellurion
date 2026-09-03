@@ -16,6 +16,8 @@ repository.
 
 ## [Unreleased]
 
+## [0.5.0-rc.1] - 2026-09-02
+
 ### Changed
 
 - Hosted CI runs for pull requests targeting `main`, pushes to `main`, and
