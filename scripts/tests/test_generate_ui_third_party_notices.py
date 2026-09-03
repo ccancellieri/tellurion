@@ -94,7 +94,7 @@ class UiThirdPartyNoticeTests(unittest.TestCase):
         self.assertEqual("ui third-party notice generation unavailable\n", completed.stderr)
         self.assertFalse(self.output.exists())
 
-    def test_version_pinned_fallback_records_lock_and_bundle_hashes(self) -> None:
+    def test_version_pinned_fallback_is_independent_of_platform_specific_bundles(self) -> None:
         package_metadata = (self.package_root / "fixture" / "package.json").read_bytes()
         fallback_text = "Copyright 2026 Fixture\n\nMIT License\n\nPermission is granted.\n"
         fallback_file = self.root / "fixture-1.0.0.txt"
@@ -123,8 +123,7 @@ class UiThirdPartyNoticeTests(unittest.TestCase):
         self.assertEqual(0, first.returncode, first.stderr)
         rendered = self.output.read_text(encoding="utf-8")
         self.assertIn(f"package-lock-sha256: {hashlib.sha256(self.lockfile.read_bytes()).hexdigest()}", rendered)
-        self.assertIn("operator-bundle-sha256:", rendered)
-        self.assertIn("public-demo-bundle-sha256:", rendered)
+        self.assertNotIn("bundle-sha256:", rendered)
         self.assertIn("package: fixture@1.0.0", rendered)
         self.assertIn("source: https://registry.example.invalid/fixture-1.0.0.tgz", rendered)
         self.assertIn(fallback_text, rendered)
@@ -132,6 +131,8 @@ class UiThirdPartyNoticeTests(unittest.TestCase):
         self.assertNotIn("development-only", rendered)
 
         expected = self.output.read_bytes()
+        (self.operator_bundle / "index.html").write_text("linux-specific bundle\n", encoding="utf-8")
+        (self.public_demo_bundle / "index.html").write_text("linux-specific demo\n", encoding="utf-8")
         second = self.run_generator()
         self.assertEqual(0, second.returncode, second.stderr)
         self.assertEqual(expected, self.output.read_bytes())

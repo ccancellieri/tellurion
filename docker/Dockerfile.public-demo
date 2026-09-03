@@ -1,5 +1,5 @@
 # Public evaluation appliance. Render or another trusted builder may receive
-# the private build context, but the final image contains only the embedded UI,
+# the source build context, but the final image contains only the embedded UI,
 # the Tellurion server binary, the runtime configuration, CA certificates, and
 # the Tellurion licence text.
 
@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion
-COPY deploy/render/public-demo.yaml /etc/tellurion/public-demo.yaml
+COPY docker/public-demo.render.yaml /etc/tellurion/public-demo.yaml
 COPY LICENSE /usr/share/licenses/tellurion/LICENSE
 
 RUN mkdir -p /var/lib/tellurion/tmp/archive-roots \

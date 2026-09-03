@@ -1,10 +1,10 @@
 import '../demo-map-viewer.css';
 import {
   createMap,
+  createDemoTileTransport,
   demoRasterMapHandoff,
   demoVectorMapHandoff,
   fitToExtent,
-  setDemoImageRequestLimit,
 } from '../lib/map';
 import type { AddLayerObject } from 'maplibre-gl';
 import { isVectorDemoSource, type DemoSourceResponse, type DemoVectorStyle } from '../lib/demo-source';
@@ -21,6 +21,7 @@ interface MapRegistration {
  * same-origin handoff and never knows a tenant, catalog, or remote locator. */
 export class TellurionDemoMapViewer extends ElementBase {
   #map: ReturnType<typeof createMap> | null = null;
+  #tileTransport: ReturnType<typeof createDemoTileTransport> | null = null;
   #registration: MapRegistration | null = null;
   #pending: { source: DemoSourceResponse; opacity: number; style: DemoVectorStyle } | null = null;
   #expiryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -43,6 +44,7 @@ export class TellurionDemoMapViewer extends ElementBase {
     `;
     document.addEventListener('tellurion-demo-map', this.#mapListener);
     document.addEventListener('tellurion-demo-map-reset', this.#resetListener);
+    this.#tileTransport = createDemoTileTransport();
     this.#map = createMap(this.#field('map'));
     this.#map.on('load', () => {
       if (this.#pending) this.#open(this.#pending.source, this.#pending.opacity, this.#pending.style);
@@ -57,6 +59,8 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#registration = null;
     this.#map?.remove();
     this.#map = null;
+    this.#tileTransport?.destroy();
+    this.#tileTransport = null;
   }
 
   #receiveMap(event: Event): void {
@@ -105,8 +109,14 @@ export class TellurionDemoMapViewer extends ElementBase {
     }
     const handoff = demoRasterMapHandoff(source, location.origin);
     if (!handoff) return;
-    setDemoImageRequestLimit(source.limits.max_concurrent_operations);
-    map.addSource(handoff.sourceId, { type: 'raster', tiles: [handoff.template], tileSize: 256, minzoom: 0, maxzoom: 22 });
+    const tileTemplate = this.#tileTransport?.activate(
+      source.id,
+      location.origin,
+      handoff.template,
+      source.limits.max_concurrent_operations,
+    );
+    if (!tileTemplate) return;
+    map.addSource(handoff.sourceId, { type: 'raster', tiles: [tileTemplate], tileSize: 256, minzoom: 0, maxzoom: 22 });
     map.addLayer({ id: handoff.layerId, type: 'raster', source: handoff.sourceId, paint: { 'raster-opacity': opacity } });
     this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId };
     if (handoff.extent) fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
@@ -137,6 +147,7 @@ export class TellurionDemoMapViewer extends ElementBase {
   #remove(sourceId?: string): void {
     const registration = this.#registration;
     if (!registration || (sourceId && registration.sourceId !== `demo-source-${sourceId}`)) return;
+    this.#tileTransport?.clear();
     const map = this.#map;
     if (map) {
       if (map.getLayer(registration.layerId)) map.removeLayer(registration.layerId);

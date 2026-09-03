@@ -72,7 +72,7 @@ for required in \
     'npm run build:public-demo' \
     '--no-default-features --features public-demo,ui' \
     'COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion' \
-    'COPY deploy/render/public-demo.yaml /etc/tellurion/public-demo.yaml' \
+    'COPY docker/public-demo.render.yaml /etc/tellurion/public-demo.yaml' \
     'ENV TMPDIR=/var/lib/tellurion/tmp' \
     'ENV TELLURION_PUBLIC_DEMO_ARCHIVE_ROOT=/var/lib/tellurion/tmp/archive-roots' \
     'ENV TELLURION_CONFIG=/etc/tellurion/public-demo.yaml' \
@@ -88,6 +88,17 @@ if grep -Fq 'tellurion-ingest' "$public_demo_dockerfile"; then
     fail=1
 fi
 
+# Exercise the Docker build-context boundary, not just the Dockerfile text:
+# every local runtime input must survive `.dockerignore` or Render will fail
+# before the first build stage runs.
+public_demo_config="docker/public-demo.render.yaml"
+public_demo_context="$work_dir/public-demo-context.tar"
+if ! tar -cf "$public_demo_context" --exclude-from=.dockerignore "$public_demo_config" \
+    || ! tar -tf "$public_demo_context" | grep -Fxq "$public_demo_config"; then
+    echo "FAIL $public_demo_dockerfile: $public_demo_config is excluded from the Docker build context"
+    fail=1
+fi
+
 runtime_copies="$(awk '
     toupper($1) == "FROM" {
         runtime = toupper($3) == "AS" && $4 == "runtime"
@@ -97,7 +108,7 @@ runtime_copies="$(awk '
 ' "$public_demo_dockerfile" | sort)"
 expected_runtime_copies="$(printf '%s\n' \
     'COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion' \
-    'COPY deploy/render/public-demo.yaml /etc/tellurion/public-demo.yaml' \
+    'COPY docker/public-demo.render.yaml /etc/tellurion/public-demo.yaml' \
     'COPY LICENSE /usr/share/licenses/tellurion/LICENSE' | sort)"
 if [ "$runtime_copies" != "$expected_runtime_copies" ]; then
     echo "FAIL $public_demo_dockerfile: runtime stage COPY inventory is not binary/config/licence only"
@@ -122,10 +133,10 @@ if not isinstance(server, dict) or server.get("log_json") is not True:
     raise SystemExit("server.log_json must be true")
 if server.get("public_base_url") != "https://tellurion-public-demo.onrender.com":
     raise SystemExit("server.public_base_url must name the canonical public demo origin")
-' deploy/render/public-demo.yaml 2>"$work_dir/public-demo-config.err"; then
+' docker/public-demo.render.yaml 2>"$work_dir/public-demo-config.err"; then
     echo "ok   public demo image/config: stateless binary-only deployment contract"
 else
-    echo "FAIL deploy/render/public-demo.yaml: $(cat "$work_dir/public-demo-config.err")"
+    echo "FAIL docker/public-demo.render.yaml: $(cat "$work_dir/public-demo-config.err")"
     fail=1
 fi
 
@@ -162,8 +173,8 @@ paths = build_filter.get("paths")
 required_paths = {
     ".dockerignore", "render.yaml", "LICENSE", "Cargo.toml", "Cargo.lock",
     "rust-toolchain.toml", "crates/**", "ui/**", "demo/**",
-    "deploy/render/public-demo.yaml",
     "docker/Dockerfile.public-demo",
+    "docker/public-demo.render.yaml",
 }
 if not isinstance(paths, list) or set(paths) != required_paths:
     raise SystemExit("service.buildFilter.paths does not match the public image inputs")
