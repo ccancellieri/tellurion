@@ -1784,7 +1784,16 @@ impl Router {
                 )
                 .await;
 
-            if routed.tiles_explicit {
+            if routed.tiles_explicit
+                && routed
+                    .tiles
+                    .entries
+                    .iter()
+                    .all(|(_, driver)| driver.tile_source().is_some())
+            {
+                // Raster-only tile lanes were already validated above via
+                // `RasterSource`. Only MVT lanes have collection-dependent
+                // `TileSource::tile_capable` metadata to validate here.
                 let source = tiles_source(&decl.id, &routed.tiles)?;
                 let effective = self.effective_decl(routed).await?;
                 if !source.tile_capable(&effective) {
@@ -10714,6 +10723,19 @@ collections:
     #[tokio::test]
     async fn validate_catalog_accepts_an_unrouted_raster_only_collection() {
         let (config, registry) = config_with_raster_driver();
+        let router = Router::build(&config, &registry).unwrap();
+        router.validate_catalog().await.unwrap();
+    }
+
+    /// An explicit `routing.tiles` lane accepts a raster-only driver just as
+    /// the request path does through `resolve_raster`; boot validation must
+    /// not require the unrelated MVT `TileSource` capability.
+    #[tokio::test]
+    async fn validate_catalog_accepts_explicit_raster_only_tiles_routing() {
+        let (mut config, registry) = config_with_raster_driver();
+        config.collections[0].routing.tiles = Some(LaneRouting(vec!["main".to_string()]));
+        config.validate().unwrap();
+
         let router = Router::build(&config, &registry).unwrap();
         router.validate_catalog().await.unwrap();
     }
