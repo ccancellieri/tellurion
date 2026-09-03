@@ -814,6 +814,13 @@ settings:
   slow_request_ms: 1000
 ```
 
+Landing pages and tenant directories use relative links by default. To make
+their JSON immediately navigable outside the deployment — for example in a
+public demonstration — set `server.public_base_url` to the canonical
+`http(s)` URL. It may include a reverse-proxy path prefix, but must not carry
+credentials, a query, or a fragment. Tellurion never derives this value from
+request or forwarded headers.
+
 `slow_request_ms` inherits independently from platform through tenant and catalog to
 collection; the nearest declared value wins. On SIGINT or SIGTERM, Tellurion first makes
 readiness false, stops accepting new connections, waits for in-flight work, and exits

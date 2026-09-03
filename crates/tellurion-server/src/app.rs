@@ -144,8 +144,10 @@ fn derive_max_concurrency(backend_capacity_hint: Option<usize>) -> usize {
     }
 }
 
-async fn service_root() -> Response {
-    landing::service_descriptor().await.into_response()
+async fn service_root(State(ctx): State<Arc<AppContext>>) -> Response {
+    landing::service_descriptor(State(ctx))
+        .await
+        .into_response()
 }
 
 #[cfg(all(feature = "public-demo", feature = "ui"))]
@@ -1718,6 +1720,14 @@ mod tests {
         build(test_ctx(), test_metrics_handle(), 60)
     }
 
+    fn test_app_with_public_base_url() -> Router {
+        build(
+            test_ctx_with_public_base_url("https://maps.example.test/tellurion/"),
+            test_metrics_handle(),
+            60,
+        )
+    }
+
     fn test_app_with_control_browser() -> Router {
         let ctx = test_ctx();
         let browser = crate::control_browser_auth::ControlBrowserAuth::new(
@@ -1832,6 +1842,45 @@ mod tests {
             ordinary_root.headers().get(header::CONTENT_TYPE).unwrap(),
             "application/json"
         );
+    }
+
+    fn test_ctx_with_public_base_url(public_base_url: &str) -> Arc<AppContext> {
+        let config: AppConfig = serde_yaml::from_str(&format!(
+            r#"
+server:
+  public_base_url: '{public_base_url}'
+  metrics_collection_allowlist:
+    - {{ tenant: public, catalog: default, collection: demo }}
+storages: [ {{ id: main, driver: fake, url_env: DATABASE_URL }} ]
+tenants: [ {{ id: public }} ]
+catalogs: [ {{ id: default, tenant: public, settings: {{}} }} ]
+collections:
+  - id: demo
+    catalog: default
+    storage: main
+    table: demo
+    geometry: geom
+    pk: id
+    places3d: {{ height_property: height }}
+"#
+        ))
+        .unwrap();
+        config.validate().unwrap();
+
+        let mut registry = Registry::new();
+        registry.register(Arc::new(FakeFactory));
+        let router = CoreRouter::build(&config, &registry).unwrap();
+        let resolver: Arc<dyn Resolver> = Arc::new(StaticResolver::build(&config));
+        let cache: Arc<dyn TileCache> = Arc::new(MokaTileCache::with_byte_budget(1_000_000));
+        let style_store: Arc<dyn StyleStore> = Arc::new(FileStyleStore::new(&[]));
+        Arc::new(AppContext::new(
+            config,
+            router,
+            resolver,
+            None,
+            cache,
+            style_store,
+        ))
     }
 
     /// The same fixture as [`test_ctx`], with an inline `settings:` block on
@@ -2071,6 +2120,62 @@ collections:
             .map(|link| link["rel"].as_str().unwrap())
             .collect();
         assert_eq!(rels, vec!["self"]);
+    }
+
+    #[tokio::test]
+    async fn configured_public_base_url_makes_landing_and_directory_links_absolute() {
+        let app = test_app_with_public_base_url();
+        let base = "https://maps.example.test/tellurion";
+
+        let service = json_body(get(&app, "/").await).await;
+        assert_eq!(service["links"][0]["href"], format!("{base}/"));
+
+        let protocol = json_body(
+            app.clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(catalog_root("features"))
+                        .header(header::HOST, "untrusted.example.test")
+                        .header("x-forwarded-host", "also-untrusted.example.test")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(
+            protocol["links"][0]["href"],
+            format!("{base}{}", catalog_root("features"))
+        );
+        assert_eq!(
+            protocol["links"][1]["href"],
+            format!("{base}{}/conformance", catalog_root("features"))
+        );
+
+        let stac = json_body(get(&app, &catalog_root("stac")).await).await;
+        assert_eq!(
+            stac["links"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|link| link["rel"] == "search")
+                .unwrap()["href"],
+            format!("{base}{}/search", catalog_root("stac"))
+        );
+
+        let directory = json_body(get(&app, "/public?limit=1").await).await;
+        let directory_links = directory["links"].as_array().unwrap();
+        assert_eq!(
+            directory_links
+                .iter()
+                .find(|link| link["rel"] == "self")
+                .unwrap()["href"],
+            format!("{base}/public?limit=1")
+        );
+        assert!(directory_links
+            .iter()
+            .any(|link| { link["href"] == format!("{base}/public/features/catalogs/default") }));
     }
 
     /// `#39` acceptance test 1: every protocol root has its own landing page

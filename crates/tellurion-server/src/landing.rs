@@ -4,11 +4,13 @@
 //! `openapi.rs` — this module only owns `/`, `/conformance`, and the two
 //! directory-shaped documents above a protocol root.
 //!
-//! Every href below is built from the request's own `OriginalUri` — never a
+//! Every href below starts from the request's own `OriginalUri` — never a
 //! hardcoded prefix — so the same handler serves correctly regardless of
-//! which tenant/catalog it was reached through, and never needs to know an
-//! internal id: `tenant`/`catalog` path segments are already the external
-//! ids the client typed, and `Router`/`Resolver` are never consulted for
+//! which tenant/catalog it was reached through. An operator may configure a
+//! canonical public base URL to turn those paths into absolute links; the
+//! handlers never infer that value from `Host` or forwarded headers.
+//! `tenant`/`catalog` path segments are already the external ids the client
+//! typed, and `Router`/`Resolver` are never consulted for
 //! `protocol_landing`/`protocol_conformance` at all (they carry no
 //! tenant/catalog-specific state — every protocol root's landing page and
 //! conformance classes are identical in shape across every tenant/catalog).
@@ -114,8 +116,13 @@ const COMMON_CONFORMANCE_CLASSES: &[&str] = &[
 pub async fn protocol_landing(
     Extension(protocol): Extension<Protocol>,
     OriginalUri(uri): OriginalUri,
+    State(ctx): State<Arc<AppContext>>,
 ) -> impl IntoResponse {
-    let self_root = uri.path().trim_end_matches('/').to_string();
+    let state = ctx.current();
+    let self_root = state
+        .config
+        .server
+        .public_href(uri.path().trim_end_matches('/'));
 
     let mut links = vec![
         Link::new(self_root.clone(), "self", JSON_MEDIA_TYPE),
@@ -379,7 +386,11 @@ pub async fn stac_landing(
     OriginalUri(uri): OriginalUri,
     State(ctx): State<Arc<AppContext>>,
 ) -> impl IntoResponse {
-    let self_root = uri.path().trim_end_matches('/').to_string();
+    let self_root = ctx
+        .current()
+        .config
+        .server
+        .public_href(uri.path().trim_end_matches('/'));
     let catalog_ext = params
         .get("catalog")
         .cloned()
@@ -485,7 +496,10 @@ pub async fn tenant_directory(
         }
     };
 
-    let self_root = uri.path().trim_end_matches('/').to_string();
+    let self_root = state
+        .config
+        .server
+        .public_href(uri.path().trim_end_matches('/'));
     let mut links = vec![Link::new(
         tenant_directory_href(&self_root, &raw_query, None),
         "self",
@@ -551,12 +565,12 @@ pub async fn tenant_directory(
 /// rationale), so there is no `Router`/`Resolver` consultation here at all,
 /// and no `data`/`tiles`/`styles` link the way a protocol root's landing
 /// page has — those only make sense once a tenant and catalog are known.
-pub async fn service_descriptor() -> impl IntoResponse {
+pub async fn service_descriptor(State(ctx): State<Arc<AppContext>>) -> impl IntoResponse {
     Json(json!({
         "title": "Tellurion",
         "description": "OGC API serving engine. Every tenant serves its own set of full OGC API roots at /{tenant}/{protocol}/catalogs/{catalog}/ — this endpoint does not list them.",
         "links": [
-            Link::new("/", "self", JSON_MEDIA_TYPE),
+            Link::new(ctx.current().config.server.public_href("/"), "self", JSON_MEDIA_TYPE),
         ],
     }))
 }
