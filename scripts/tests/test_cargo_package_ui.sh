@@ -17,23 +17,33 @@ trap restore EXIT
 
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 
-# Build from source first so the package check covers the current UI rather
-# than passing against old generated bundles. The feature-matrix caller has
-# already installed dependencies and built the operator bundle, so it reuses
-# that exact state and only adds the public-demo build.
-if [ "${TELLURION_UI_OPERATOR_READY:-0}" = "1" ]; then
-    (cd "$ROOT/ui" && npm run build:public-demo)
-else
-    (cd "$ROOT/ui" && npm ci && npm run build && npm run build:public-demo)
-fi
+# Generate every tracked UI artifact outside the worktree. A stale committed
+# bundle or notice must fail verification, not be silently repaired by CI.
+(cd "$ROOT/ui" \
+    && npm ci \
+    && npm run build -- --outDir "$TEST_DIR/operator" \
+    && npm run build:public-demo -- --outDir "$TEST_DIR/public-demo")
 
 python3 "$ROOT/scripts/generate-ui-third-party-notices.py" \
     --lockfile "$ROOT/ui/package-lock.json" \
     --package-root "$ROOT/ui/node_modules" \
-    --operator-bundle "$ROOT/crates/tellurion-server/ui/dist" \
-    --public-demo-bundle "$ROOT/crates/tellurion-server/ui/public-demo-dist" \
+    --operator-bundle "$TEST_DIR/operator" \
+    --public-demo-bundle "$TEST_DIR/public-demo" \
     --fallbacks "$ROOT/ui/third-party-notice-fallbacks.json" \
-    --output "$ROOT/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt"
+    --output "$TEST_DIR/THIRD_PARTY_NOTICES.txt"
+
+diff -r -q "$TEST_DIR/operator" "$ROOT/crates/tellurion-server/ui/dist" \
+    || fail 'tracked operator UI differs from a clean build'
+diff -r -q "$TEST_DIR/public-demo" "$ROOT/crates/tellurion-server/ui/public-demo-dist" \
+    || fail 'tracked public-demo UI differs from a clean build'
+cmp "$TEST_DIR/THIRD_PARTY_NOTICES.txt" \
+    "$ROOT/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt" \
+    || fail 'tracked UI third-party notice differs from clean generation'
+
+expected_notice_sha256="$(tr -d '[:space:]' < "$ROOT/ui/third-party-notice-sha256.txt")"
+generated_notice_sha256="$(shasum -a 256 "$TEST_DIR/THIRD_PARTY_NOTICES.txt" | awk '{print $1}')"
+[ "$generated_notice_sha256" = "$expected_notice_sha256" ] \
+    || fail 'tracked UI third-party notice digest is stale'
 
 cargo package \
     --manifest-path "$ROOT/crates/tellurion-server/Cargo.toml" \

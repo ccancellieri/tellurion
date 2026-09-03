@@ -159,15 +159,10 @@ if [ "$public_demo_count" -ne 1 ]; then
     fail "feature matrix must contain exactly one minimal public-demo-ui leg"
 fi
 
-public_demo_block="$(awk '
-    $0 == "          - name: public-demo-ui" { capture = 1 }
-    capture && $0 ~ /^          - name: / && $0 != "          - name: public-demo-ui" { exit }
-    capture && $0 == "    steps:" { exit }
-    capture { print }
-' "$ci_workflow")"
-printf '%s\n' "$public_demo_block" | rg -qx '            build_ui: public-demo' \
-    || fail "public-demo-ui feature leg must build the dedicated public-demo UI bundle"
-require_match 'npm run build:public-demo' "$ci_workflow"
+if rg -q 'build_ui:|npm run build' "$ci_workflow" \
+    || rg -q 'npm run build' "$local_mirror"; then
+    fail "CI must verify generated UI artifacts without writing them into the worktree"
+fi
 
 hosted_ui_test_count="$(rg -c '^[[:space:]]+- run: cd ui && npm ci && npm test$' "$ci_workflow" || true)"
 local_ui_test_count="$(rg -c '^[[:space:]]+\(cd ui && npm ci && npm test\)$' "$local_mirror" || true)"
@@ -177,8 +172,8 @@ if [ "$hosted_ui_test_count" -ne 1 ] || [ "$local_ui_test_count" -ne 1 ]; then
     fail "hosted CI workflow and local full mirror must each run npm test exactly once"
 fi
 
-hosted_package_ui_count="$(rg -c 'TELLURION_UI_OPERATOR_READY=1 \./scripts/tests/test_cargo_package_ui\.sh' "$ci_workflow" || true)"
-local_package_ui_count="$(rg -c 'TELLURION_UI_OPERATOR_READY=1 \./scripts/tests/test_cargo_package_ui\.sh' "$local_mirror" || true)"
+hosted_package_ui_count="$(rg -c '^[[:space:]]*run: \./scripts/tests/test_cargo_package_ui\.sh$' "$ci_workflow" || true)"
+local_package_ui_count="$(rg -c '^[[:space:]]*\./scripts/tests/test_cargo_package_ui\.sh \|\| \{$' "$local_mirror" || true)"
 hosted_package_ui_count="${hosted_package_ui_count:-0}"
 local_package_ui_count="${local_package_ui_count:-0}"
 if [ "$hosted_package_ui_count" -ne 1 ] || [ "$local_package_ui_count" -ne 1 ]; then

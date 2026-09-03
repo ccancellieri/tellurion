@@ -92,13 +92,13 @@ expect_rejected() {
             perl -0pi -e 's/group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.ref \}\}/group: release-artifacts/' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-public-demo-ui-leg)
-            perl -0pi -e 's#\n          - name: public-demo-ui\n            flags: --no-default-features --features public-demo,ui\n            build_ui: public-demo##' "$fixture/workflows/ci.yml"
+            perl -0pi -e 's#\n          - name: public-demo-ui\n            flags: --no-default-features --features public-demo,ui##' "$fixture/workflows/ci.yml"
             ;;
-        public-demo-ui-does-not-build-assets)
-            perl -0pi -e 's#(          - name: public-demo-ui\n            flags: --no-default-features --features public-demo,ui)\n            build_ui: public-demo#$1#' "$fixture/workflows/ci.yml"
+        hosted-builds-tracked-ui)
+            perl -0pi -e 's#      - name: Verify packaged UI boundary#      - run: cd ui \&\& npm run build\n      - name: Verify packaged UI boundary#' "$fixture/workflows/ci.yml"
             ;;
-        public-demo-ui-builds-ordinary-assets)
-            perl -0pi -e 's/(          - name: public-demo-ui\n            flags: --no-default-features --features public-demo,ui\n            build_ui: )public-demo/${1}ordinary/' "$fixture/workflows/ci.yml"
+        local-builds-tracked-ui)
+            perl -0pi -e 's#            \./scripts/tests/test_cargo_package_ui\.sh \|\| \{#            (cd ui \&\& npm run build)\n            ./scripts/tests/test_cargo_package_ui.sh || {#' "$fixture/ci-local.sh"
             ;;
         missing-local-public-demo-ui-leg)
             perl -ni -e 'print unless /"public-demo-ui:--no-default-features --features public-demo,ui"/' "$fixture/ci-local.sh"
@@ -113,10 +113,10 @@ expect_rejected() {
             perl -0pi -e 's/\n[[:space:]]*\(cd ui && npm ci && npm test\)//' "$fixture/ci-local.sh"
             ;;
         missing-hosted-package-ui-check)
-            perl -0pi -e 's#\n      - name: Verify packaged UI boundary\n        if: matrix\.name == '\''ui'\''\n        run: TELLURION_UI_OPERATOR_READY=1 \./scripts/tests/test_cargo_package_ui\.sh##' "$fixture/workflows/ci.yml"
+            perl -0pi -e 's#\n      - name: Verify packaged UI boundary\n        if: matrix\.name == '\''ui'\''\n        run: \./scripts/tests/test_cargo_package_ui\.sh##' "$fixture/workflows/ci.yml"
             ;;
         missing-local-package-ui-check)
-            perl -0pi -e 's#\n[[:space:]]*TELLURION_UI_OPERATOR_READY=1 \./scripts/tests/test_cargo_package_ui\.sh \|\| \{\n[[:space:]]*printf '\''  FAIL feature leg %s \(packaged UI boundary\)\\n'\'' "\$name"\n[[:space:]]*failed=1\n[[:space:]]*continue\n[[:space:]]*\}##' "$fixture/ci-local.sh"
+            perl -0pi -e 's#\n[[:space:]]*\./scripts/tests/test_cargo_package_ui\.sh \|\| \{\n[[:space:]]*printf '\''  FAIL feature leg %s \(packaged UI boundary\)\\n'\'' "\$name"\n[[:space:]]*failed=1\n[[:space:]]*continue\n[[:space:]]*\}##' "$fixture/ci-local.sh"
             ;;
         missing-publication-license-audit)
             perl -0pi -e 's#^[[:space:]]*\./scripts/audit-publication-license\.sh\n##m' "$fixture/workflows/ci.yml"
@@ -174,8 +174,8 @@ for mutation in \
     missing-release-concurrency \
     release-has-global-concurrency \
     missing-public-demo-ui-leg \
-    public-demo-ui-does-not-build-assets \
-    public-demo-ui-builds-ordinary-assets \
+    hosted-builds-tracked-ui \
+    local-builds-tracked-ui \
     missing-local-public-demo-ui-leg \
     missing-hosted-ui-test \
     duplicate-hosted-ui-test \
@@ -243,6 +243,11 @@ fi
 
 if ! sh scripts/tests/test_ci_local_data_inputs.sh; then
     echo "FAIL: CI local data-input classification regression" >&2
+    failures=$((failures + 1))
+fi
+
+if ! bash scripts/tests/test_cargo_package_ui_currentness.sh; then
+    echo "FAIL: packaged UI currentness regression" >&2
     failures=$((failures + 1))
 fi
 

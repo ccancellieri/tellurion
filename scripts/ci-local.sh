@@ -220,31 +220,13 @@ phase_feature_matrix() {
     for leg in "${FEATURE_LEGS[@]}"; do
         name="${leg%%:*}"
         flags="${leg#*:}"
-        case "$name" in
-            public-demo-ui | all-features)
-                printf '  building the crate-local public-demo UI for the %s leg\n' "$name"
-                (cd ui && npm ci && npm run build:public-demo) || {
-                    printf '  FAIL feature leg %s (crate-local public-demo UI build)\n' "$name"
-                    failed=1
-                    continue
-                }
-                ;;
-            ui)
-                # `build.rs` fails with a clear message naming this command
-                # when the selected crate-local UI bundle does not exist.
-                printf '  building the crate-local operator UI for the %s leg\n' "$name"
-                (cd ui && npm ci && npm run build) || {
-                    printf '  FAIL feature leg %s (crate-local operator UI build)\n' "$name"
-                    failed=1
-                    continue
-                }
-                TELLURION_UI_OPERATOR_READY=1 ./scripts/tests/test_cargo_package_ui.sh || {
-                    printf '  FAIL feature leg %s (packaged UI boundary)\n' "$name"
-                    failed=1
-                    continue
-                }
-                ;;
-        esac
+        if [ "$name" = ui ]; then
+            ./scripts/tests/test_cargo_package_ui.sh || {
+                printf '  FAIL feature leg %s (packaged UI boundary)\n' "$name"
+                failed=1
+                continue
+            }
+        fi
         printf '\n  --- feature leg: %s\n' "$name"
         # shellcheck disable=SC2086
         if cargo test -p tellurion --locked $flags; then

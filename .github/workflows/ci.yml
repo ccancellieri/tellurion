@@ -239,20 +239,17 @@ jobs:
           # `tellurion-geoparquet`'s.
           - name: iceberg
             flags: --no-default-features --features iceberg
-          # The embedded operator UI. Its crate-local bundle is built below —
-          # this is the leg that would have caught the stale `AppContext`
-          # fixture arity, since the `ui` feature is default-off and no
-          # other job compiles it.
+          # The embedded operator UI. The packaged-UI boundary below rebuilds
+          # both UI variants in temporary directories and proves the tracked
+          # crate-local bundles are current before this leg compiles them.
           - name: ui
             flags: --no-default-features --features ui
-            build_ui: true
           # The public demo deployment is intentionally smaller than the
           # ordinary server: only the isolated remote COG sandbox and the
           # embedded UI. This leg proves that exact pair without relying on
           # default database/control-store features or the all-features build.
           - name: public-demo-ui
             flags: --no-default-features --features public-demo,ui
-            build_ui: public-demo
           - name: valkey
             flags: --no-default-features --features valkey
           # Every leg together, proving the combination itself compiles.
@@ -266,7 +263,6 @@ jobs:
           # those.
           - name: all-features
             flags: --all-features
-            build_ui: public-demo
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Free runner disk
@@ -285,19 +281,9 @@ jobs:
           key: ${{ matrix.name }}
       - name: Install native build dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake pkg-config
-      - name: Build demo UI assets
-        if: matrix.build_ui
-        run: |
-          cd ui
-          npm ci
-          if [ "${{ matrix.build_ui }}" = "public-demo" ]; then
-            npm run build:public-demo
-          else
-            npm run build
-          fi
       - name: Verify packaged UI boundary
         if: matrix.name == 'ui'
-        run: TELLURION_UI_OPERATOR_READY=1 ./scripts/tests/test_cargo_package_ui.sh
+        run: ./scripts/tests/test_cargo_package_ui.sh
       - run: cargo test -p tellurion --locked ${{ matrix.flags }}
       # `tellurion`'s `valkey` feature is just `tellurion-core/valkey`, so the
       # leg above proves the server builds against the L2 backend -- but it is
