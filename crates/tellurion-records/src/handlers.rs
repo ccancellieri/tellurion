@@ -372,8 +372,11 @@ pub async fn list_catalogs(
     OriginalUri(uri): OriginalUri,
 ) -> Result<Response, ApiError> {
     let (tenant_id, catalog_id) = resolve_tenant_catalog(&ctx, &params).await?;
-    let self_path = uri.path().trim_end_matches('/').to_string();
     let state = ctx.current();
+    let self_path = state
+        .config
+        .server
+        .public_href(uri.path().trim_end_matches('/'));
     let page_request = PageRequest {
         limit: parse_bounded_limit(raw_query.limit, CATALOGS_DEFAULT_LIMIT, CATALOGS_MAX_LIMIT)?,
         after: raw_query.token.clone(),
@@ -466,7 +469,10 @@ pub async fn get_catalog(
     .await?;
 
     let canonical = resolved_canonical(&ctx, &tenant_id, &catalog_id, &collection_id, &cid).await;
-    let self_href = uri.path().trim_end_matches('/').to_string();
+    let self_href = state
+        .config
+        .server
+        .public_href(uri.path().trim_end_matches('/'));
     let mut response = (
         StatusCode::OK,
         Json(catalog_object(&self_href, &cid, canonical.as_ref())),
@@ -534,7 +540,7 @@ pub async fn list_records(
         );
     }
 
-    let self_path = uri.path().to_string();
+    let self_path = state.config.server.public_href(uri.path());
     // Requirement 8 (`/req/record-core/links`, clause A): each record links
     // back to the catalog it belongs to, and clause B allows exactly one
     // such link. The href is this `/items` path with its last segment
@@ -615,7 +621,7 @@ pub async fn get_record(
         .await?
         .ok_or(CoreError::NotFound)?;
 
-    let self_path = uri.path().to_string();
+    let self_path = state.config.server.public_href(uri.path());
     // `.../items/{recordId}` -> `...`: two segments up is the catalog.
     let catalog_href = self_path
         .rsplitn(3, '/')

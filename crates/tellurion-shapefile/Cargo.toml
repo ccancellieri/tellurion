@@ -2,10 +2,12 @@
 name = "tellurion-shapefile"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "Bounded, validated ZIP Shapefile spool for Tellurion."
 readme.workspace = true
 keywords.workspace = true
@@ -14,7 +16,7 @@ categories.workspace = true
 [dependencies]
 tellurion-core = { workspace = true }
 tellurion-vector-tile = { workspace = true }
-tellurion-http-source = { path = "../tellurion-http-source" }
+tellurion-http-source = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
 zip = { workspace = true }

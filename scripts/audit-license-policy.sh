@@ -50,7 +50,7 @@ require_workspace_package_value 'publish = false'
 
 metadata="$(cargo metadata --locked --no-deps --format-version 1)"
 
-while IFS=$'\t' read -r name manifest resolved_version license publish; do
+while IFS=$'\t' read -r name resolved_version license; do
     if [ "$resolved_version" != "$version" ]; then
         echo "FAIL $name: resolved version is $resolved_version, expected $version"
         fail=1
@@ -61,20 +61,11 @@ while IFS=$'\t' read -r name manifest resolved_version license publish; do
         fail=1
     fi
 
-    if [ "$publish" != 'true' ]; then
-        echo "FAIL $name: resolved publish setting is not false"
-        fail=1
-    fi
-
-    if ! grep -qx 'publish\.workspace = true' "$manifest"; then
-        echo "FAIL $manifest: missing publish.workspace = true"
-        fail=1
-    fi
 done < <(printf '%s\n' "$metadata" | jq -r '
     .workspace_members as $members
     | .packages[]
     | select(.id as $id | $members | index($id))
-    | [.name, .manifest_path, .version, .license, (.publish == [])]
+    | [.name, .version, .license]
     | @tsv
 ')
 

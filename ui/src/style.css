@@ -96,6 +96,14 @@ main {
   padding: 0 1.5rem 1.5rem;
 }
 
+.legal-notices {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 1.5rem 1.5rem;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+
 tellurion-operator-workspace {
   display: block;
 }

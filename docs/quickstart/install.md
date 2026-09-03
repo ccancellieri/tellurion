@@ -6,18 +6,18 @@ the top-level README's "Scaling up: PostGIS" section for the database-backed
 path once a single GeoPackage's one-writer-many-readers ceiling stops
 fitting — that path is out of scope here.
 
-## Version 0.4.0 release archives
+## Version 0.5.0-rc.1 release archives
 
-Archives are available only after an approved v0.4.0 public release. They describe the
+Archives are available only after an approved v0.5.0-rc.1 public release. They describe the
 intended release assets; no archive or binary is added to this Git repository. Until
 an approved release provides the matching asset, build from source using the
 instructions below.
 
 | Platform | Intended archive |
 |---|---|
-| macOS Apple Silicon | `tellurion-v0.4.0-aarch64-apple-darwin.tar.gz` |
-| Linux x86_64 musl | `tellurion-v0.4.0-x86_64-unknown-linux-musl.tar.gz` |
-| Windows x86_64 MSVC | `tellurion-v0.4.0-x86_64-pc-windows-msvc.zip` |
+| macOS Apple Silicon | `tellurion-v0.5.0-rc.1-aarch64-apple-darwin.tar.gz` |
+| Linux x86_64 musl | `tellurion-v0.5.0-rc.1-x86_64-unknown-linux-musl.tar.gz` |
+| Windows x86_64 MSVC | `tellurion-v0.5.0-rc.1-x86_64-pc-windows-msvc.zip` |
 
 After downloading the archive for your platform from the approved release, verify its
 published SHA-256 checksum before extracting it. Download `SHA256SUMS` into the same
@@ -31,7 +31,7 @@ For a public release, also verify the GitHub artifact attestation against this
 repository. For example, the macOS archive is verified with:
 
 ```sh
-gh attestation verify tellurion-v0.4.0-aarch64-apple-darwin.tar.gz \
+gh attestation verify tellurion-v0.5.0-rc.1-aarch64-apple-darwin.tar.gz \
   --repo ccancellieri/tellurion
 ```
 
@@ -41,8 +41,30 @@ The macOS and Linux archives contain the `tellurion` and
 Windows, extract the ZIP and add its directory to `PATH` before using `tellurion.exe`
 or `tellurion-ingest.exe`.
 
-These assets are intended for Tellurion 0.4.0 under `AGPL-3.0-only`. Review the
+These assets are intended for Tellurion 0.5.0-rc.1 under `AGPL-3.0-only`. Review the
 [licensing guide](../licensing.md) before deployment or redistribution.
+
+## Install the release candidate with Cargo
+
+After the approved crates.io publication, install the server and ingestion CLI from
+the locked 0.5 release-candidate line with:
+
+```sh
+cargo +1.97.1 install tellurion --version '=0.5.0-rc.1' --locked
+cargo +1.97.1 install tellurion-ingest --version '=0.5.0-rc.1' --locked
+```
+
+To embed the anonymous remote-source demo and its web interface in the server binary:
+
+```sh
+cargo +1.97.1 install tellurion --version '=0.5.0-rc.1' --locked \
+  --features public-demo,ui
+```
+
+Cargo does not select a pre-release implicitly, so evaluators must request
+`0.5.0-rc.1` explicitly. Ordinary installation can move to `0.5.0` after that stable
+version is approved and published. Each install above compiles from the published
+crate sources; use the signed platform archives when a prebuilt binary is preferred.
 
 ## Prerequisites
 

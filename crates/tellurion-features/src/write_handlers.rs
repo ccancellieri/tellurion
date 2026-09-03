@@ -903,7 +903,8 @@ pub async fn create_item(
         .await
         .map_err(ApiError::from)?;
 
-    let location = format!("{}/{new_id}", uri.path().trim_end_matches('/'));
+    let location_path = format!("{}/{new_id}", uri.path().trim_end_matches('/'));
+    let location = state.config.server.public_href(&location_path);
     let mut response = StatusCode::CREATED.into_response();
     let location_value = HeaderValue::from_str(&location).map_err(|_| {
         ApiError::from(CoreError::Invalid(

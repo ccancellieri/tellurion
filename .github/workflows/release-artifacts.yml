@@ -3,10 +3,10 @@ name: Release artifacts
 on:
   push:
     # A semver tag pattern, not one frozen version: `scripts/release.sh` moves
-    # the workspace version and names the matching `vMAJOR.MINOR.PATCH` tag, and
-    # this workflow builds whichever one arrives. It still creates only Actions
+    # the workspace version and names the matching stable or release-candidate
+    # tag; this workflow builds whichever one arrives. It still creates only Actions
     # workflow artifacts -- release publication remains a separate, ungranted decision.
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"]
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,10 @@ jobs:
         shell: bash
         run: ./scripts/audit-license-policy.sh
 
+      - name: Audit crates.io publication boundary
+        shell: bash
+        run: ./scripts/audit-crates-io-policy.sh
+
       - name: Audit publication licence
         shell: bash
         run: ./scripts/audit-publication-license.sh
@@ -42,15 +46,41 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Verify canonical UI third-party notice
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ui
+          npm ci
+          npm run build
+          npm run build:public-demo
+          cd ..
+          generated_notice="${RUNNER_TEMP}/THIRD_PARTY_NOTICES.txt"
+          python3 scripts/generate-ui-third-party-notices.py \
+            --lockfile ui/package-lock.json \
+            --package-root ui/node_modules \
+            --operator-bundle crates/tellurion-server/ui/dist \
+            --public-demo-bundle crates/tellurion-server/ui/public-demo-dist \
+            --fallbacks ui/third-party-notice-fallbacks.json \
+            --output "$generated_notice"
+          cmp "$generated_notice" crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt
+          expected_notice_sha256="$(tr -d '[:space:]' < ui/third-party-notice-sha256.txt)"
+          actual_notice_sha256="$(shasum -a 256 "$generated_notice" | awk '{print $1}')"
+          test "$actual_notice_sha256" = "$expected_notice_sha256"
+
       - name: Resolve workspace version
         id: version
         shell: pwsh
         run: |
           $manifest = Get-Content -Raw -Path Cargo.toml
-          $pattern = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"(\d+\.\d+\.\d+)"[ \t\r]*$'
+          $number = '(?:0|[1-9]\d*)'
+          $versionPattern = "$number\.$number\.$number(?:-rc\.$number)?"
+          $prefix = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"('
+          $suffix = ')"[ \t\r]*$'
+          $pattern = $prefix + $versionPattern + $suffix
           $found = [regex]::Match($manifest, $pattern)
           if (-not $found.Success) {
-            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH"'
+            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH[-rc.N]"'
           }
           $version = $found.Groups[1].Value
           Write-Host "workspace version: $version"
@@ -84,6 +114,9 @@ jobs:
             --inventory "$dependency_inventory" \
             --output "$public_core/THIRD_PARTY_NOTICES.json"
           cp "$public_core/THIRD_PARTY_NOTICES.json" dist/THIRD_PARTY_NOTICES.json
+          cp crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt "$public_core/THIRD_PARTY_NOTICES.txt"
+          cmp "$public_core/THIRD_PARTY_NOTICES.txt" crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt
+          cp "$public_core/THIRD_PARTY_NOTICES.txt" dist/THIRD_PARTY_NOTICES.txt
 
       - name: Generate workspace SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
@@ -127,6 +160,7 @@ jobs:
             dist/tellurion-v*-source-*.zip
             dist/tellurion.spdx.json
             dist/THIRD_PARTY_NOTICES.json
+            dist/THIRD_PARTY_NOTICES.txt
           if-no-files-found: error
           retention-days: 7
 
@@ -168,15 +202,19 @@ jobs:
           # checked-out manifest -- never from the ref name. A ref name may
           # contain `/` (any branch can start a workflow_dispatch run), so it
           # can never reach a path or an artifact name; the manifest version is
-          # constrained to MAJOR.MINOR.PATCH here and is therefore always
+          # constrained to MAJOR.MINOR.PATCH[-rc.N] here and is therefore always
           # filesystem-safe.
           $manifest = Get-Content -Raw -Path Cargo.toml
           # `[ \t\r]*$` rather than `\s*$`: the Windows leg may check out CRLF,
           # and `\s` would let the match run past the line it is anchored to.
-          $pattern = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"(\d+\.\d+\.\d+)"[ \t\r]*$'
+          $number = '(?:0|[1-9]\d*)'
+          $versionPattern = "$number\.$number\.$number(?:-rc\.$number)?"
+          $prefix = '(?ms)^\[workspace\.package\][ \t\r]*$(?:(?!^\[).)*?^version[ \t\r]*=[ \t\r]*"('
+          $suffix = ')"[ \t\r]*$'
+          $pattern = $prefix + $versionPattern + $suffix
           $found = [regex]::Match($manifest, $pattern)
           if (-not $found.Success) {
-            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH"'
+            throw 'Cargo.toml has no [workspace.package] version = "MAJOR.MINOR.PATCH[-rc.N]"'
           }
           $version = $found.Groups[1].Value
           Write-Host "workspace version: $version"
@@ -189,6 +227,9 @@ jobs:
       - name: Install musl build dependencies
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: sudo apt-get update && sudo apt-get install -y musl-tools cmake pkg-config
+
+      - name: Gate prebuilt native binary release
+        run: ./scripts/check-native-binary-release-readiness.sh
 
       - name: Build default-feature binaries
         env:
@@ -323,7 +364,9 @@ jobs:
           fi
           test -f dist/tellurion.spdx.json
           test -f dist/THIRD_PARTY_NOTICES.json
+          test -f dist/THIRD_PARTY_NOTICES.txt
           unzip -Z1 "${source_archives[0]}" | grep -Fx THIRD_PARTY_NOTICES.json >/dev/null
+          unzip -Z1 "${source_archives[0]}" | grep -Fx THIRD_PARTY_NOTICES.txt >/dev/null
           for archive in dist/tellurion-v*.tar.gz; do
             tar -tzf "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
           done
@@ -332,7 +375,7 @@ jobs:
           done
           (
             cd dist
-            shasum -a 256 tellurion-v*.tar.gz tellurion-v*.zip tellurion.spdx.json THIRD_PARTY_NOTICES.json > SHA256SUMS
+            shasum -a 256 tellurion-v*.tar.gz tellurion-v*.zip tellurion.spdx.json THIRD_PARTY_NOTICES.json THIRD_PARTY_NOTICES.txt > SHA256SUMS
           )
 
       - name: Attest release archives

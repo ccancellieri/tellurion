@@ -81,6 +81,16 @@ pub struct MetricCollectionRef {
 pub struct ServerConfig {
     pub port: u16,
     pub request_timeout_s: u64,
+    /// Optional canonical public URL used for every server-generated link,
+    /// URI template, and resource `Location`. When absent, Tellurion emits
+    /// relative references so a deployment can remain portable behind
+    /// arbitrary reverse proxies.
+    ///
+    /// Set this explicitly when clients need copy-and-pasteable links (for
+    /// example a public demo). Tellurion never derives it from `Host` or
+    /// forwarded request headers.
+    #[serde(default)]
+    pub public_base_url: Option<String>,
     /// Structured JSON log lines instead of the default human-readable
     /// format. Behavior, so it lives here rather than an env var.
     pub log_json: bool,
@@ -145,6 +155,7 @@ impl Default for ServerConfig {
             port: 8080,
             // Matches the 60s hard request ceiling from the operational rules.
             request_timeout_s: 60,
+            public_base_url: None,
             log_json: false,
             max_concurrency: None,
             descriptor_ttl_s: DEFAULT_DESCRIPTOR_TTL_S,
@@ -160,6 +171,22 @@ impl Default for ServerConfig {
             readiness_probe_timeout_s: 2,
             metrics_tenant_allowlist: Vec::new(),
             metrics_collection_allowlist: Vec::new(),
+        }
+    }
+}
+
+impl ServerConfig {
+    /// Returns an external link for an application-relative `path`.
+    ///
+    /// A configured base may include a path prefix for a reverse proxy. The
+    /// input path, including any query string, is appended without URL
+    /// resolution so a leading slash cannot discard that prefix.
+    pub fn public_href(&self, href: &str) -> String {
+        match self.public_base_url.as_deref() {
+            Some(base) if href.starts_with('/') && !href.starts_with("//") => {
+                format!("{}{}", base.trim_end_matches('/'), href)
+            }
+            _ => href.to_string(),
         }
     }
 }
@@ -3144,6 +3171,24 @@ impl AppConfig {
             return Err(Error::Config(
                 "server.max_concurrency must be at least 1".to_string(),
             ));
+        }
+
+        if let Some(public_base_url) = &self.server.public_base_url {
+            let parsed = url::Url::parse(public_base_url).map_err(|_| {
+                Error::Config("server.public_base_url must be an absolute http(s) URL".to_string())
+            })?;
+            if !matches!(parsed.scheme(), "http" | "https")
+                || parsed.host().is_none()
+                || !parsed.username().is_empty()
+                || parsed.password().is_some()
+                || parsed.query().is_some()
+                || parsed.fragment().is_some()
+            {
+                return Err(Error::Config(
+                    "server.public_base_url must be an http(s) URL with a host and optional path prefix, without credentials, query, or fragment"
+                        .to_string(),
+                ));
+            }
         }
 
         let webhook_delivery = self.server.webhook_delivery;
@@ -6231,6 +6276,61 @@ cache:
         let config: AppConfig = serde_yaml::from_str("server: { max_concurrency: 8 }").unwrap();
         assert_eq!(config.server.max_concurrency, Some(8));
         assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn public_base_url_is_optional_and_must_be_a_safe_http_url() {
+        let config: AppConfig = serde_yaml::from_str("").unwrap();
+        assert_eq!(config.server.public_base_url, None);
+        assert_eq!(config.server.public_href("/public"), "/public");
+
+        let config: AppConfig = serde_yaml::from_str(
+            "server: { public_base_url: 'https://maps.example.test/tellurion/' }",
+        )
+        .unwrap();
+        assert_eq!(
+            config.server.public_href("/public?limit=1"),
+            "https://maps.example.test/tellurion/public?limit=1"
+        );
+        for unchanged in [
+            "https://assets.example.test/data.tif?signature=opaque",
+            "s3://bucket/key",
+            "data:application/json,{}",
+            "//cdn.example.test/resource",
+            "relative/resource",
+            "",
+        ] {
+            assert_eq!(config.server.public_href(unchanged), unchanged);
+        }
+        assert_eq!(
+            config
+                .server
+                .public_href("https://maps.example.test/tellurion/public"),
+            "https://maps.example.test/tellurion/public"
+        );
+        assert_eq!(
+            config
+                .server
+                .public_href("/tiles/{tileMatrix}/{tileRow}/{tileCol}?f=mvt"),
+            "https://maps.example.test/tellurion/tiles/{tileMatrix}/{tileRow}/{tileCol}?f=mvt"
+        );
+        assert!(config.validate().is_ok());
+
+        for invalid in [
+            "/relative",
+            "ftp://maps.example.test",
+            "https://user:secret@maps.example.test",
+            "https://maps.example.test?tenant=public",
+            "https://maps.example.test#public",
+        ] {
+            let config: AppConfig =
+                serde_yaml::from_str(&format!("server: {{ public_base_url: '{invalid}' }}"))
+                    .unwrap();
+            assert!(
+                matches!(config.validate(), Err(Error::Config(_))),
+                "accepted invalid public base URL: {invalid}"
+            );
+        }
     }
 
     #[test]

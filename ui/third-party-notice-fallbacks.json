@@ -1,0 +1,257 @@
+{
+  "schema_version": 2,
+  "fallbacks": [
+    {
+      "name": "@nodable/entities",
+      "version": "3.0.0",
+      "source": "https://registry.npmjs.org/@nodable/entities/-/entities-3.0.0.tgz",
+      "integrity": "sha512-8L9xFeTYKhm49xfIypoe2W5wV1m/3Z58kT+7kR9A8OyFxcPduI4VmxaUMQyKYrRjUoLLSXv6EKKID5Tvj9cUVw==",
+      "package_json_sha256": "548526ce0e1cad9ffe904fba19067013c9fea336eafd3cd52a337ec44406c9ed",
+      "notice_file": "third-party-notices/fallbacks/nodable-entities-3.0.0.txt",
+      "notice_sha256": "7b59266e78563de73999841f11c370974cadcac6053740d1488ac99a7ef88321"
+    },
+    {
+      "name": "brotli",
+      "version": "1.3.3",
+      "source": "https://registry.npmjs.org/brotli/-/brotli-1.3.3.tgz",
+      "integrity": "sha512-oTKjJdShmDuGW94SyyaoQvAjf30dZaHnjJ8uAF+u2/vGJkJbJPJAT1gDiOJP5v1Zb6f9KEyW/1HpuaWIXtGHPg==",
+      "package_json_sha256": "387b47d00ea96cab9b4c521629fbcdc7621053ac061812526f3c69700924cef5",
+      "notice_file": "third-party-notices/fallbacks/brotli-1.3.3.txt",
+      "notice_sha256": "632626f90db2c1fd829fb8d651f28436871989e50d6c04fbe7b2f80a92cfcc04"
+    },
+    {
+      "name": "draco3d",
+      "version": "1.5.7",
+      "source": "https://registry.npmjs.org/draco3d/-/draco3d-1.5.7.tgz",
+      "integrity": "sha512-m6WCKt/erDXcw+70IJXnG7M3awwQPAsZvJGX5zY7beBqpELw6RDGkYVU0W43AFxye4pDZ5i2Lbyc/NNGqwjUVQ==",
+      "package_json_sha256": "6ef40efeb553eb7c2794228b52b22af1110b3d1ff4945ac8d5c29955df3a3c55",
+      "notice_file": "third-party-notices/fallbacks/draco3d-1.5.7.txt",
+      "notice_sha256": "9e61bffac7e3c9d3eb4f3c00390437da1c0515bf837fd7351271ec1eb3e6bb65"
+    },
+    {
+      "name": "isarray",
+      "version": "1.0.0",
+      "source": "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz",
+      "integrity": "sha512-VLghIWNM6ELQzo7zwmcg0NmTVyWKYjvIeM83yjp0wRDTmUnrM678fQbcKBo6n2CJEF0szoG//ytg+TKla89ALQ==",
+      "package_json_sha256": "93165ce56e458216c18240cd961a522af5b18e51da06f55d88ac552234455d95",
+      "notice_file": "third-party-notices/fallbacks/isarray-1.0.0.txt",
+      "notice_sha256": "343af5d0816297ad2ad24dad732d1cbec9f257a93e143688c3529cea3f368bf6"
+    },
+    {
+      "name": "lz4js",
+      "version": "0.2.0",
+      "source": "https://registry.npmjs.org/lz4js/-/lz4js-0.2.0.tgz",
+      "integrity": "sha512-gY2Ia9Lm7Ep8qMiuGRhvUq0Q7qUereeldZPP1PMEJxPtEWHJLqw9pgX68oHajBH0nzJK4MaZEA/YNV3jT8u8Bg==",
+      "package_json_sha256": "683538e928de4f5c7a884450dad938980896414a9ea75ec28dc4b215fcd31bdb",
+      "notice_file": "third-party-notices/fallbacks/lz4js-0.2.0.txt",
+      "notice_sha256": "c07e6950f4b1bf131b4158de739bbcfeedee54f867711b8e81f5be8268eefbce"
+    },
+    {
+      "name": "murmurhash-js",
+      "version": "1.0.0",
+      "source": "https://registry.npmjs.org/murmurhash-js/-/murmurhash-js-1.0.0.tgz",
+      "integrity": "sha512-TvmkNhkv8yct0SVBSy+o8wYzXjE4Zz3PCesbfs8HiCXXdcTuocApFv11UWlNFWKYsP2okqrhb7JNlSm9InBhIw==",
+      "package_json_sha256": "e4b3531abcc7da48f732a058112686b44af66004c38d98a8014619542e767cb4",
+      "notice_file": "third-party-notices/fallbacks/murmurhash-js-1.0.0.txt",
+      "notice_sha256": "ce0c72f1e3e0f658f1e0baf7bc1379a5af9de081c7f298d529b8dc7a818e3349"
+    },
+    {
+      "name": "pako",
+      "version": "1.0.11",
+      "source": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
+      "integrity": "sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==",
+      "package_json_sha256": "0014f350a6834ed6a2d1211e0a2e3aa471cb426edf63379c785f9647ea2b4e01",
+      "notice_file": "third-party-notices/fallbacks/pako-1.0.11.txt",
+      "notice_sha256": "93d1c8411951f960a054413f95db5b5450b67680878997e652d3d9a075b3605a"
+    },
+    {
+      "name": "zstd-codec",
+      "version": "0.1.5",
+      "source": "https://registry.npmjs.org/zstd-codec/-/zstd-codec-0.1.5.tgz",
+      "integrity": "sha512-v3fyjpK8S/dpY/X5WxqTK3IoCnp/ZOLxn144GZVlNUjtwAchzrVo03h+oMATFhCIiJ5KTr4V3vDQQYz4RU684g==",
+      "package_json_sha256": "553a62392efa2a819be554947b54012d274cb40bbd7312b649069824f436cc8c",
+      "notice_file": "third-party-notices/fallbacks/zstd-codec-0.1.5.txt",
+      "notice_sha256": "485c0b17bf4aa2dd0a817e29c955f6bdccdd384454653554311906b9afc079f1"
+    },
+    {
+      "name": "ansi-styles",
+      "version": "4.3.0",
+      "source": "https://registry.npmjs.org/ansi-styles/-/ansi-styles-4.3.0.tgz",
+      "integrity": "sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==",
+      "package_json_sha256": "d405f010681d53f77691015e98461f8484b2afe6a9edfdd2ddb27b1e8a8e883d",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Sindre Sorhus (sindresorhus.com)"]
+    },
+    {
+      "name": "array-back",
+      "version": "6.2.3",
+      "source": "https://registry.npmjs.org/array-back/-/array-back-6.2.3.tgz",
+      "integrity": "sha512-SGDvmg6QTYiTxCBkYVmThcoa67uLl35pyzRHdpCGBOcqFy6BtwnphoFPk7LhJshD+Yk1Kt35WGWeZPTgwR4Fhw==",
+      "package_json_sha256": "f36c3b4f0388ea2975af74014f44ceb6a9ebc63daeaa07b455269bc20579753e",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2015-26 Lloyd Brookes"]
+    },
+    {
+      "name": "buf-compare",
+      "version": "1.0.1",
+      "source": "https://registry.npmjs.org/buf-compare/-/buf-compare-1.0.1.tgz",
+      "integrity": "sha512-Bvx4xH00qweepGc43xFvMs5BKASXTbHaHm6+kDYIK9p/4iFwjATQkmPKHQSgJZzKbAymhztRbXUf1Nqhzl73/Q==",
+      "package_json_sha256": "c0b66124c56e843959ca979504d61466742fa4c189357d779d1bda7428760917",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Sindre Sorhus (sindresorhus.com)"]
+    },
+    {
+      "name": "chalk",
+      "version": "4.1.2",
+      "source": "https://registry.npmjs.org/chalk/-/chalk-4.1.2.tgz",
+      "integrity": "sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==",
+      "package_json_sha256": "9cd907d34a45cb73b5c8a459d5602a36ccd456794665c529a3a5b0f02e196f26",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Sindre Sorhus (sindresorhus.com)"]
+    },
+    {
+      "name": "chalk-template",
+      "version": "0.4.0",
+      "source": "https://registry.npmjs.org/chalk-template/-/chalk-template-0.4.0.tgz",
+      "integrity": "sha512-/ghrgmhfY8RaSdeo43hNXxpoHAtxdbskUHjPpfqUWGttFgycUhYPGx3YZBCnUCvOa7Doivn1IZec3DEGFoMgLg==",
+      "package_json_sha256": "73c841ad89bcc2db1972e3049c0c402f3ac759b461a0f9da09b3e9f29a3a4906",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Josh Junon", "Copyright (c) Sindre Sorhus (https://sindresorhus.com)"]
+    },
+    {
+      "name": "color-convert",
+      "version": "2.0.1",
+      "source": "https://registry.npmjs.org/color-convert/-/color-convert-2.0.1.tgz",
+      "integrity": "sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==",
+      "package_json_sha256": "9471d21744ca3137410448da6b3bd7b30ee91d42edce3b82ebcbf84faef74fb4",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2011-2016 Heather Arthur"]
+    },
+    {
+      "name": "command-line-args",
+      "version": "6.0.2",
+      "source": "https://registry.npmjs.org/command-line-args/-/command-line-args-6.0.2.tgz",
+      "integrity": "sha512-AIjYVxrV9X752LmPDLbVYv8aMCuHPSLZJXEo2qo/xJfv+NYhaZ4sMSF01rM+gHPaMgvPM0l5D/F+Qx+i2WfSmQ==",
+      "package_json_sha256": "599055b4e981ed8d8c67ab6a722c1d71235bf35cc284b3b29bed95e0456b7b23",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2014-26 Lloyd Brookes"]
+    },
+    {
+      "name": "command-line-usage",
+      "version": "7.0.4",
+      "source": "https://registry.npmjs.org/command-line-usage/-/command-line-usage-7.0.4.tgz",
+      "integrity": "sha512-85UdvzTNx/+s5CkSgBm/0hzP80RFHAa7PsfeADE5ezZF3uHz3/Tqj9gIKGT9PTtpycc3Ua64T0oVulGfKxzfqg==",
+      "package_json_sha256": "dde5cfe24599010d9f2282c2e609d6de397bf73fe0dae6d518510a6e3e2400e3",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2015-26 Lloyd Brookes"]
+    },
+    {
+      "name": "core-assert",
+      "version": "0.2.1",
+      "source": "https://registry.npmjs.org/core-assert/-/core-assert-0.2.1.tgz",
+      "integrity": "sha512-IG97qShIP+nrJCXMCgkNZgH7jZQ4n8RpPyPeXX++T6avR/KhLhgLiHKoEn5Rc1KjfycSfA9DMa6m+4C4eguHhw==",
+      "package_json_sha256": "1b01e3084641cb8f7f6d3c3239e7cae08af9a8ee434c5eba990b37f03c6e8478",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Sindre Sorhus (sindresorhus.com)"]
+    },
+    {
+      "name": "deep-strict-equal",
+      "version": "0.2.0",
+      "source": "https://registry.npmjs.org/deep-strict-equal/-/deep-strict-equal-0.2.0.tgz",
+      "integrity": "sha512-3daSWyvZ/zwJvuMGlzG1O+Ow0YSadGfb3jsh9xoCutv2tWyB9dA4YvR9L9/fSdDZa2dByYQe+TqapSGUrjnkoA==",
+      "package_json_sha256": "176b101cc4c042a27e802984c6bb6ac822908923a774fbebd54a0ab3eca938b2",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Sindre Sorhus (sindresorhus.com)"]
+    },
+    {
+      "name": "find-replace",
+      "version": "5.0.2",
+      "source": "https://registry.npmjs.org/find-replace/-/find-replace-5.0.2.tgz",
+      "integrity": "sha512-Y45BAiE3mz2QsrN2fb5QEtO4qb44NcS7en/0y9PEVsg351HsLeVclP8QPMH79Le9sH3rs5RSwJu99W0WPZO43Q==",
+      "package_json_sha256": "e7a1e50b28ba325b6adf0d532929ead3e5c679dfde2b87149957bfaa553d723c",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2015-25 Lloyd Brookes"]
+    },
+    {
+      "name": "has-flag",
+      "version": "4.0.0",
+      "source": "https://registry.npmjs.org/has-flag/-/has-flag-4.0.0.tgz",
+      "integrity": "sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==",
+      "package_json_sha256": "3fef4b52efbeabeadfffd5994e90b1025eb24263286e34170675956637d368b1",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Sindre Sorhus (sindresorhus.com)"]
+    },
+    {
+      "name": "supports-color",
+      "version": "7.2.0",
+      "source": "https://registry.npmjs.org/supports-color/-/supports-color-7.2.0.tgz",
+      "integrity": "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==",
+      "package_json_sha256": "d410a772f9f64b224482ec13815a4bbf1837c533e1be04b3687755c48b2efa1f",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Sindre Sorhus (sindresorhus.com)"]
+    },
+    {
+      "name": "table-layout",
+      "version": "4.1.1",
+      "source": "https://registry.npmjs.org/table-layout/-/table-layout-4.1.1.tgz",
+      "integrity": "sha512-iK5/YhZxq5GO5z8wb0bY1317uDF3Zjpha0QFFLA8/trAoiLbQD0HUbMesEaxyzUgDxi2QlcbM8IvqOlEjgoXBA==",
+      "package_json_sha256": "dc73676ce88a8c2ffb1b71f2f545a6e210fc6a49b416557e6afd5f9e7348561d",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2015-24 Lloyd Brookes"]
+    },
+    {
+      "name": "typical",
+      "version": "7.3.0",
+      "source": "https://registry.npmjs.org/typical/-/typical-7.3.0.tgz",
+      "integrity": "sha512-ya4mg/30vm+DOWfBg4YK3j2WD6TWtRkCbasOJr40CseYENzCUby/7rIvXA99JGsQHeNxLbnXdyLLxKSv3tauFw==",
+      "package_json_sha256": "a8aa6417f539ae82accb367157b01a41438f30c28e51c5cbb163fad4d317794c",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2014-25 Lloyd Brookes"]
+    },
+    {
+      "name": "util-deprecate",
+      "version": "1.0.2",
+      "source": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
+      "integrity": "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==",
+      "package_json_sha256": "7bba467f049074957e693fc06672848b040c38fa071b6eed8690f5fbe090a8b2",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2014 Nathan Rajlich"]
+    },
+    {
+      "name": "wordwrapjs",
+      "version": "5.1.1",
+      "source": "https://registry.npmjs.org/wordwrapjs/-/wordwrapjs-5.1.1.tgz",
+      "integrity": "sha512-0yweIbkINJodk27gX9LBGMzyQdBDan3s/dEAiwBOj+Mf0PPyWL6/rikalkv8EeD0E8jm4o5RXEOrFTP3NXbhJg==",
+      "package_json_sha256": "8d9c674c8168c43eba419e66326e41b869ac39b55ca8ac95ddcdc0b153ac3ddb",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) 2015-25 Lloyd Brookes"]
+    },
+    {
+      "name": "yaml",
+      "version": "2.9.0",
+      "source": "https://registry.npmjs.org/yaml/-/yaml-2.9.0.tgz",
+      "integrity": "sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==",
+      "package_json_sha256": "20b8b197cbd10dad245d45e463dfe58e4c8c25a47e24bc4256ad9ab58bf35683",
+      "notice_file": "third-party-notices/fallbacks/isc-license.txt",
+      "notice_sha256": "fdae6c34f05a02807b0dbecd2afcb9b9738df6fd6a12eae3ff9253a382a81acf",
+      "attribution": ["Copyright Eemeli Aro"]
+    }
+  ]
+}

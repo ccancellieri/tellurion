@@ -3,6 +3,7 @@ import './style.css';
 import './elements/demo-source-workflow';
 import './elements/demo-map-viewer';
 import { mountControlWorkspace, workspaceModeFor } from './elements/control-shell';
+import { thirdPartyNoticesLink } from './legal';
 import { mountPublicDemoShell } from './public-demo-shell';
 
 function mountOperatorConsole(): void {
@@ -20,6 +21,7 @@ document.body.replaceChildren(
     `,
   }),
   document.createElement('main'),
+  thirdPartyNoticesLink(),
 );
 
 const main = document.querySelector('main');
@@ -144,6 +146,7 @@ const controlMode = workspaceModeFor(location.pathname, import.meta.env.MODE);
 
 if (controlMode) {
   mountControlWorkspace(document.body, controlMode);
+  document.body.append(thirdPartyNoticesLink());
 } else if (import.meta.env.MODE === 'public-demo') {
   mountPublicDemoShell(document.body);
 } else {

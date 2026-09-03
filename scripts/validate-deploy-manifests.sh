@@ -72,7 +72,7 @@ for required in \
     'npm run build:public-demo' \
     '--no-default-features --features public-demo,ui' \
     'COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion' \
-    'COPY demo/public-demo.yaml /etc/tellurion/public-demo.yaml' \
+    'COPY deploy/render/public-demo.yaml /etc/tellurion/public-demo.yaml' \
     'ENV TMPDIR=/var/lib/tellurion/tmp' \
     'ENV TELLURION_PUBLIC_DEMO_ARCHIVE_ROOT=/var/lib/tellurion/tmp/archive-roots' \
     'ENV TELLURION_CONFIG=/etc/tellurion/public-demo.yaml' \
@@ -97,7 +97,7 @@ runtime_copies="$(awk '
 ' "$public_demo_dockerfile" | sort)"
 expected_runtime_copies="$(printf '%s\n' \
     'COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion' \
-    'COPY demo/public-demo.yaml /etc/tellurion/public-demo.yaml' \
+    'COPY deploy/render/public-demo.yaml /etc/tellurion/public-demo.yaml' \
     'COPY LICENSE /usr/share/licenses/tellurion/LICENSE' | sort)"
 if [ "$runtime_copies" != "$expected_runtime_copies" ]; then
     echo "FAIL $public_demo_dockerfile: runtime stage COPY inventory is not binary/config/licence only"
@@ -120,10 +120,12 @@ for forbidden in (
 server = document.get("server")
 if not isinstance(server, dict) or server.get("log_json") is not True:
     raise SystemExit("server.log_json must be true")
-' demo/public-demo.yaml 2>"$work_dir/public-demo-config.err"; then
+if server.get("public_base_url") != "https://tellurion-public-demo.onrender.com":
+    raise SystemExit("server.public_base_url must name the canonical public demo origin")
+' deploy/render/public-demo.yaml 2>"$work_dir/public-demo-config.err"; then
     echo "ok   public demo image/config: stateless binary-only deployment contract"
 else
-    echo "FAIL demo/public-demo.yaml: $(cat "$work_dir/public-demo-config.err")"
+    echo "FAIL deploy/render/public-demo.yaml: $(cat "$work_dir/public-demo-config.err")"
     fail=1
 fi
 
@@ -160,6 +162,7 @@ paths = build_filter.get("paths")
 required_paths = {
     ".dockerignore", "render.yaml", "LICENSE", "Cargo.toml", "Cargo.lock",
     "rust-toolchain.toml", "crates/**", "ui/**", "demo/**",
+    "deploy/render/public-demo.yaml",
     "docker/Dockerfile.public-demo",
 }
 if not isinstance(paths, list) or set(paths) != required_paths:

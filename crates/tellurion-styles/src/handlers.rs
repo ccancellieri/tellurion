@@ -138,7 +138,11 @@ async fn list_styles(
     // This handler is mounted at `.../styles` (see `router` below) —
     // `uri.path()` IS the styles root every sibling href in the list is
     // built relative to.
-    let styles_root = uri.path().trim_end_matches('/').to_string();
+    let styles_root = ctx
+        .current()
+        .config
+        .server
+        .public_href(uri.path().trim_end_matches('/'));
     let styles = ids
         .into_iter()
         .map(|id| {
@@ -242,6 +246,7 @@ async fn get_style_metadata(
                 .strip_suffix(&format!("/{style_id}/metadata"))
                 .unwrap_or(&self_path)
                 .to_string();
+            let styles_root = ctx.current().config.server.public_href(&styles_root);
 
             let body = StyleMetadataResponse {
                 id: style_id.clone(),
@@ -334,13 +339,17 @@ mod tests {
     }
 
     fn test_context(store: FakeStyleStore) -> Arc<AppContext> {
-        let config: AppConfig = serde_yaml::from_str(
+        test_context_with_config(
+            store,
             r#"
 tenants: [ { id: public } ]
 catalogs: [ { id: default, tenant: public } ]
 "#,
         )
-        .unwrap();
+    }
+
+    fn test_context_with_config(store: FakeStyleStore, config_yaml: &str) -> Arc<AppContext> {
+        let config: AppConfig = serde_yaml::from_str(config_yaml).unwrap();
         config.validate().unwrap();
         let registry = Registry::new();
         let router = CoreRouter::build(&config, &registry).unwrap();
@@ -421,6 +430,32 @@ catalogs: [ { id: default, tenant: public } ]
         assert_eq!(
             json["styles"][0]["links"][1]["href"],
             "/styles/basic/metadata"
+        );
+    }
+
+    #[tokio::test]
+    async fn configured_public_base_is_used_for_style_discovery_links() {
+        let mut docs = HashMap::new();
+        docs.insert("basic".to_string(), basic_style_doc());
+        let ctx = test_context_with_config(
+            FakeStyleStore::new(docs),
+            r#"
+server: { public_base_url: "https://maps.example.test/tellurion/" }
+tenants: [ { id: public } ]
+catalogs: [ { id: default, tenant: public } ]
+"#,
+        );
+
+        let response = list_styles(State(ctx), no_params(), uri("/styles")).await;
+        let json = body_json(response).await;
+
+        assert_eq!(
+            json["styles"][0]["links"][0]["href"],
+            "https://maps.example.test/tellurion/styles/basic"
+        );
+        assert_eq!(
+            json["styles"][0]["links"][1]["href"],
+            "https://maps.example.test/tellurion/styles/basic/metadata"
         );
     }
 

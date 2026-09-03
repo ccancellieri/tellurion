@@ -2,10 +2,12 @@
 name = "tellurion"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "High-performance geospatial serving engine: OGC API Features, Tiles (MVT and PNG), styled maps, and 3D places over routed, pluggable storage drivers."
 readme.workspace = true
 keywords.workspace = true
@@ -98,13 +100,14 @@ iceberg = ["dep:tellurion-iceberg"]
 # driver compiled out. See `tellurion-duckdb`'s own crate docs for why this
 # driver never loads DuckDB's `spatial` extension.
 duckdb = ["dep:tellurion-duckdb"]
-# Embeds `ui/dist` (the demo UI, built via `cd ui && npm ci && npm run
-# build`) into the binary and serves it at `/ui` — see `src/ui_assets.rs`.
+# Embeds a crate-local UI bundle and serves it at `/ui` — the operator bundle
+# from `ui/dist` normally, or `ui/public-demo-dist` when `public-demo` is also
+# enabled. See `src/ui_assets.rs`.
 # Default OFF: a deployment that never wants the demo UI compiled in (or
 # that hasn't built it) gets zero rust-embed/mime_guess dependency, same
 # "opt-in, not always there" rationale as `pmtiles`/`flatgeobuf` above.
-# `build.rs` fails the build with a clear message naming the npm command
-# when this feature is on but `ui/dist` doesn't exist yet.
+# `build.rs` fails with the matching npm command when the selected bundle is
+# absent.
 ui = ["dep:rust-embed"]
 # The Valkey L2 tile-cache backend (`#16`) — default OFF, same "opt-in, not
 # always there" rationale as `pmtiles`/`flatgeobuf`: nothing in this
@@ -127,7 +130,7 @@ tellurion-flatgeobuf = { workspace = true, optional = true }
 tellurion-geoparquet = { workspace = true, optional = true }
 tellurion-shapefile = { workspace = true, optional = true }
 tellurion-cog = { workspace = true, optional = true }
-tellurion-http-source = { path = "../tellurion-http-source", optional = true }
+tellurion-http-source = { workspace = true, optional = true }
 tellurion-zarr = { workspace = true, optional = true }
 tellurion-geopackage = { workspace = true, optional = true }
 tellurion-iceberg = { workspace = true, optional = true }
@@ -174,7 +177,7 @@ base64 = "0.22"
 clap = { workspace = true }
 # "debug-embed" makes the embed genuinely unconditional (rust-embed's own
 # default only embeds in release builds; debug builds otherwise read
-# ui/dist off disk at request time) — the whole point of this feature is a
+# the asset directory off disk at request time) — the whole point of this feature is a
 # self-contained binary, in any profile. "mime-guess" gives
 # `Metadata::mimetype()` so `ui_assets.rs` doesn't need its own mime_guess
 # dependency.

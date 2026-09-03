@@ -61,7 +61,7 @@ while IFS=$'\t' read -r action comment; do
         fail "workflow action must use canonical bare block-style uses: syntax: $comment"
     fi
     case "$action:$comment" in
-        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1:v7.0.1|actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a:v7.0.1|actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0:v5|anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610:v0|actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6:v4|dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5:1.97.1|Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6:v2.9.2)
+        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1:v7.0.1|actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a:v7.0.1|actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0:v5|anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610:v0|actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6:v4|dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5:1.97.1|Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6:v2.9.2|rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18:v1)
             ;;
         *)
             fail "unapproved workflow action or version comment: $action # $comment"
@@ -78,13 +78,13 @@ require_match 'channel[[:space:]]*=[[:space:]]*"1\.97\.1"' rust-toolchain.toml
 # loosening or narrowing is still rejected -- but the pattern now admits every
 # version this repository can ever declare, instead of exactly one.
 #
-# In GitHub's filter syntax `[0-9]+` is one-or-more digits and `.` is literal,
-# so the pinned pattern transcribes to the ERE `^v[0-9]+\.[0-9]+\.[0-9]+$`.
-# `workspace_version` refuses anything that is not MAJOR.MINOR.PATCH, which is
-# what makes "the tag the release script cuts always fires this workflow" an
-# invariant rather than a coincidence -- and what makes the derived archive
-# names below filesystem-safe.
-require_match 'tags:[[:space:]]*\["v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+"\]' "$workflow"
+# In GitHub's filter syntax `[0-9]+` is one-or-more digits and `.` is literal.
+# The two pinned patterns admit stable tags and the only prerelease this
+# repository cuts: `-rc.N`. `workspace_version` rejects all other forms, which
+# makes "the tag the release script cuts always fires this workflow" an
+# invariant rather than a coincidence -- and keeps derived archive names
+# filesystem-safe.
+require_match 'tags:[[:space:]]*\["v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+", "v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+-rc\.\[0-9\]\+"\]' "$workflow"
 version="$(workspace_version)" || fail "workspace version is unusable as a release tag"
 version_resolver_count="$(rg -c '^[[:space:]]*- name: Resolve workspace version$' "$workflow" || true)"
 [ "$version_resolver_count" -eq 2 ] \
@@ -143,7 +143,14 @@ for source_evidence_requirement in \
     'python3 scripts/generate-third-party-notices\.py' \
     '--inventory "\$dependency_inventory"' \
     '--output "\$public_core/THIRD_PARTY_NOTICES\.json"' \
-    'cp "\$public_core/THIRD_PARTY_NOTICES\.json" dist/THIRD_PARTY_NOTICES\.json'; do
+    'cp "\$public_core/THIRD_PARTY_NOTICES\.json" dist/THIRD_PARTY_NOTICES\.json' \
+    'npm ci' \
+    'npm run build:public-demo' \
+    'scripts/generate-ui-third-party-notices\.py' \
+    'cmp .*THIRD_PARTY_NOTICES\.txt' \
+    'ui/third-party-notice-sha256\.txt' \
+    'cp crates/tellurion-server/ui/THIRD_PARTY_NOTICES\.txt "\$public_core/THIRD_PARTY_NOTICES\.txt"' \
+    'cp "\$public_core/THIRD_PARTY_NOTICES\.txt" dist/THIRD_PARTY_NOTICES\.txt'; do
     printf '%s\n' "$source_job" | rg -q -- "$source_evidence_requirement" \
         || fail "clean source evidence flow is missing $source_evidence_requirement"
 done
@@ -163,6 +170,8 @@ printf '%s\n' "$source_job" | rg -q 'tellurion-v\$\{version\}-source-\$\{build_i
     || fail "source archive name must derive from workspace version and revision"
 printf '%s\n' "$source_job" | rg -q 'dist/THIRD_PARTY_NOTICES\.json' \
     || fail "source evidence upload must carry THIRD_PARTY_NOTICES.json"
+printf '%s\n' "$source_job" | rg -q 'dist/THIRD_PARTY_NOTICES\.txt' \
+    || fail "source evidence upload must carry THIRD_PARTY_NOTICES.txt"
 
 for sbom_requirement in \
     'anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610[[:space:]]+# v0' \
@@ -185,6 +194,10 @@ fi
 if printf '%s\n' "$native_job" | rg -q 'git archive'; then
     fail "release workflow must create exactly one source archive outside the native matrix"
 fi
+
+native_gate_step="$(step_block 'Gate prebuilt native binary release')"
+printf '%s\n' "$native_gate_step" | rg -q 'scripts/check-native-binary-release-readiness\.sh' \
+    || fail "native matrix must gate prebuilt binary release readiness"
 
 build_step="$(step_block 'Build default-feature binaries')"
 printf '%s\n' "$build_step" | rg -q \
@@ -214,6 +227,9 @@ for package_requirement in \
     printf '%s\n' "$package_step" | rg -q -- "$package_requirement" \
         || fail "release package is missing $package_requirement"
 done
+if printf '%s\n' "$package_step" | rg -q 'Copy-Item .*THIRD_PARTY_NOTICES\.txt'; then
+    fail "native release package must not mislabel the UI notice as native dependency evidence"
+fi
 printf '%s\n' "$package_step" | rg -q '\$package_name = "tellurion-v\$version-\$target"' \
     || fail "platform archive name must be derived from the workspace version"
 
@@ -226,7 +242,7 @@ printf '%s\n' "$source_download_step" | rg -q 'path:[[:space:]]*\$\{\{ runner\.t
 # The archive name and the workspace version cannot disagree, because the
 # workflow reads the version out of the workspace manifest rather than
 # repeating it. Pin that derivation: the resolver step must anchor on
-# `[workspace.package]` and accept only MAJOR.MINOR.PATCH, and no naming
+# `[workspace.package]` and accept only MAJOR.MINOR.PATCH[-rc.N], and no naming
 # expression anywhere in the workflow may hard-code a version literal that
 # could then drift from Cargo.toml.
 version_step="$(step_block 'Resolve workspace version')"
@@ -234,7 +250,8 @@ for version_requirement in \
     'id: version' \
     'Get-Content -Raw -Path Cargo\.toml' \
     '\^\\\[workspace\\\.package\\\]' \
-    '\(\\d\+\\\.\\d\+\\\.\\d\+\)' \
+    '\$number = '\''\(\?:0\|\[1-9\]\\d\*\)'\''' \
+    '\$versionPattern = "\$number\\\.\$number\\\.\$number\(\?:-rc\\\.\$number\)\?"' \
     'throw ' \
     '"version=\$version" \| Out-File -FilePath \$env:GITHUB_OUTPUT'; do
     printf '%s\n' "$version_step" | rg -q -- "$version_requirement" \
@@ -273,7 +290,7 @@ done < <(
 )
 rg -q 'shasum -a 256 -c SHA256SUMS' "$install_guide" \
     || fail "$install_guide does not document aggregate checksum verification"
-rg -q 'gh attestation verify tellurion-v[0-9.]*-aarch64-apple-darwin\.tar\.gz' "$install_guide" \
+rg -Fq "gh attestation verify tellurion-v$version-aarch64-apple-darwin.tar.gz" "$install_guide" \
     || fail "$install_guide does not document GitHub attestation verification"
 rg -q -- '--repo ccancellieri/tellurion' "$install_guide" \
     || fail "$install_guide does not bind attestation verification to this repository"
@@ -351,11 +368,13 @@ for checksum_requirement in \
     '\$\{#native_archives\[@\]\}.*-ne 3' \
     'test -f dist/tellurion\.spdx\.json' \
     'test -f dist/THIRD_PARTY_NOTICES\.json' \
+    'test -f dist/THIRD_PARTY_NOTICES\.txt' \
     'unzip -Z1 .*source_archives.*THIRD_PARTY_NOTICES\.json' \
-    'tar -tzf .*THIRD_PARTY_NOTICES' \
+    'unzip -Z1 .*source_archives.*THIRD_PARTY_NOTICES\.txt' \
+    'tar -tzf .*THIRD_PARTY_NOTICES\\\.json' \
     'for archive in dist/tellurion-v\*-pc-windows-msvc\.zip' \
-    'unzip -Z1 "\$archive".*THIRD_PARTY_NOTICES' \
-    'shasum -a 256 .*THIRD_PARTY_NOTICES\.json.*SHA256SUMS' \
+    'unzip -Z1 "\$archive".*THIRD_PARTY_NOTICES\\\.json' \
+    'shasum -a 256 .*THIRD_PARTY_NOTICES\.json THIRD_PARTY_NOTICES\.txt.*SHA256SUMS' \
     'shasum -a 256 .*SHA256SUMS'; do
     printf '%s\n' "$checksum_step" | rg -q -- "$checksum_requirement" \
         || fail "aggregate checksum step is missing $checksum_requirement"
@@ -412,11 +431,32 @@ publication_patterns=(
     'docker/(login|build-push)-action'
     'git[[:space:]]+push\b'
 )
+publish_workflow="$workflow_dir/publish-crates.yml"
 for pattern in "${publication_patterns[@]}"; do
-    if rg -n -i -- "$pattern" "${workflows[@]}"; then
+    pattern_workflows=("${workflows[@]}")
+    if [ "$pattern" = 'cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?publish\b' ]; then
+        pattern_workflows=()
+        for workflow_file in "${workflows[@]}"; do
+            [ "$workflow_file" = "$publish_workflow" ] || pattern_workflows+=("$workflow_file")
+        done
+    fi
+    if [ "${#pattern_workflows[@]}" -gt 0 ] && rg -n -i -- "$pattern" "${pattern_workflows[@]}"; then
         fail "release-publication capability found in workflow files"
     fi
 done
+
+# Every crates.io-specific capability is confined to the one workflow whose
+# complete contract is checked below. Other workflows may use OIDC for public
+# attestations, but may not acquire a registry token or invoke its publisher.
+for workflow_file in "${workflows[@]}"; do
+    [ "$workflow_file" = "$publish_workflow" ] && continue
+    if rg -n -i -- '(^|[[:space:]])(\./)?scripts/publish-crates-io\.sh([[:space:]\\]|$)|rust-lang/crates-io-auth-action|CARGO_REGISTRY_TOKEN|cargo[[:space:]]+login\b' "$workflow_file"; then
+        fail "crates.io publication capability is allowed only in publish-crates.yml"
+    fi
+done
+
+bash scripts/check-crates-io-publish-workflow.sh \
+    || fail "crates.io publication workflow contract does not hold"
 
 python3 scripts/check-workflow-permissions.py \
     --workflow-dir "$workflow_dir" \

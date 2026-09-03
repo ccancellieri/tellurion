@@ -240,13 +240,19 @@ pub async fn list_changes(
 
     let path = uri.path().to_string();
     let mut links = vec![Link::new(
-        changes_href(&path, &raw_query, None),
+        state
+            .config
+            .server
+            .public_href(&changes_href(&path, &raw_query, None)),
         "self",
         JSON_MEDIA_TYPE,
     )];
     if let Some(next_token) = page.next.as_deref() {
         links.push(Link::new(
-            changes_href(&path, &raw_query, Some(next_token)),
+            state
+                .config
+                .server
+                .public_href(&changes_href(&path, &raw_query, Some(next_token))),
             "next",
             JSON_MEDIA_TYPE,
         ));

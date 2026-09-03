@@ -29,7 +29,7 @@ use tellurion_core::{
     AppContext, AssetRecordEntry, CanonicalDescriptor, CollectionDecl, Credential,
     Error as CoreError, FeatureSource, Filter, GeometryLiteral, ItemsQuery, LinkAnchor, PolicyLane,
     RateCharge, RateCounter, RateVerdict, RequestedCrs, ResourceRef,
-    SearchQuery as CoreSearchQuery, SearchResolution,
+    SearchQuery as CoreSearchQuery, SearchResolution, ServerConfig,
 };
 
 use crate::assets::{collection_assets, AssetCapabilities, PageItemAssets};
@@ -282,6 +282,17 @@ fn stac_root_of(collections_href: &str) -> String {
         .to_string()
 }
 
+/// The canonical deployment prefix contributors concatenate with their
+/// server-owned paths. [`ServerConfig::public_href`] performs the same
+/// trailing-slash normalization for links built directly by this crate.
+fn public_base_url(server: &ServerConfig) -> &str {
+    server
+        .public_base_url
+        .as_deref()
+        .unwrap_or_default()
+        .trim_end_matches('/')
+}
+
 /// This collection's servable-lane capabilities (`#36` slice B, `#48`):
 /// gathered through the exact same `Router::resolve_tiles` probe
 /// `list_collections`/`get_collection` already make for the tiles-or-features
@@ -524,9 +535,9 @@ pub async fn list_collections(
     let (tenant_id, catalog_id) = resolve_tenant_catalog(&ctx, &params).await?;
     let tenant_ext = tenant_of(&params);
     let catalog_ext = catalog_of(&params);
-    let self_path = uri.path().to_string();
-    let root_path = stac_root_of(&self_path);
     let state = ctx.current();
+    let self_path = state.config.server.public_href(uri.path());
+    let root_path = stac_root_of(&self_path);
     let page_request = parse_collections_query(&raw_query)?;
 
     let page = state
@@ -613,7 +624,7 @@ pub async fn list_collections(
                 catalog: &catalog_ext,
                 collection: decl.external_id(),
                 item_id: None,
-                base_url: "",
+                base_url: public_base_url(&state.config.server),
                 tenant_id: &tenant_id,
                 catalog_id: &catalog_id,
                 collection_id: &decl.id,
@@ -622,7 +633,13 @@ pub async fn list_collections(
         )
         .await;
         extend_with_contributed(&mut links, contributed);
-        let assets = collection_assets(&tenant_ext, &catalog_ext, decl.external_id(), &caps);
+        let assets = collection_assets(
+            &state.config.server,
+            &tenant_ext,
+            &catalog_ext,
+            decl.external_id(),
+            &caps,
+        );
         collections.push(to_stac_collection(
             canonical.as_ref(),
             decl.external_id(),
@@ -736,7 +753,7 @@ pub async fn get_collection(
         return Ok(response);
     }
 
-    let self_path = uri.path().to_string();
+    let self_path = state.config.server.public_href(uri.path());
     let collections_path = self_path
         .strip_suffix(&format!("/{cid}"))
         .unwrap_or(&self_path)
@@ -772,7 +789,7 @@ pub async fn get_collection(
             catalog: &catalog_of(&params),
             collection: &cid,
             item_id: None,
-            base_url: "",
+            base_url: public_base_url(&state.config.server),
             tenant_id: &tenant_id,
             catalog_id: &catalog_id,
             collection_id: &collection_id,
@@ -783,7 +800,13 @@ pub async fn get_collection(
     extend_with_contributed(&mut links, contributed);
 
     let caps = asset_capabilities(&ctx, &tenant_id, &catalog_id, &collection_id).await;
-    let assets = collection_assets(&tenant_of(&params), &catalog_of(&params), &cid, &caps);
+    let assets = collection_assets(
+        &state.config.server,
+        &tenant_of(&params),
+        &catalog_of(&params),
+        &cid,
+        &caps,
+    );
 
     let body = to_stac_collection(canonical.as_ref(), &cid, links, assets);
     let mut response = (StatusCode::OK, Json(body)).into_response();
@@ -853,12 +876,18 @@ pub async fn list_items(
     }
     let page = source.items(&decl, &query).await?;
 
-    let path = uri.path().to_string();
+    let path = state.config.server.public_href(uri.path());
     let collection_href = path.strip_suffix("/items").unwrap_or(&path).to_string();
     let root_path = stac_root_of(&collection_href);
 
     let caps = asset_capabilities(&ctx, &tenant_id, &catalog_id, &collection_id).await;
-    let assets = collection_assets(&tenant_of(&params), &catalog_of(&params), &cid, &caps);
+    let assets = collection_assets(
+        &state.config.server,
+        &tenant_of(&params),
+        &catalog_of(&params),
+        &cid,
+        &caps,
+    );
     // `#186`: item-anchored cross-protocol links are a per-collection fact
     // (tiles/stylesheets don't vary per row — see `ResourceRef::item_id`'s
     // own doc), so one contribution serves every item on this page instead
@@ -870,7 +899,7 @@ pub async fn list_items(
             catalog: &catalog_of(&params),
             collection: &cid,
             item_id: None,
-            base_url: "",
+            base_url: public_base_url(&state.config.server),
             tenant_id: &tenant_id,
             catalog_id: &catalog_id,
             collection_id: &collection_id,
@@ -893,6 +922,7 @@ pub async fn list_items(
     )
     .await?;
     let assets = PageItemAssets::new(
+        &state.config.server,
         assets,
         &tenant_of(&params),
         &catalog_of(&params),
@@ -1021,7 +1051,7 @@ pub async fn get_item(
         .await?
         .ok_or(CoreError::NotFound)?;
 
-    let path = uri.path().to_string();
+    let path = state.config.server.public_href(uri.path());
     let collection_href = path
         .rsplit_once("/items/")
         .map(|(base, _)| base.to_string())
@@ -1029,7 +1059,13 @@ pub async fn get_item(
     let root_path = stac_root_of(&collection_href);
 
     let caps = asset_capabilities(&ctx, &tenant_id, &catalog_id, &collection_id).await;
-    let assets = collection_assets(&tenant_of(&params), &catalog_of(&params), &cid, &caps);
+    let assets = collection_assets(
+        &state.config.server,
+        &tenant_of(&params),
+        &catalog_of(&params),
+        &cid,
+        &caps,
+    );
 
     let mut links = vec![
         Link::new(root_path, "root", JSON_MEDIA_TYPE),
@@ -1046,7 +1082,7 @@ pub async fn get_item(
             catalog: &catalog_of(&params),
             collection: &cid,
             item_id: Some(&fid),
-            base_url: "",
+            base_url: public_base_url(&state.config.server),
             tenant_id: &tenant_id,
             catalog_id: &catalog_id,
             collection_id: &collection_id,
@@ -1068,6 +1104,7 @@ pub async fn get_item(
     )
     .await?;
     let assets = PageItemAssets::new(
+        &state.config.server,
         assets,
         &tenant_of(&params),
         &catalog_of(&params),
@@ -1111,6 +1148,11 @@ struct SearchContext<'a> {
     tenant_ext: &'a str,
     catalog_ext: &'a str,
     root_path: &'a str,
+    /// The same server configuration snapshot used to build the search
+    /// response's root/self/next links. Holding it here keeps assets and
+    /// contributed links on that snapshot if configuration reloads while
+    /// this request is in flight.
+    server: &'a ServerConfig,
     /// `#34`: the request's credential, re-derived into a `Subject` by
     /// [`authorize_search_collection`] for each candidate collection —
     /// unlike every other handler in this crate, a fan-out search may touch
@@ -1254,7 +1296,8 @@ async fn execute_search(
     let (tenant_id, catalog_id) = resolve_tenant_catalog(ctx, params).await?;
     let tenant_ext = tenant_of(params);
     let catalog_ext = catalog_of(params);
-    let self_path = request_path.to_string();
+    let state = ctx.current();
+    let self_path = state.config.server.public_href(request_path);
     let root_path = self_path
         .strip_suffix("/search")
         .unwrap_or(&self_path)
@@ -1267,6 +1310,7 @@ async fn execute_search(
         tenant_ext: &tenant_ext,
         catalog_ext: &catalog_ext,
         root_path: &root_path,
+        server: &state.config.server,
         credential,
         rate_charged: std::sync::atomic::AtomicBool::new(false),
     };
@@ -1804,8 +1848,13 @@ async fn run_ids_search(
                                 &collection_id,
                             )
                             .await;
-                            let assets =
-                                collection_assets(sc.tenant_ext, sc.catalog_ext, coll_ext, &caps);
+                            let assets = collection_assets(
+                                sc.server,
+                                sc.tenant_ext,
+                                sc.catalog_ext,
+                                coll_ext,
+                                &caps,
+                            );
                             let contributed = contributed_links(
                                 sc.ctx,
                                 &ResourceRef {
@@ -1813,7 +1862,7 @@ async fn run_ids_search(
                                     catalog: sc.catalog_ext,
                                     collection: coll_ext,
                                     item_id: None,
-                                    base_url: "",
+                                    base_url: public_base_url(sc.server),
                                     tenant_id: sc.tenant_id,
                                     catalog_id: sc.catalog_id,
                                     collection_id: &collection_id,
@@ -1831,6 +1880,7 @@ async fn run_ids_search(
                             )
                             .await?;
                             let assets = PageItemAssets::new(
+                                sc.server,
                                 assets,
                                 sc.tenant_ext,
                                 sc.catalog_ext,
@@ -2064,7 +2114,7 @@ async fn run_q_search(
         let page = search.search(&decl, &query).await.map_err(ApiError::from)?;
 
         let caps = asset_capabilities(sc.ctx, sc.tenant_id, sc.catalog_id, &collection_id).await;
-        let assets = collection_assets(sc.tenant_ext, sc.catalog_ext, coll_ext, &caps);
+        let assets = collection_assets(sc.server, sc.tenant_ext, sc.catalog_ext, coll_ext, &caps);
         // `#202`/`#221`: one sidecar lookup and one asset-record lookup per
         // collection's slice of this page — the free-text lane reads its
         // documents from the derived index, but an Item is an Item, so the
@@ -2080,6 +2130,7 @@ async fn run_q_search(
         )
         .await?;
         let assets = PageItemAssets::new(
+            sc.server,
             assets,
             sc.tenant_ext,
             sc.catalog_ext,
@@ -2278,7 +2329,7 @@ async fn run_cursor_search(
         let page = source.items(&decl, &query).await.map_err(ApiError::from)?;
 
         let caps = asset_capabilities(sc.ctx, sc.tenant_id, sc.catalog_id, &collection_id).await;
-        let assets = collection_assets(sc.tenant_ext, sc.catalog_ext, coll_ext, &caps);
+        let assets = collection_assets(sc.server, sc.tenant_ext, sc.catalog_ext, coll_ext, &caps);
         // `#186`: contributed once per collection touched, reused for every
         // item of this page slice — same per-collection caching rationale
         // `ResolvedCollection::contributed` documents for the ids mode.
@@ -2289,7 +2340,7 @@ async fn run_cursor_search(
                 catalog: sc.catalog_ext,
                 collection: coll_ext,
                 item_id: None,
-                base_url: "",
+                base_url: public_base_url(sc.server),
                 tenant_id: sc.tenant_id,
                 catalog_id: sc.catalog_id,
                 collection_id: &collection_id,
@@ -2312,6 +2363,7 @@ async fn run_cursor_search(
         )
         .await?;
         let assets = PageItemAssets::new(
+            sc.server,
             assets,
             sc.tenant_ext,
             sc.catalog_ext,

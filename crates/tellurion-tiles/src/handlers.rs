@@ -359,7 +359,7 @@ async fn tileset_list(
             Err(response) => return response,
         };
 
-    let self_path = uri.path().to_string();
+    let self_path = ctx.current().config.server.public_href(uri.path());
     let tilesets: Vec<serde_json::Value> = tile_matrix_sets
         .into_iter()
         .map(|tms| {
@@ -442,7 +442,7 @@ async fn tileset_vector_body(
     // (see `router` below) — `uri.path()` IS that self href; the catalog
     // root's `tileMatrixSets/{tmsId}` sibling is three segments up from
     // `collections/{cid}/tiles/{tmsId}`.
-    let self_path = uri.path().to_string();
+    let self_path = ctx.current().config.server.public_href(uri.path());
     let catalog_root = self_path
         .strip_suffix(&format!("/collections/{cid}/tiles/{}", tms.id()))
         .unwrap_or(&self_path)
@@ -519,13 +519,13 @@ async fn tileset_vector_body(
         serde_json::json!({
             "rel": "item",
             "type": MVT_MIME,
-            "href": format!("{}/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.mvt", uri.path()),
+            "href": format!("{self_path}/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.mvt"),
             "templated": true,
         }),
         serde_json::json!({
             "rel": "item",
             "type": PNG_MIME,
-            "href": format!("{}/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.png", uri.path()),
+            "href": format!("{self_path}/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.png"),
             "templated": true,
         }),
     ];
@@ -584,14 +584,19 @@ async fn tileset_vector_body(
 /// MVT source layer (`styled_tile`'s own `fetch_mvt`-based pipeline), which
 /// a raster collection has none of — styling/colormaps are out of this
 /// lane's scope entirely.
-fn tileset_raster_body(resolved: &ResolvedRaster, cid: &str, uri: &axum::http::Uri) -> Response {
+fn tileset_raster_body(
+    ctx: &Arc<AppContext>,
+    resolved: &ResolvedRaster,
+    cid: &str,
+    uri: &axum::http::Uri,
+) -> Response {
     let decl = &resolved.decl;
     // `#190`: the raster lane is native-grid only — `tileset` refuses any
     // other tile matrix set by name before calling in here, so this body
     // only ever describes WebMercatorQuad.
     let limits = tile_matrix_limits(decl, TileMatrixSet::WebMercatorQuad);
 
-    let self_path = uri.path().to_string();
+    let self_path = ctx.current().config.server.public_href(uri.path());
     let catalog_root = self_path
         .strip_suffix(&format!("/collections/{cid}/tiles/WebMercatorQuad"))
         .unwrap_or(&self_path)
@@ -611,7 +616,7 @@ fn tileset_raster_body(resolved: &ResolvedRaster, cid: &str, uri: &axum::http::U
         serde_json::json!({
             "rel": "item",
             "type": PNG_MIME,
-            "href": format!("{}/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.png", uri.path()),
+            "href": format!("{self_path}/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.png"),
             "templated": true,
         }),
     ];
@@ -715,14 +720,17 @@ async fn tileset(
             if tms != TileMatrixSet::WebMercatorQuad {
                 return refuse_tile_matrix_set(&cid, tms, "raster source");
             }
-            tileset_raster_body(&resolved, &cid, &uri)
+            tileset_raster_body(&ctx, &resolved, &cid, &uri)
         }
         Err(response) => response,
     }
 }
 
-async fn tile_matrix_sets_list(OriginalUri(uri): OriginalUri) -> Response {
-    let self_path = uri.path().to_string();
+async fn tile_matrix_sets_list(
+    State(ctx): State<Arc<AppContext>>,
+    OriginalUri(uri): OriginalUri,
+) -> Response {
+    let self_path = ctx.current().config.server.public_href(uri.path());
     // `#190`: every registry entry, in `TileMatrixSet::ALL`'s own
     // advertisement order — this listing and `tile_matrix_set_definition`
     // below both walk the same closed registry, so a listed id always
@@ -2744,6 +2752,51 @@ collections:
             .ends_with("/{tileMatrix}/{tileRow}/{tileCol}.png"));
     }
 
+    #[tokio::test]
+    async fn configured_public_base_is_used_for_tileset_links_and_templates() {
+        let ctx = test_context_with_config(
+            Arc::new(FakeTileSource::new()),
+            r#"
+server: { public_base_url: "https://maps.example.test/tellurion/" }
+storages: [ { id: main, driver: fake, url_env: DATABASE_URL } ]
+tenants: [ { id: public } ]
+catalogs: [ { id: default, tenant: public } ]
+collections:
+  - id: demo
+    catalog: default
+    storage: main
+    table: demo
+    geometry: geom
+    pk: id
+    tiles: { minzoom: 0, maxzoom: 5, caps: {} }
+"#,
+        );
+        let uri = OriginalUri(axum::http::Uri::from_static(
+            "/collections/demo/tiles/WebMercatorQuad",
+        ));
+        let response = tileset(State(ctx), cid_path("demo"), HeaderMap::new(), uri).await;
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        let hrefs: Vec<&str> = json["links"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|link| link["href"].as_str().unwrap())
+            .collect();
+
+        assert_eq!(
+            hrefs,
+            vec![
+                "https://maps.example.test/tellurion/collections/demo/tiles/WebMercatorQuad",
+                "https://maps.example.test/tellurion/tileMatrixSets/WebMercatorQuad",
+                "https://maps.example.test/tellurion/collections/demo/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}.mvt",
+                "https://maps.example.test/tellurion/collections/demo/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}.png",
+            ]
+        );
+    }
+
     /// `#37`: a raster-only collection's tileset body must describe raster
     /// capabilities, not the vector defaults — PNG is the only media type,
     /// `layers` stays empty (a decoded pixel window has no source-layer
@@ -3256,7 +3309,8 @@ collections:
     #[tokio::test]
     async fn tile_matrix_sets_listing_advertises_both_registered_sets() {
         let uri = OriginalUri(axum::http::Uri::from_static("/tileMatrixSets"));
-        let response = tile_matrix_sets_list(uri).await;
+        let response =
+            tile_matrix_sets_list(State(test_context(Arc::new(FakeTileSource::new()))), uri).await;
         assert_eq!(response.status(), StatusCode::OK);
         let body = axum::body::to_bytes(response.into_body(), usize::MAX)
             .await

@@ -220,26 +220,13 @@ phase_feature_matrix() {
     for leg in "${FEATURE_LEGS[@]}"; do
         name="${leg%%:*}"
         flags="${leg#*:}"
-        case "$name" in
-            public-demo-ui)
-                printf '  building dedicated public-demo ui/dist for the %s leg\n' "$name"
-                (cd ui && npm ci && npm run build:public-demo) || {
-                    printf '  FAIL feature leg %s (public-demo ui/dist build)\n' "$name"
-                    failed=1
-                    continue
-                }
-                ;;
-            ui | all-features)
-                # `build.rs` fails with a clear message naming this command
-                # when the `ui` feature is on and `ui/dist` does not exist.
-                printf '  building ui/dist for the %s leg\n' "$name"
-                (cd ui && npm ci && npm run build) || {
-                    printf '  FAIL feature leg %s (ui/dist build)\n' "$name"
-                    failed=1
-                    continue
-                }
-                ;;
-        esac
+        if [ "$name" = ui ]; then
+            ./scripts/tests/test_cargo_package_ui.sh || {
+                printf '  FAIL feature leg %s (packaged UI boundary)\n' "$name"
+                failed=1
+                continue
+            }
+        fi
         printf '\n  --- feature leg: %s\n' "$name"
         # shellcheck disable=SC2086
         if cargo test -p tellurion --locked $flags; then
@@ -269,7 +256,14 @@ phase_artifact_audit() { # ci.yml job: artifact-audit
         ./scripts/audit-artifacts.sh &&
         ./scripts/check-release-workflow.sh &&
         ./scripts/test-release-workflow-contract.sh &&
-        ./scripts/test-license-policy.sh
+        ./scripts/test-license-policy.sh &&
+        ./scripts/test-crates-io-policy.sh &&
+        ./scripts/test-crates-io-publish-workflow.sh &&
+        ./scripts/check-crates-io-publish-workflow.sh &&
+        ./scripts/check-crates-io-publisher.sh &&
+        ./scripts/test-publish-crates-io.sh &&
+        ./scripts/test-crates-io-release-bindings.sh &&
+        ./scripts/test-verify-crates-io-release.sh
 }
 
 # --- guard-script coverage audit --------------------------------------------
@@ -293,6 +287,7 @@ DATA_ONLY=("dependency-license-overrides.json")
 SOURCED_ONLY=("rg-compat.sh" "workspace-version.sh")
 # Guards CI reaches through another script rather than invoking directly.
 INDIRECT=(
+    "check-crates-io-release-readiness.sh:publish-crates-io.sh"
     "check-pss-restricted.py:validate-deploy-manifests.sh"
     "check-workflow-permissions.py:check-ci-workflows.sh"
 )
@@ -328,6 +323,7 @@ phase_audit() {
     local -a workflows=(
         ".github/workflows/ci.yml"
         ".github/workflows/release-artifacts.yml"
+        ".github/workflows/publish-crates.yml"
     )
 
     # The same question one level down: not "does a job run this script" but

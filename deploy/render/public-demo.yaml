@@ -1,0 +1,12 @@
+# Render-specific configuration for the anonymous HTTPS source sandbox.
+# The portable local example remains in demo/public-demo.yaml without a
+# canonical origin so its links follow the local mount.
+server:
+  port: 8080
+  request_timeout_s: 60
+  public_base_url: https://tellurion-public-demo.onrender.com
+  log_json: true
+  max_concurrency: 64
+
+cache:
+  memory_percent: 10.0

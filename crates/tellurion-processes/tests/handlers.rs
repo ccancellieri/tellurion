@@ -226,6 +226,47 @@ async fn the_process_list_carries_exactly_what_this_binary_registered() {
 }
 
 #[tokio::test]
+async fn configured_public_base_is_used_for_process_links_and_job_location() {
+    let config = format!(
+        "{CONFIG}\nserver: {{ public_base_url: 'https://maps.example.test/tellurion/' }}\n"
+    );
+    let (app, _) = build_app_with(&config);
+
+    let list = json_body(get(&app, "/processes").await).await;
+    assert_eq!(
+        list["links"][0]["href"],
+        "https://maps.example.test/tellurion/processes"
+    );
+    assert_eq!(
+        list["processes"][0]["links"][0]["href"],
+        "https://maps.example.test/tellurion/processes/echo"
+    );
+
+    let response = post(
+        &app,
+        "/processes/echo/execution",
+        json!({"inputs": {}}),
+        &[],
+    )
+    .await;
+    let location = response
+        .headers()
+        .get(header::LOCATION)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(location.starts_with("https://maps.example.test/tellurion/jobs/"));
+    let body = json_body(response).await;
+    assert!(body["links"].as_array().unwrap().iter().all(|link| {
+        link["href"]
+            .as_str()
+            .unwrap()
+            .starts_with("https://maps.example.test/tellurion/jobs/")
+    }));
+}
+
+#[tokio::test]
 async fn an_unknown_process_is_the_standards_own_no_such_process_exception() {
     let (app, _) = build_app();
     let response = get(&app, "/processes/nope").await;

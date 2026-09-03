@@ -239,24 +239,23 @@ jobs:
           # `tellurion-geoparquet`'s.
           - name: iceberg
             flags: --no-default-features --features iceberg
-          # The embedded demo UI. Needs `ui/dist` built first (below) —
-          # this is the leg that would have caught the stale `AppContext`
-          # fixture arity, since the `ui` feature is default-off and no
-          # other job compiles it.
+          # The embedded operator UI. The packaged-UI boundary below rebuilds
+          # both UI variants in temporary directories and proves the tracked
+          # crate-local bundles are current before this leg compiles them.
           - name: ui
             flags: --no-default-features --features ui
-            build_ui: true
           # The public demo deployment is intentionally smaller than the
           # ordinary server: only the isolated remote COG sandbox and the
           # embedded UI. This leg proves that exact pair without relying on
           # default database/control-store features or the all-features build.
           - name: public-demo-ui
             flags: --no-default-features --features public-demo,ui
-            build_ui: public-demo
           - name: valkey
             flags: --no-default-features --features valkey
-          # Every leg together, proving the combination itself compiles —
-          # also needs `ui/dist`. Kept as compile+test coverage only: the
+          # Every leg together, proving the combination itself compiles.
+          # Because `public-demo` is enabled, this selects the tracked
+          # crate-local public-demo bundle. Kept as compile+test coverage
+          # only: the
           # `postgis`-backed acceptance tests in `tests/binary.rs` skip
           # themselves (pass, not fail) without a `DATABASE_URL`, which
           # this job deliberately doesn't provide — the `test` job above,
@@ -264,7 +263,6 @@ jobs:
           # those.
           - name: all-features
             flags: --all-features
-            build_ui: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Free runner disk
@@ -283,16 +281,9 @@ jobs:
           key: ${{ matrix.name }}
       - name: Install native build dependencies
         run: sudo apt-get update && sudo apt-get install -y cmake pkg-config
-      - name: Build demo UI assets
-        if: matrix.build_ui
-        run: |
-          cd ui
-          npm ci
-          if [ "${{ matrix.build_ui }}" = "public-demo" ]; then
-            npm run build:public-demo
-          else
-            npm run build
-          fi
+      - name: Verify packaged UI boundary
+        if: matrix.name == 'ui'
+        run: ./scripts/tests/test_cargo_package_ui.sh
       - run: cargo test -p tellurion --locked ${{ matrix.flags }}
       # `tellurion`'s `valkey` feature is just `tellurion-core/valkey`, so the
       # leg above proves the server builds against the L2 backend -- but it is
@@ -357,6 +348,9 @@ jobs:
       - name: License policy audit
         run: |
           ./scripts/audit-license-policy.sh
+      - name: crates.io publication boundary
+        run: |
+          ./scripts/audit-crates-io-policy.sh
       - name: Publication licence audit
         run: |
           ./scripts/audit-publication-license.sh
@@ -373,6 +367,9 @@ jobs:
       - name: Packaged-artifact audit
         run: |
           ./scripts/audit-artifacts.sh
+      - name: Build crates.io package archives
+        run: |
+          cargo +1.97.1 package --workspace --locked --no-verify
       - name: Workflow publication-capability contract
         run: |
           ./scripts/check-release-workflow.sh
@@ -382,6 +379,27 @@ jobs:
       - name: License policy mutation test
         run: |
           ./scripts/test-license-policy.sh
+      - name: crates.io policy mutation tests
+        run: |
+          ./scripts/test-crates-io-policy.sh
+      - name: crates.io publication workflow mutation tests
+        run: |
+          ./scripts/test-crates-io-publish-workflow.sh
+      - name: crates.io publication workflow contract
+        run: |
+          ./scripts/check-crates-io-publish-workflow.sh
+      - name: crates.io ordered publisher contract
+        run: |
+          ./scripts/check-crates-io-publisher.sh
+      - name: crates.io package graph and resume tests
+        run: |
+          ./scripts/test-publish-crates-io.sh
+      - name: crates.io canonical release binding tests
+        run: |
+          ./scripts/test-crates-io-release-bindings.sh
+      - name: crates.io release identity tests
+        run: |
+          ./scripts/test-verify-crates-io-release.sh
       # A release mechanism nobody exercises is not a mechanism. `--dry-run`
       # rewrites nothing, creates no tag and pushes nothing -- it resolves the
       # next version, applies every derivation to a scratch copy and runs the

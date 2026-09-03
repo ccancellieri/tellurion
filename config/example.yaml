@@ -36,6 +36,11 @@ server:
   port: 8080
   request_timeout_s: 60
   log_json: false
+  # Optional canonical base URL for absolute links in landing and tenant
+  # directory documents. Leave absent to keep relative links; do not include
+  # credentials, a query, or a fragment. A path prefix is supported when a
+  # reverse proxy publishes Tellurion below one.
+  # public_base_url: https://maps.example.org/tellurion
   drain_timeout_s: 10
   readiness_probe_interval_s: 5
   readiness_probe_timeout_s: 2

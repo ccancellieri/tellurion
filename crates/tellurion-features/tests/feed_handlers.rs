@@ -262,6 +262,36 @@ async fn changes_paginates_with_a_keyset_cursor_never_offset() {
 }
 
 #[tokio::test]
+async fn configured_public_base_makes_change_feed_links_absolute() {
+    let config = format!(
+        "{FEED_CONFIG}\nserver: {{ public_base_url: 'https://maps.example.test/tellurion/' }}\n"
+    );
+    let app = axum::Router::new().nest(
+        "/{tenant}/features/catalogs/{catalog}",
+        build_app(&config, vec![upsert_at(1, "a"), upsert_at(2, "b")]),
+    );
+
+    let response = get(
+        &app,
+        "/public/features/catalogs/default/collections/demo/changes?limit=1",
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = body_json(response).await;
+    assert_eq!(
+        find_link(&body, "self").unwrap()["href"],
+        "https://maps.example.test/tellurion/public/features/catalogs/default/collections/demo/changes?limit=1"
+    );
+    let next = find_link(&body, "next").unwrap()["href"].as_str().unwrap();
+    assert!(
+        next.starts_with(
+            "https://maps.example.test/tellurion/public/features/catalogs/default/collections/demo/changes?limit=1&since="
+        ),
+        "next href was: {next}"
+    );
+}
+
+#[tokio::test]
 async fn changes_defaults_to_an_empty_page_when_fully_caught_up() {
     let app = build_app(FEED_CONFIG, vec![upsert_at(1, "a")]);
     let response = get(&app, "/collections/demo/changes?since=1").await;

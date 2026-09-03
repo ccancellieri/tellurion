@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Enforces one PR/main/manual full gate and one release gate.
+# Enforces one PR/main/manual full gate, one artifact gate, and one separately
+# guarded manual crates.io publication workflow.
 
 set -euo pipefail
 
@@ -9,6 +10,7 @@ set -euo pipefail
 workflow_dir="${WORKFLOW_DIR:-.github/workflows}"
 ci_workflow="$workflow_dir/ci.yml"
 release_workflow="$workflow_dir/release-artifacts.yml"
+publish_workflow="$workflow_dir/publish-crates.yml"
 local_mirror="${CI_LOCAL_SCRIPT:-scripts/ci-local.sh}"
 
 fail() {
@@ -25,6 +27,7 @@ require_match() {
 [ -d "$workflow_dir" ] || fail "missing workflow directory: $workflow_dir"
 [ -f "$ci_workflow" ] || fail "missing CI workflow: $ci_workflow"
 [ -f "$release_workflow" ] || fail "missing release workflow: $release_workflow"
+[ -f "$publish_workflow" ] || fail "missing crates.io publish workflow: $publish_workflow"
 [ -f "$local_mirror" ] || fail "missing local CI mirror: $local_mirror"
 
 # CI runs for pull requests targeting main, main pushes, and explicit manual
@@ -34,14 +37,16 @@ workflow_names="$(
         | sed 's#^.*/##' \
         | sort
 )"
-expected_workflow_names="$(printf '%s\n' ci.yml release-artifacts.yml | sort)"
+expected_workflow_names="$(printf '%s\n' ci.yml publish-crates.yml release-artifacts.yml | sort)"
 if [ "$workflow_names" != "$expected_workflow_names" ]; then
-    fail "hosted workflows must be exactly ci.yml and release-artifacts.yml"
+    fail "hosted workflows must be exactly ci.yml, publish-crates.yml, and release-artifacts.yml"
 fi
 
 python3 scripts/check-workflow-permissions.py \
     --read-only-workflow "$ci_workflow" \
     || fail "CI workflow permissions must be an exact read-only mapping"
+bash scripts/check-crates-io-publish-workflow.sh \
+    || fail "crates.io publication workflow contract must hold"
 
 require_match '^permissions:$' "$ci_workflow"
 require_match '^  contents: read$' "$ci_workflow"
@@ -154,15 +159,10 @@ if [ "$public_demo_count" -ne 1 ]; then
     fail "feature matrix must contain exactly one minimal public-demo-ui leg"
 fi
 
-public_demo_block="$(awk '
-    $0 == "          - name: public-demo-ui" { capture = 1 }
-    capture && $0 ~ /^          - name: / && $0 != "          - name: public-demo-ui" { exit }
-    capture && $0 == "    steps:" { exit }
-    capture { print }
-' "$ci_workflow")"
-printf '%s\n' "$public_demo_block" | rg -qx '            build_ui: public-demo' \
-    || fail "public-demo-ui feature leg must build the dedicated public-demo ui/dist"
-require_match 'npm run build:public-demo' "$ci_workflow"
+if rg -q 'build_ui:|npm run build' "$ci_workflow" \
+    || rg -q 'npm run build' "$local_mirror"; then
+    fail "CI must verify generated UI artifacts without writing them into the worktree"
+fi
 
 hosted_ui_test_count="$(rg -c '^[[:space:]]+- run: cd ui && npm ci && npm test$' "$ci_workflow" || true)"
 local_ui_test_count="$(rg -c '^[[:space:]]+\(cd ui && npm ci && npm test\)$' "$local_mirror" || true)"
@@ -170,6 +170,14 @@ hosted_ui_test_count="${hosted_ui_test_count:-0}"
 local_ui_test_count="${local_ui_test_count:-0}"
 if [ "$hosted_ui_test_count" -ne 1 ] || [ "$local_ui_test_count" -ne 1 ]; then
     fail "hosted CI workflow and local full mirror must each run npm test exactly once"
+fi
+
+hosted_package_ui_count="$(rg -c '^[[:space:]]*run: \./scripts/tests/test_cargo_package_ui\.sh$' "$ci_workflow" || true)"
+local_package_ui_count="$(rg -c '^[[:space:]]*\./scripts/tests/test_cargo_package_ui\.sh \|\| \{$' "$local_mirror" || true)"
+hosted_package_ui_count="${hosted_package_ui_count:-0}"
+local_package_ui_count="${local_package_ui_count:-0}"
+if [ "$hosted_package_ui_count" -ne 1 ] || [ "$local_package_ui_count" -ne 1 ]; then
+    fail "hosted CI and its local mirror must each run the packaged UI boundary check once"
 fi
 
 publication_audit_count="$(rg -c '^[[:space:]]*\./scripts/audit-publication-license\.sh$' "$ci_workflow" || true)"
