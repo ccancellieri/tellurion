@@ -96,12 +96,128 @@ main {
   padding: 0 1.5rem 1.5rem;
 }
 
+.public-demo-shell {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.public-demo-shell__resources {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: #f7fbfa;
+}
+
+.public-demo-shell__resources-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.85rem 1rem 0.7rem;
+}
+
+.public-demo-shell__resources h2 {
+  margin: 0;
+  color: #1c3439;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+}
+
+.public-demo-shell__resources-heading p,
+.public-demo-shell__boundary {
+  margin: 0;
+  color: #536b70;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.public-demo-shell__resources-heading p {
+  max-width: 50ch;
+  text-align: right;
+}
+
+.public-demo-shell__resources ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid #d7e1de;
+  list-style: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.public-demo-shell__resources li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.7rem 1rem;
+  border-right: 1px solid #d7e1de;
+}
+
+.public-demo-shell__resources li:last-child {
+  border-right: 0;
+}
+
+.public-demo-shell__resources a {
+  color: #164f59;
+  font-size: 0.86rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.public-demo-shell__resource-mark {
+  width: 0.62rem;
+  height: 0.62rem;
+  flex: 0 0 auto;
+  border: 1px solid currentcolor;
+  background: currentcolor;
+}
+
+.public-demo-shell__resource-mark--source { color: #2e6970; }
+.public-demo-shell__resource-mark--demo { color: #36c8f4; }
+.public-demo-shell__resource-mark--feedback { color: #9b6a08; }
+
+.public-demo-shell__boundary {
+  max-width: 76ch;
+  margin: 0.7rem 1rem 0.85rem;
+  border-left: 2px solid #ffb743;
+  padding-left: 0.65rem;
+}
+
+.public-demo-shell__boundary strong {
+  color: #385459;
+}
+
 .legal-notices {
   max-width: 1600px;
   margin: 0 auto;
   padding: 0 1.5rem 1.5rem;
   color: var(--ink-muted);
   font-size: 0.8rem;
+}
+
+@media (max-width: 700px) {
+  .public-demo-shell__resources-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .public-demo-shell__resources-heading p {
+    text-align: left;
+  }
+
+  .public-demo-shell__resources ul {
+    grid-template-columns: 1fr;
+  }
+
+  .public-demo-shell__resources li {
+    border-right: 0;
+    border-bottom: 1px solid #d7e1de;
+  }
+
+  .public-demo-shell__resources li:last-child {
+    border-bottom: 0;
+  }
 }
 
 tellurion-operator-workspace {

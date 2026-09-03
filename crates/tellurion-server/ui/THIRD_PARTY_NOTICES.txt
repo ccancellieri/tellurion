@@ -5,8 +5,8 @@ Sections with `notice-origin: package:*` reproduce the source UTF-8 text unchang
 Sections with `notice-origin: reviewed-fallback` are pinned, privacy-safe curated
 notices. Each fallback identifies its provenance and any omission in its own text.
 package-lock-sha256: 3471a34856b50c1c7f6d84545334f2b501676650da6338d3afc77fdfb208a859
-operator-bundle-sha256: 9aa0d20585e019c07de5a397a6fe767d9f3699aae26d90ec0698c5be0b08d6d4
-public-demo-bundle-sha256: 7477f5fa163e49434d4da103ca5084ac61be7c65e057bde99b4fcc55b6dfc262
+operator-bundle-sha256: 0e55c5be39f34307fbf99625a8cee85df6404a18a8934a46ff221f70b69dd67d
+public-demo-bundle-sha256: 678929edb3a1780d499b78a90076e920441e7f6c233dbde1734ec733b66c78ca
 production-package-count: 159
 
 ==============================================================================
