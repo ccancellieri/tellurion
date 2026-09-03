@@ -333,8 +333,8 @@ expect_rejected() {
         missing-native-notice)
             perl -0pi -e 's#^[[:space:]]*Copy-Item .*THIRD_PARTY_NOTICES\.json.*\n##m' "$fixture/workflows/release-artifacts.yml"
             ;;
-        missing-native-ui-notice)
-            perl -0pi -e 's#^[[:space:]]*Copy-Item .*THIRD_PARTY_NOTICES\.txt.*\n##m' "$fixture/workflows/release-artifacts.yml"
+        unexpected-native-ui-notice)
+            perl -0pi -e 's#(Copy-Item .*THIRD_PARTY_NOTICES\.json.*\n)#$1          Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.txt" -Destination "$package_dir"\n#' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-notice-checksum)
             perl -0pi -e 's# THIRD_PARTY_NOTICES\.txt(?= > SHA256SUMS)##' "$fixture/workflows/release-artifacts.yml"
@@ -406,8 +406,11 @@ expect_rejected() {
         missing-source-upload-notice)
             expected_message='source evidence upload'
             ;;
-        missing-native-notice|missing-native-ui-notice)
+        missing-native-notice)
             expected_message='release package'
+            ;;
+        unexpected-native-ui-notice)
+            expected_message='must not mislabel the UI notice'
             ;;
         missing-native-release-gate)
             expected_message='gate prebuilt binary release readiness'
@@ -465,7 +468,7 @@ FINAL_FIX_MUTATIONS=(
     missing-ui-notice-verification
     missing-source-upload-notice
     missing-native-notice
-    missing-native-ui-notice
+    unexpected-native-ui-notice
     missing-native-release-gate
     missing-notice-checksum
     tag-version-mismatch-accepted

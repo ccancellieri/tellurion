@@ -218,7 +218,6 @@ for package_requirement in \
     'Copy-Item LICENSE, COPYRIGHT\.md, README\.md' \
     'Copy-Item COMMERCIAL-LICENSE\.md' \
     'Copy-Item .*THIRD_PARTY_NOTICES\.json' \
-    'Copy-Item .*THIRD_PARTY_NOTICES\.txt' \
     'example-geopackage\.yaml' \
     'Copy-Item docs/licensing\.md' \
     'Join-Path \$package_dir "docs"' \
@@ -228,6 +227,9 @@ for package_requirement in \
     printf '%s\n' "$package_step" | rg -q -- "$package_requirement" \
         || fail "release package is missing $package_requirement"
 done
+if printf '%s\n' "$package_step" | rg -q 'Copy-Item .*THIRD_PARTY_NOTICES\.txt'; then
+    fail "native release package must not mislabel the UI notice as native dependency evidence"
+fi
 printf '%s\n' "$package_step" | rg -q '\$package_name = "tellurion-v\$version-\$target"' \
     || fail "platform archive name must be derived from the workspace version"
 
@@ -369,9 +371,9 @@ for checksum_requirement in \
     'test -f dist/THIRD_PARTY_NOTICES\.txt' \
     'unzip -Z1 .*source_archives.*THIRD_PARTY_NOTICES\.json' \
     'unzip -Z1 .*source_archives.*THIRD_PARTY_NOTICES\.txt' \
-    'tar -tzf .*THIRD_PARTY_NOTICES' \
+    'tar -tzf .*THIRD_PARTY_NOTICES\\\.json' \
     'for archive in dist/tellurion-v\*-pc-windows-msvc\.zip' \
-    'unzip -Z1 "\$archive".*THIRD_PARTY_NOTICES' \
+    'unzip -Z1 "\$archive".*THIRD_PARTY_NOTICES\\\.json' \
     'shasum -a 256 .*THIRD_PARTY_NOTICES\.json THIRD_PARTY_NOTICES\.txt.*SHA256SUMS' \
     'shasum -a 256 .*SHA256SUMS'; do
     printf '%s\n' "$checksum_step" | rg -q -- "$checksum_requirement" \

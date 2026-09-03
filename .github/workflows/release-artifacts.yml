@@ -254,7 +254,6 @@ jobs:
           Copy-Item LICENSE, COPYRIGHT.md, README.md -Destination "$package_dir"
           Copy-Item COMMERCIAL-LICENSE.md -Destination "$package_dir"
           Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.json" -Destination "$package_dir"
-          Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.txt" -Destination "$package_dir"
           Copy-Item config/example-geopackage.yaml -Destination "$package_dir/config"
           Copy-Item docs/licensing.md -Destination "$package_dir/docs"
           Set-Content -Path (Join-Path $package_dir 'BUILD-INFO') -Value @(
@@ -370,11 +369,9 @@ jobs:
           unzip -Z1 "${source_archives[0]}" | grep -Fx THIRD_PARTY_NOTICES.txt >/dev/null
           for archive in dist/tellurion-v*.tar.gz; do
             tar -tzf "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
-            tar -tzf "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.txt$'
           done
           for archive in dist/tellurion-v*-pc-windows-msvc.zip; do
             unzip -Z1 "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
-            unzip -Z1 "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.txt$'
           done
           (
             cd dist
