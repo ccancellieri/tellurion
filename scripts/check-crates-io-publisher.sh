@@ -7,12 +7,16 @@ set -euo pipefail
 . "$(dirname "$0")/rg-compat.sh"
 
 publisher="${CRATES_IO_PUBLISHER:-scripts/publish-crates-io.sh}"
+readiness="${CRATES_IO_RELEASE_READINESS:-scripts/check-crates-io-release-readiness.sh}"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 require() { rg -q -- "$1" "$publisher" || fail "publisher is missing: $1"; }
+require_readiness() { rg -q -- "$1" "$readiness" || fail "source readiness gate is missing: $1"; }
 
 [ -f "$publisher" ] || fail "missing $publisher"
+[ -f "$readiness" ] || fail "missing $readiness"
 require 'expected exactly 27 ordered crates'
 require 'verify-crates-io-release\.sh "\$version" "\$commit"'
+require 'check-crates-io-release-readiness\.sh'
 require 'audit-crates-io-policy\.sh'
 require 'audit-license-policy\.sh'
 require 'audit-publication-license\.sh'
@@ -33,6 +37,7 @@ require 'cargo \+1\.97\.1 publish --locked --registry crates-io -p "\$package"'
 require 'for attempt in 1 2 3 4 5 6 7 8 9 10 11 12'
 require 'Rerun with --resume-from \$package'
 require 'Cargo returned \$publish_status even though \$package \$version is now byte-identical'
+require_readiness '^[[:space:]]*\.[[:space:]].*rg-compat\.sh'
 
 if rg -q -- '--allow-dirty|cargo.*publish.*--no-verify' "$publisher"; then
     fail "publisher weakens Cargo publication verification"

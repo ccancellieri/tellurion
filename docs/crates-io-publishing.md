@@ -118,12 +118,13 @@ workflow**, select `main`, and enter:
 
 The ungated verification job checks the immutable identity, publication and
 licence policies, their mutation tests, the exact successful canonical CI run,
-the complete 27-crate package graph, and live registry state. It does not rerun
-the workspace suite: canonical CI already includes its database-skip assertion,
-feature matrix, demos, and other required gates. The publish job starts only
-after those checks and the `crates-io` environment approval succeed. It repeats
-the origin, CI, identity, and policy checks before requesting its temporary
-token.
+the reviewed UI dependency notice carried by the source crate, the complete
+27-crate package graph, and live registry state. It does not rerun the workspace
+suite: canonical CI already includes its database-skip assertion, feature
+matrix, demos, and other required gates. The publish job starts only after
+those checks and the `crates-io` environment approval succeed. The ordered
+publisher repeats the source-readiness, origin, CI, identity, and policy gates
+before the first registry write.
 
 ## Partial publication and safe resume
 

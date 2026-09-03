@@ -115,6 +115,25 @@ else
     echo "ok: publisher without one workspace package preflight rejected"
 fi
 
+cp scripts/publish-crates-io.sh "$publisher_fixture"
+perl -0pi -e 's#^\./scripts/check-crates-io-release-readiness\.sh\n##m' "$publisher_fixture"
+if CRATES_IO_PUBLISHER="$publisher_fixture" bash scripts/check-crates-io-publisher.sh >/dev/null 2>&1; then
+    echo "FAIL: publisher without source readiness gate was accepted" >&2
+    failures=$((failures + 1))
+else
+    echo "ok: publisher without source readiness gate rejected"
+fi
+
+readiness_fixture="$fixture_root/source-readiness"
+cp scripts/check-crates-io-release-readiness.sh "$readiness_fixture"
+perl -0pi -e 's#^\. .*rg-compat\.sh.*\n##m' "$readiness_fixture"
+if CRATES_IO_RELEASE_READINESS="$readiness_fixture" bash scripts/check-crates-io-publisher.sh >/dev/null 2>&1; then
+    echo "FAIL: source readiness gate without portable grep support was accepted" >&2
+    failures=$((failures + 1))
+else
+    echo "ok: source readiness gate without portable grep support rejected"
+fi
+
 for mutation in \
     automatic-trigger pull-request-target-trigger missing-environment broad-permissions missing-oidc \
     missing-actions-read \

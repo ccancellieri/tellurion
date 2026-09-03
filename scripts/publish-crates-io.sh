@@ -63,6 +63,7 @@ fi
 ./scripts/audit-license-policy.sh
 ./scripts/audit-publication-license.sh
 ./scripts/audit-crates-io-policy.sh
+./scripts/check-crates-io-release-readiness.sh
 if [ "$mode" != --preflight ]; then
     ./scripts/verify-canonical-origin.sh "$version" "$commit"
     ./scripts/verify-canonical-ci.sh "$commit"

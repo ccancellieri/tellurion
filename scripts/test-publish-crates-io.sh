@@ -21,6 +21,11 @@ for gate in audit-license-policy audit-publication-license audit-crates-io-polic
     verify-canonical-origin verify-canonical-ci; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$repo/scripts/$gate.sh"
 done
+cat > "$repo/scripts/check-crates-io-release-readiness.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+: > "$TEST_STATE/source-readiness-ran"
+SH
 
 cat > "$fake_bin/cargo" <<'SH'
 #!/usr/bin/env bash
@@ -89,7 +94,8 @@ run_publisher() {
 }
 
 run_publisher --preflight --version 0.5.0-rc.1 --commit "$commit" >/dev/null
-[ "$(cat "$state/package-count")" -eq 1 ] && [ ! -e "$state/published" ]
+[ "$(cat "$state/package-count")" -eq 1 ] && [ ! -e "$state/published" ] \
+    && [ -f "$state/source-readiness-ran" ]
 
 run_publisher --execute --version 0.5.0-rc.1 --commit "$commit" >/dev/null
 [ "$(wc -l < "$state/published" | tr -d ' ')" -eq 27 ]

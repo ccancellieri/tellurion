@@ -3,6 +3,9 @@
 # a separate gate because their feature-resolved Rust dependency graphs differ.
 set -euo pipefail
 
+# shellcheck source=scripts/rg-compat.sh
+. "$(dirname "$0")/rg-compat.sh"
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
