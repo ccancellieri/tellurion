@@ -219,6 +219,7 @@ mod tests {
         assert_eq!(response.headers()[header::LOCATION], "/ui/control");
 
         let response = app
+            .clone()
             .oneshot(
                 Request::builder()
                     .uri("/ui/control/tenants/acme?panel=settings&scope=effective")
