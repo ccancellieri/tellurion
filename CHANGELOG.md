@@ -29,6 +29,20 @@ repository.
 
 ### Added
 
+- An opt-in `server.public_base_url` emits canonical absolute links from the
+  service, tenant, protocol, and STAC landing documents. It accepts only an
+  explicit HTTP(S) origin with an optional path prefix and never trusts
+  request or forwarding headers; deployments that omit it retain relative
+  links.
+- The embedded operator and public-demo UI bundles ship inside the
+  `tellurion` source crate with a deterministic third-party notice. CI rebuilds
+  both variants outside the worktree and compares the bundles, notice, and
+  reviewed digest to the tracked release inputs.
+- A manual, dependency-ordered crates.io publisher binds all 27 source crates
+  to one clean `main` commit, its matching tag, a successful CI run for that
+  exact commit, the expected crate owner, and byte-identical safe resume.
+  Native binary archives remain separately blocked until their complete,
+  feature-resolved dependency notices are reviewed.
 - A specification deviation register at `docs/spec-deviations.md`:
   where this server knowingly does something other than a clause's letter,
   it is written in one place with its reasoning, auditable and
