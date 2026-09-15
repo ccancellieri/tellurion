@@ -61,7 +61,7 @@ while IFS=$'\t' read -r action comment; do
         fail "workflow action must use canonical bare block-style uses: syntax: $comment"
     fi
     case "$action:$comment" in
-        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1:v7.0.1|actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a:v7.0.1|actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0:v5|anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610:v0|actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6:v4|dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5:1.97.1|Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6:v2.9.2|rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18:v1)
+        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1:v7.0.1|actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a:v7.0.1|actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c:v8.0.1|anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26:v0.24.2|actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6:v4|dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5:1.97.1|Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6:v2.9.2|rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18:v1)
             ;;
         *)
             fail "unapproved workflow action or version comment: $action # $comment"
@@ -174,7 +174,7 @@ printf '%s\n' "$source_job" | rg -q 'dist/THIRD_PARTY_NOTICES\.txt' \
     || fail "source evidence upload must carry THIRD_PARTY_NOTICES.txt"
 
 for sbom_requirement in \
-    'anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610[[:space:]]+# v0' \
+    'anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26[[:space:]]+# v0\.24\.2' \
     'path:[[:space:]]*\$\{\{ runner\.temp \}\}/tellurion-public-core' \
     'format:[[:space:]]*spdx-json' \
     'output-file:[[:space:]]*dist/tellurion\.spdx\.json' \
@@ -234,7 +234,7 @@ printf '%s\n' "$package_step" | rg -q '\$package_name = "tellurion-v\$version-\$
     || fail "platform archive name must be derived from the workspace version"
 
 source_download_step="$(step_block 'Download source evidence')"
-printf '%s\n' "$source_download_step" | rg -q 'actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0' \
+printf '%s\n' "$source_download_step" | rg -q 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c' \
     || fail "native packaging must download the generated dependency notice"
 printf '%s\n' "$source_download_step" | rg -q 'path:[[:space:]]*\$\{\{ runner\.temp \}\}/release-source-evidence' \
     || fail "native packaging must use source evidence from the intermediate artifact"
@@ -354,7 +354,7 @@ attestation_writes="$(rg -c 'attestations:[[:space:]]*write' "$workflow" || true
     || fail "attestations write permission is allowed only on aggregation job"
 
 for download_requirement in \
-    'actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0[[:space:]]+# v5' \
+    'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c[[:space:]]+# v8\.0\.1' \
     'path:[[:space:]]*dist' \
     'merge-multiple:[[:space:]]*true'; do
     printf '%s\n' "$candidate_job" | rg -q -- "$download_requirement" \
