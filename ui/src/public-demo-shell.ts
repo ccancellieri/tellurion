@@ -5,12 +5,12 @@ import { thirdPartyNoticesLink } from './legal';
 export function mountPublicDemoShell(root: HTMLElement): void {
   root.replaceChildren(
     Object.assign(document.createElement('header'), {
-      className: 'app-header',
+      className: 'app-header public-demo-header',
       innerHTML: `
         <div>
           <p class="app-header__eyebrow">Tellurion public preview</p>
-          <h1>Open a remote map where it already lives.</h1>
-          <p>Enter a public HTTPS resource, inspect it through bounded byte-range reads, and view its temporary layer without creating a tenant or catalog.</p>
+          <h1>Your data. On the map.</h1>
+          <p>Explore a public COG, GeoParquet or zipped Shapefile. Choose an example or paste a supported HTTPS address to get started.</p>
         </div>
       `,
     }),

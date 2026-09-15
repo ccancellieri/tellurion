@@ -50,6 +50,28 @@ tellurion-demo-map-viewer {
   background: #dce8e7;
 }
 
+.demo-map__viewport { position: relative; }
+.demo-map__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: #eaf2f8;
+  text-align: center;
+  pointer-events: none;
+}
+.demo-map__empty[hidden] { display: none; }
+.demo-map__empty h3 {
+  max-width: 20ch;
+  margin: 0 0 0.8rem;
+  color: #25475f;
+  font: 650 clamp(1.5rem, 2.5vw, 2.2rem)/1.2 "Avenir Next", "Segoe UI", sans-serif;
+}
+.demo-map__empty p { max-width: 40ch; color: #405d71; line-height: 1.6; }
+
 .demo-map__attribution {
   margin: 0;
   border-top: 1px solid #d7e1de;
