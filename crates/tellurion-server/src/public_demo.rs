@@ -45,6 +45,7 @@ const RENDER_TILE_SIZE_PX: u32 = 256;
 const DEFAULT_POINT_RADIUS_PX: f32 = 3.0;
 const GEOJSON_MEDIA_TYPE: &str = "application/geo+json";
 const MVT_MEDIA_TYPE: &str = "application/vnd.mapbox-vector-tile";
+const CRS84_ROUNDING_TOLERANCE_DEGREES: f64 = 1e-6;
 
 #[derive(Clone)]
 struct DemoRegistry {
@@ -553,7 +554,8 @@ async fn inspect_vector(
         .extent(&physical)
         .await
         .map_err(|_| ())?
-        .map(|value| value.bbox);
+        .map(|value| normalize_crs84_extent(value.bbox))
+        .transpose()?;
     let number_matched = catalog.row_estimate(&physical).await.map_err(|_| ())?;
     let attributes = catalog
         .attribute_schema(&physical)
@@ -593,6 +595,27 @@ async fn inspect_vector(
             attribution: "Remote source supplied by this browser session",
         },
     })
+}
+
+fn normalize_crs84_extent(extent: [f64; 4]) -> Result<[f64; 4], ()> {
+    let [min_x, min_y, max_x, max_y] = extent;
+    if !extent.iter().all(|coordinate| coordinate.is_finite())
+        || min_x < -180.0 - CRS84_ROUNDING_TOLERANCE_DEGREES
+        || max_x > 180.0 + CRS84_ROUNDING_TOLERANCE_DEGREES
+        || min_y < -90.0 - CRS84_ROUNDING_TOLERANCE_DEGREES
+        || max_y > 90.0 + CRS84_ROUNDING_TOLERANCE_DEGREES
+    {
+        return Err(());
+    }
+    let normalized = [
+        min_x.clamp(-180.0, 180.0),
+        min_y.clamp(-90.0, 90.0),
+        max_x.clamp(-180.0, 180.0),
+        max_y.clamp(-90.0, 90.0),
+    ];
+    (normalized[0] < normalized[2] && normalized[1] < normalized[3])
+        .then_some(normalized)
+        .ok_or(())
 }
 
 async fn inspect_cog(object: Arc<dyn RangeObject>) -> Result<DemoSource, ()> {
@@ -2258,6 +2281,31 @@ mod tests {
         duplicate_host.append(header::HOST, HeaderValue::from_static("demo.example"));
         duplicate_host.append(header::HOST, HeaderValue::from_static("demo.example"));
         assert!(!same_origin(&duplicate_host));
+    }
+
+    #[test]
+    fn crs84_extent_clamps_only_sub_metre_rounding_noise() {
+        assert_eq!(
+            normalize_crs84_extent([
+                -180.0,
+                -85.609_037_774_597_74,
+                180.000_000_441_810_39,
+                83.645_13,
+            ]),
+            Ok([-180.0, -85.609_037_774_597_74, 180.0, 83.645_13])
+        );
+        assert_eq!(
+            normalize_crs84_extent([-180.0, -90.000_000_4, 180.0, 90.000_000_4]),
+            Ok([-180.0, -90.0, 180.0, 90.0])
+        );
+        assert_eq!(
+            normalize_crs84_extent([-180.0, -90.01, 180.0, 90.0]),
+            Err(())
+        );
+        assert_eq!(
+            normalize_crs84_extent([f64::NAN, -90.0, 180.0, 90.0]),
+            Err(())
+        );
     }
 
     #[tokio::test]
