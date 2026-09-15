@@ -15,6 +15,15 @@ AGGREGATION = {
     "contents": "read",
     "id-token": "write",
 }
+PUBLISH = {
+    "actions": "read",
+    "contents": "read",
+    "id-token": "write",
+}
+PUBLISH_VERIFY = {
+    "actions": "read",
+    "contents": "read",
+}
 JOB_KEY = re.compile(r"  ([A-Za-z0-9_-]+):$")
 PERMISSION_ENTRY = re.compile(r"([a-z][a-z-]*): (read|write|none)$")
 MAPPING_ENTRY = re.compile(
@@ -295,6 +304,15 @@ def require_release(path: Path) -> None:
         raise ValueError("release permissions are not exact canonical mappings")
 
 
+def require_publish(path: Path) -> None:
+    workflow_blocks, job_blocks = permission_blocks(path)
+    if workflow_blocks != [READ_ONLY] or job_blocks != {
+        "publish": [PUBLISH],
+        "verify": [PUBLISH_VERIFY],
+    }:
+        raise ValueError("publish permissions are not exact canonical mappings")
+
+
 def workflow_paths(directory: Path) -> list[Path]:
     return sorted(
         path
@@ -307,6 +325,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--read-only-workflow", type=Path, action="append", default=[])
     parser.add_argument("--release-workflow", type=Path)
+    parser.add_argument("--publish-workflow", type=Path)
     parser.add_argument("--workflow-dir", type=Path)
     parser.add_argument("--list-actions", type=Path, nargs="+")
     arguments = parser.parse_args()
@@ -326,15 +345,20 @@ def main() -> int:
             if not discovered:
                 raise ValueError("no workflow files")
             release_workflow = arguments.workflow_dir / "release-artifacts.yml"
+            publish_workflow = arguments.workflow_dir / "publish-crates.yml"
             for workflow in discovered:
                 if workflow == release_workflow:
                     require_release(workflow)
+                elif workflow == publish_workflow:
+                    require_publish(workflow)
                 else:
                     require_read_only(workflow)
         for workflow in arguments.read_only_workflow:
             require_read_only(workflow)
         if arguments.release_workflow:
             require_release(arguments.release_workflow)
+        if arguments.publish_workflow:
+            require_publish(arguments.publish_workflow)
     except (OSError, ValueError):
         print("FAIL: workflow permissions must use exact canonical mappings", file=sys.stderr)
         return 1

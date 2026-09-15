@@ -120,6 +120,7 @@ struct PublicDemoBootConfig {
 struct PublicDemoServerConfig {
     port: u16,
     request_timeout_s: u64,
+    public_base_url: Option<String>,
     log_json: bool,
     max_concurrency: Option<usize>,
 }
@@ -131,6 +132,7 @@ impl Default for PublicDemoServerConfig {
         Self {
             port: defaults.port,
             request_timeout_s: defaults.request_timeout_s,
+            public_base_url: defaults.public_base_url,
             log_json: defaults.log_json,
             max_concurrency: defaults.max_concurrency,
         }
@@ -159,6 +161,7 @@ fn parse_public_demo_config(raw: &str) -> anyhow::Result<AppConfig> {
     let mut config = AppConfig::default();
     config.server.port = boot.server.port;
     config.server.request_timeout_s = boot.server.request_timeout_s;
+    config.server.public_base_url = boot.server.public_base_url;
     config.server.log_json = boot.server.log_json;
     config.server.max_concurrency = boot.server.max_concurrency;
     config.cache.memory_percent = boot.cache.memory_percent;
@@ -1010,6 +1013,7 @@ auth:
 server:
   port: 9000
   request_timeout_s: 30
+  public_base_url: https://maps.example.test/tellurion
   log_json: true
   max_concurrency: 64
 cache:
@@ -1018,6 +1022,10 @@ cache:
         )
         .unwrap();
         assert_eq!(config.server.port, 9000);
+        assert_eq!(
+            config.server.public_base_url.as_deref(),
+            Some("https://maps.example.test/tellurion")
+        );
         assert!(config.storages.is_empty());
         assert!(config.tenants.is_empty());
 

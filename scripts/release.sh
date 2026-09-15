@@ -28,7 +28,7 @@
 #
 # Usage:
 #   scripts/release.sh <major|minor|patch> [options]
-#   scripts/release.sh --set <MAJOR.MINOR.PATCH> [options]
+#   scripts/release.sh --set <MAJOR.MINOR.PATCH[-rc.N]> [options]
 #
 # Options:
 #   --dry-run   Apply the bump, print the resulting diff, restore the tree.
@@ -71,7 +71,7 @@ while [ "$#" -gt 0 ]; do
             ;;
         --set)
             shift || true
-            [ "${1-}" != "" ] || refuse "--set needs a MAJOR.MINOR.PATCH argument"
+            [ "${1-}" != "" ] || refuse "--set needs a MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-rc.N argument"
             [ -z "$bump_kind" ] || refuse "--set and a bump kind ($bump_kind) are mutually exclusive"
             target_version="$1"
             ;;
@@ -91,7 +91,7 @@ done
 
 if [ -z "$bump_kind" ] && [ -z "$target_version" ]; then
     usage >&2
-    refuse "no bump kind given; expected major, minor, patch, or --set MAJOR.MINOR.PATCH"
+    refuse "no bump kind given; expected major, minor, patch, or --set MAJOR.MINOR.PATCH[-rc.N]"
 fi
 if [ "$dry_run" -eq 1 ] && { [ "$do_commit" -eq 1 ] || [ "$do_tag" -eq 1 ]; }; then
     refuse "--dry-run cannot be combined with --commit or --tag"
@@ -114,8 +114,9 @@ fi
 
 current_version="$(workspace_version)" || refuse "cannot read the current version from Cargo.toml"
 
-current_major="${current_version%%.*}"
-current_rest="${current_version#*.}"
+current_base="${current_version%%-*}"
+current_major="${current_base%%.*}"
+current_rest="${current_base#*.}"
 current_minor="${current_rest%%.*}"
 current_patch="${current_rest#*.}"
 
@@ -127,18 +128,11 @@ case "$bump_kind" in
 esac
 
 is_semver "$target_version" \
-    || refuse "target version '$target_version' is not MAJOR.MINOR.PATCH"
+    || refuse "target version '$target_version' is not MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-rc.N"
 
 # Strictly forward only. An equal or lower version would re-point an identity
 # that may already have been built, tagged, or handed to someone.
-target_major="${target_version%%.*}"
-target_rest="${target_version#*.}"
-target_minor="${target_rest%%.*}"
-target_patch="${target_rest#*.}"
-if [ "$target_major" -lt "$current_major" ] ||
-    { [ "$target_major" -eq "$current_major" ] && [ "$target_minor" -lt "$current_minor" ]; } ||
-    { [ "$target_major" -eq "$current_major" ] && [ "$target_minor" -eq "$current_minor" ] &&
-        [ "$target_patch" -le "$current_patch" ]; }; then
+if ! is_forward_release_version "$current_version" "$target_version"; then
     refuse "the version would not move forward: $current_version -> $target_version"
 fi
 
@@ -203,7 +197,7 @@ awk -v new_version="$target_version" '
         next
     }
     section == "[workspace.dependencies]" && /^[A-Za-z0-9_-]+[[:space:]]*=[[:space:]]*\{[[:space:]]*path[[:space:]]*=[[:space:]]*"crates\// {
-        sub(/version[[:space:]]*=[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"/,
+        sub(/version[[:space:]]*=[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?"/,
             "version = \"" new_version "\"")
     }
     { print }

@@ -7,7 +7,7 @@
 # and is a two-line change (commented at the bottom of the task).
 #
 #   nomad job run \
-#     -var artifact_source=https://artifacts.internal/tellurion-v0.4.0-x86_64-unknown-linux-musl.tar.gz \
+#     -var artifact_source=https://artifacts.internal/tellurion-v0.5.0-rc.1-x86_64-unknown-linux-musl.tar.gz \
 #     -var config_source=https://artifacts.internal/tellurion-config.tar.gz \
 #     deploy/nomad/tellurion.nomad.hcl
 

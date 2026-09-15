@@ -2,10 +2,12 @@
 name = "tellurion-pmtiles"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "PMTiles storage driver for the Tellurion geospatial serving engine: serves vector tiles directly from local PMTiles v3 archives."
 readme.workspace = true
 keywords.workspace = true

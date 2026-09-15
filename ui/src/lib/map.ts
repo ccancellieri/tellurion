@@ -1,5 +1,10 @@
 import maplibregl from 'maplibre-gl';
 import type { Extent } from './api';
+import {
+  DEMO_TILE_PROTOCOL,
+  DemoTileProtocol,
+  demoTileProtocolScope,
+} from './demo-tile-protocol';
 import { demoTileTemplateFromAdvertisedLink, isVectorDemoSource, type DemoSourceResponse } from './demo-source';
 import { maplibreTileTemplate, resolveDataHref, type AdvertisedTileLink } from './tile-url';
 
@@ -96,11 +101,58 @@ export function createMap(container: HTMLElement): maplibregl.Map {
   });
 }
 
-/** Keep MapLibre's raster fetch burst inside the anonymous demo session's
- * server-advertised operation ceiling. The dedicated preview has one map, so
- * this global MapLibre limit applies only to that public-demo surface. */
-export function setDemoImageRequestLimit(maxConcurrentOperations: number): void {
-  maplibregl.setMaxParallelImageRequests(maxConcurrentOperations);
+export interface DemoTileTransport {
+  activate(
+    sourceId: string,
+    origin: string,
+    httpsTemplate: string,
+    maxConcurrentOperations?: number,
+  ): string | null;
+  clear(): void;
+  destroy(): void;
+}
+
+const demoTileProtocols = new Map<string, DemoTileProtocol>();
+let demoTileDispatcherInstalled = false;
+
+async function loadDemoProtocolTile(
+  request: { url: string },
+  controller: AbortController,
+): Promise<{ data: ArrayBuffer }> {
+  const scope = demoTileProtocolScope(request.url);
+  const protocol = scope ? demoTileProtocols.get(scope) : undefined;
+  if (!protocol) throw new Error('Tile request is outside an active demo source.');
+  return { data: await protocol.load(request.url, controller.signal) };
+}
+
+/** Registers the one custom protocol used by the public raster preview. The
+ * protocol owns its queue, while MapLibre remains responsible for decoding
+ * the returned PNG bytes. */
+export function createDemoTileTransport(): DemoTileTransport {
+  const protocol = new DemoTileProtocol();
+  demoTileProtocols.set(protocol.scopeId, protocol);
+  if (!demoTileDispatcherInstalled) {
+    maplibregl.addProtocol(DEMO_TILE_PROTOCOL, loadDemoProtocolTile);
+    demoTileDispatcherInstalled = true;
+  }
+  let destroyed = false;
+  return {
+    activate: (sourceId, origin, template, limit) =>
+      destroyed ? null : protocol.activate(sourceId, origin, template, limit),
+    clear: () => {
+      if (!destroyed) protocol.clear();
+    },
+    destroy: () => {
+      if (destroyed) return;
+      destroyed = true;
+      protocol.clear();
+      demoTileProtocols.delete(protocol.scopeId);
+      if (demoTileProtocols.size === 0) {
+        maplibregl.removeProtocol(DEMO_TILE_PROTOCOL);
+        demoTileDispatcherInstalled = false;
+      }
+    },
+  };
 }
 
 /** Frames the map on a collection's declared extent (the `extent.spatial`

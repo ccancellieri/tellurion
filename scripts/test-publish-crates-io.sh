@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# Network-free behavioral tests for package-graph preflight and safe resume.
+
+set -euo pipefail
+
+fixture="$(mktemp -d)"
+trap 'rm -rf "$fixture"' EXIT
+repo="$fixture/repo"
+state="$fixture/registry"
+fake_bin="$fixture/bin"
+mkdir -p "$repo/scripts" "$repo/release" "$state/names" "$state/versions" "$fake_bin"
+cp scripts/publish-crates-io.sh scripts/verify-crates-io-release.sh \
+    scripts/workspace-version.sh "$repo/scripts/"
+printf '[workspace.package]\nversion = "0.5.0-rc.1"\n' > "$repo/Cargo.toml"
+printf '/target/\n' > "$repo/.gitignore"
+for number in $(seq -w 1 27); do
+    printf 'crate-%s\n' "$number" >> "$repo/release/crates-io-packages.txt"
+    : > "$state/names/crate-$number"
+done
+for gate in audit-license-policy audit-publication-license audit-crates-io-policy \
+    verify-canonical-origin verify-canonical-ci; do
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$repo/scripts/$gate.sh"
+done
+cat > "$repo/scripts/check-crates-io-release-readiness.sh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+: > "$TEST_STATE/source-readiness-ran"
+SH
+
+cat > "$fake_bin/cargo" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+action="${2-}"
+package=""
+previous=""
+for argument in "$@"; do
+    [ "$previous" = -p ] && package="$argument"
+    previous="$argument"
+done
+case "$action" in
+    package)
+        count=0
+        [ -f "$TEST_STATE/package-count" ] && count="$(cat "$TEST_STATE/package-count")"
+        printf '%s\n' "$((count + 1))" > "$TEST_STATE/package-count"
+        mkdir -p target/package
+        while IFS= read -r name; do
+            [ "$name" = "${TEST_OMIT_PACKAGE:-}" ] || printf '%s\n' "$name" > "target/package/$name-$TEST_VERSION.crate"
+        done < release/crates-io-packages.txt
+        ;;
+    publish)
+        cp "target/package/$package-$TEST_VERSION.crate" "$TEST_STATE/versions/$package"
+        printf '%s\n' "$package" >> "$TEST_STATE/published"
+        [ "$package" != "${TEST_FAIL_PUBLISH:-}" ] || exit 101
+        ;;
+    *) exit 2 ;;
+esac
+SH
+
+cat > "$fake_bin/curl" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+output=""
+previous=""
+url="${!#}"
+for argument in "$@"; do
+    [ "$previous" = --output ] && output="$argument"
+    previous="$argument"
+done
+path="${url#https://crates.io/api/v1/crates/}"
+package="${path%%/*}"
+if [ "$path" = "$package" ]; then
+    [ -f "$TEST_STATE/names/$package" ] && printf 200 || printf 404
+elif [ "$path" = "$package/owners" ]; then
+    if [ "$package" = "${TEST_OWNER_ENDPOINT_ERROR:-}" ]; then
+        printf '{"errors":[{"detail":"registry unavailable"}]}\n' > "$output"
+        printf 503
+    elif [ "$package" = "${TEST_WRONG_OWNER:-}" ]; then
+        printf '{"users":[{"login":"unrelated-owner"}],"teams":[]}\n' > "$output"
+        printf 200
+    elif [ "$package" = "${TEST_MALFORMED_OWNERS:-}" ]; then
+        printf '{"users":{"login":"ccancellieri"}}\n' > "$output"
+        printf 200
+    elif [ "$package" = "${TEST_OWNER_AS_TEAM:-}" ]; then
+        printf '{"teams":[{"login":"ccancellieri"}]}\n' > "$output"
+        printf 200
+    else
+        printf '{"users":[{"login":"ccancellieri"}]}\n' > "$output"
+        printf 200
+    fi
+elif [ -f "$TEST_STATE/versions/$package" ]; then
+    cp "$TEST_STATE/versions/$package" "$output"
+    printf 200
+else
+    printf 404
+fi
+SH
+
+chmod +x "$repo/scripts/"*.sh "$fake_bin/"*
+git -C "$repo" init -q
+git -C "$repo" config user.name 'Tellurion publisher test'
+git -C "$repo" config user.email 'publisher-test.invalid'
+git -C "$repo" add .
+git -C "$repo" commit -qm 'Create publisher fixture'
+commit="$(git -C "$repo" rev-parse HEAD)"
+git -C "$repo" tag v0.5.0-rc.1
+
+run_publisher() {
+    (cd "$repo" && PATH="$fake_bin:$PATH" TEST_STATE="$state" \
+        TEST_VERSION=0.5.0-rc.1 CARGO_REGISTRY_TOKEN=test \
+        ./scripts/publish-crates-io.sh "$@")
+}
+
+TEST_OWNER_AS_TEAM=crate-27 run_publisher --preflight \
+    --version 0.5.0-rc.1 --commit "$commit" >/dev/null
+[ "$(cat "$state/package-count")" -eq 1 ] && [ ! -e "$state/published" ] \
+    && [ -f "$state/source-readiness-ran" ]
+
+if TEST_WRONG_OWNER=crate-11 run_publisher --execute \
+    --version 0.5.0-rc.1 --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: a crate owned by another account was accepted" >&2
+    exit 1
+fi
+[ ! -e "$state/published" ] || {
+    echo "FAIL: ownership rejection happened after an upload" >&2
+    exit 1
+}
+
+if TEST_OWNER_ENDPOINT_ERROR=crate-19 run_publisher --execute \
+    --version 0.5.0-rc.1 --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: an owners endpoint error was accepted" >&2
+    exit 1
+fi
+[ ! -e "$state/published" ] || {
+    echo "FAIL: owners endpoint failure happened after an upload" >&2
+    exit 1
+}
+
+if TEST_MALFORMED_OWNERS=crate-23 run_publisher --execute \
+    --version 0.5.0-rc.1 --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: a malformed owners response was accepted" >&2
+    exit 1
+fi
+[ ! -e "$state/published" ] || {
+    echo "FAIL: malformed ownership rejection happened after an upload" >&2
+    exit 1
+}
+
+run_publisher --execute --version 0.5.0-rc.1 --commit "$commit" >/dev/null
+[ "$(wc -l < "$state/published" | tr -d ' ')" -eq 27 ]
+run_publisher --execute --version 0.5.0-rc.1 --commit "$commit" >/dev/null
+[ "$(wc -l < "$state/published" | tr -d ' ')" -eq 27 ]
+[ "$(cat "$state/package-count")" -eq 6 ]
+
+rm "$state/names/crate-27"
+if run_publisher --execute --version 0.5.0-rc.1 \
+    --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: execute mode accepted an unclaimed crate name" >&2
+    exit 1
+fi
+published_before_bootstrap="$(wc -l < "$state/published" | tr -d ' ')"
+if GITHUB_ACTIONS=true \
+    TELLURION_BOOTSTRAP_CONFIRM="publish first crates for 0.5.0-rc.1 from $commit" \
+    run_publisher --bootstrap --version 0.5.0-rc.1 --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: GitHub Actions accepted first-publication bootstrap" >&2
+    exit 1
+fi
+GITHUB_ACTIONS=false \
+    TELLURION_BOOTSTRAP_CONFIRM="publish first crates for 0.5.0-rc.1 from $commit" \
+    run_publisher --bootstrap --version 0.5.0-rc.1 --commit "$commit" >/dev/null
+[ "$(wc -l < "$state/published" | tr -d ' ')" -eq "$published_before_bootstrap" ]
+: > "$state/names/crate-27"
+
+rm "$state/versions/crate-05" "$state/versions/crate-06"
+if TEST_FAIL_PUBLISH=crate-05 run_publisher --execute --version 0.5.0-rc.1 \
+    --commit "$commit" --resume-from crate-05 >/dev/null 2>&1; then
+    echo "FAIL: ambiguous Cargo failure advanced publication" >&2
+    exit 1
+fi
+[ -f "$state/versions/crate-05" ] && [ ! -f "$state/versions/crate-06" ]
+
+rm -rf "$repo/target"
+if TEST_OMIT_PACKAGE=crate-10 run_publisher --preflight --version 0.5.0-rc.1 \
+    --commit "$commit" >/dev/null 2>&1; then
+    echo "FAIL: incomplete workspace package graph was accepted" >&2
+    exit 1
+fi
+
+echo "crates.io package graph, ownership, and resume tests passed"

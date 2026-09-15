@@ -1,10 +1,10 @@
 import '../demo-map-viewer.css';
 import {
   createMap,
+  createDemoTileTransport,
   demoRasterMapHandoff,
   demoVectorMapHandoff,
   fitToExtent,
-  setDemoImageRequestLimit,
 } from '../lib/map';
 import type { AddLayerObject } from 'maplibre-gl';
 import { isVectorDemoSource, type DemoSourceResponse, type DemoVectorStyle } from '../lib/demo-source';
@@ -21,6 +21,7 @@ interface MapRegistration {
  * same-origin handoff and never knows a tenant, catalog, or remote locator. */
 export class TellurionDemoMapViewer extends ElementBase {
   #map: ReturnType<typeof createMap> | null = null;
+  #tileTransport: ReturnType<typeof createDemoTileTransport> | null = null;
   #registration: MapRegistration | null = null;
   #pending: { source: DemoSourceResponse; opacity: number; style: DemoVectorStyle } | null = null;
   #expiryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -37,12 +38,20 @@ export class TellurionDemoMapViewer extends ElementBase {
           </div>
           <p class="demo-map__status" data-field="status" role="status">Choose a public HTTPS source to open a temporary layer.</p>
         </header>
-        <div class="demo-map__canvas" data-field="map" aria-label="Temporary source map"></div>
+        <div class="demo-map__viewport">
+          <div class="demo-map__canvas" data-field="map" aria-label="Temporary source map"></div>
+          <div class="demo-map__empty" data-field="empty">
+            <h3>A map starts with a source</h3>
+            <p>Choose a sample dataset or paste a public HTTPS address. Inspect the source, choose its appearance, then open your map here.</p>
+            <p>COG · GeoParquet · ZIP Shapefile</p>
+          </div>
+        </div>
         <p class="demo-map__attribution" data-field="attribution">Basemap intentionally omitted.</p>
       </section>
     `;
     document.addEventListener('tellurion-demo-map', this.#mapListener);
     document.addEventListener('tellurion-demo-map-reset', this.#resetListener);
+    this.#tileTransport = createDemoTileTransport();
     this.#map = createMap(this.#field('map'));
     this.#map.on('load', () => {
       if (this.#pending) this.#open(this.#pending.source, this.#pending.opacity, this.#pending.style);
@@ -57,6 +66,8 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#registration = null;
     this.#map?.remove();
     this.#map = null;
+    this.#tileTransport?.destroy();
+    this.#tileTransport = null;
   }
 
   #receiveMap(event: Event): void {
@@ -97,6 +108,7 @@ export class TellurionDemoMapViewer extends ElementBase {
       map.addSource(handoff.sourceId, { type: 'vector', tiles: [handoff.template], minzoom: 0, maxzoom: 22 });
       map.addLayer(vectorLayer(handoff, opacity, style));
       this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId };
+      this.#field('empty').hidden = true;
       fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
       this.#field('status').textContent = 'Temporary vector map opened. It expires with this browser session.';
       this.#field('attribution').textContent = `Temporary source: ${handoff.attribution}`;
@@ -105,10 +117,17 @@ export class TellurionDemoMapViewer extends ElementBase {
     }
     const handoff = demoRasterMapHandoff(source, location.origin);
     if (!handoff) return;
-    setDemoImageRequestLimit(source.limits.max_concurrent_operations);
-    map.addSource(handoff.sourceId, { type: 'raster', tiles: [handoff.template], tileSize: 256, minzoom: 0, maxzoom: 22 });
+    const tileTemplate = this.#tileTransport?.activate(
+      source.id,
+      location.origin,
+      handoff.template,
+      source.limits.max_concurrent_operations,
+    );
+    if (!tileTemplate) return;
+    map.addSource(handoff.sourceId, { type: 'raster', tiles: [tileTemplate], tileSize: 256, minzoom: 0, maxzoom: 22 });
     map.addLayer({ id: handoff.layerId, type: 'raster', source: handoff.sourceId, paint: { 'raster-opacity': opacity } });
     this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId };
+    this.#field('empty').hidden = true;
     if (handoff.extent) fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
     this.#field('status').textContent = 'Temporary source map opened. It expires with this browser session.';
     this.#field('attribution').textContent = `Temporary source: ${handoff.attribution}`;
@@ -137,12 +156,14 @@ export class TellurionDemoMapViewer extends ElementBase {
   #remove(sourceId?: string): void {
     const registration = this.#registration;
     if (!registration || (sourceId && registration.sourceId !== `demo-source-${sourceId}`)) return;
+    this.#tileTransport?.clear();
     const map = this.#map;
     if (map) {
       if (map.getLayer(registration.layerId)) map.removeLayer(registration.layerId);
       if (map.getSource(registration.sourceId)) map.removeSource(registration.sourceId);
     }
     this.#registration = null;
+    this.#field('empty').hidden = false;
     this.#field('status').textContent = 'Choose a public HTTPS source to open a temporary layer.';
     this.#field('attribution').textContent = 'Basemap intentionally omitted.';
   }

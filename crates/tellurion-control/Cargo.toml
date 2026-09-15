@@ -2,11 +2,16 @@
 name = "tellurion-control"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "Framework-neutral hierarchical authorization checkpoint for Tellurion's control plane."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 tellurion-core = { workspace = true }

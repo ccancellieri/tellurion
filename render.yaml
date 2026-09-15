@@ -19,3 +19,4 @@ services:
         - ui/**
         - demo/**
         - docker/Dockerfile.public-demo
+        - docker/public-demo.render.yaml

@@ -487,8 +487,9 @@ async fn resolve_scope(
 /// shape (`#221`). Sharing it is what makes the href a client reads off an
 /// Item's `assets` map byte-identical to the one this API returns for the
 /// same record, rather than two hand-built strings that could drift apart.
-fn data_href(scope: &AssetScope, key: &str) -> String {
+fn data_href(state: &ContextState, scope: &AssetScope, key: &str) -> String {
     crate::assets::asset_data_href(
+        &state.config.server,
         &scope.tenant_ext,
         &scope.catalog_ext,
         &scope.cid,
@@ -566,7 +567,7 @@ pub async fn get_asset(
         .get(&decl, scope.fid.as_deref(), &key)
         .await?
         .ok_or(CoreError::NotFound)?;
-    let href = data_href(&scope, &key);
+    let href = data_href(&state, &scope, &key);
     Ok(json_response(
         StatusCode::OK,
         asset_record_to_response(&record, &href),
@@ -689,7 +690,7 @@ pub async fn put_asset(
         .await?
     };
 
-    let href = data_href(&scope, &key);
+    let href = data_href(&state, &scope, &key);
     Ok(json_response(
         StatusCode::OK,
         asset_record_to_response(&record, &href),
@@ -802,7 +803,7 @@ pub async fn put_asset_data(
     )
     .await?;
 
-    let href = data_href(&scope, &key);
+    let href = data_href(&state, &scope, &key);
     Ok(json_response(
         StatusCode::OK,
         asset_record_to_response(&updated, &href),
@@ -1058,7 +1059,7 @@ pub async fn post_asset_finalize(
     let updated =
         finalize_presigned_upload(&*store, presigned, &decl, scope.fid.as_deref(), &key).await?;
 
-    let href = data_href(&scope, &key);
+    let href = data_href(&state, &scope, &key);
     Ok(json_response(
         StatusCode::OK,
         asset_record_to_response(&updated, &href),
@@ -1296,7 +1297,7 @@ pub async fn post_complete_upload(
     let updated =
         complete_resumable_upload(&*store, resumable, &decl, scope.fid.as_deref(), &key).await?;
 
-    let href = data_href(&scope, &key);
+    let href = data_href(&state, &scope, &key);
     Ok(json_response(
         StatusCode::OK,
         asset_record_to_response(&updated, &href),

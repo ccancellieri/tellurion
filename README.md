@@ -1,5 +1,9 @@
 # Tellurion
 
+<p align="center">
+  <img src="assets/brand/tellurion-mark.svg" width="176" alt="Tellurion product mark">
+</p>
+
 **A native Rust geospatial serving engine.** OGC API — Features and OGC API — Tiles
 (MVT + PNG) served through routed, pluggable storage drivers by a single native binary.
 Out of the box that's a single `.gpkg` file, no services attached; PostGIS is the
@@ -10,7 +14,7 @@ I/O-bound, not runtime-bound: the storage engine does the geometry work (with Po
 in C), Tellurion moves the bytes with zero-copy discipline, and everything in between —
 connection pooling, tile caching, rasterization — runs native with no interpreter and no GC.
 
-**Current status:** v0.4.0 is a release candidate. The serving data plane is the
+**Current status:** v0.5.0-rc.1 is a release candidate. The serving data plane is the
 stabilisation focus; the administrative control plane and remote-source browser are
 preview features. Tellurion is self-hosted software—no Tellurion Cloud service is
 currently offered. See the [maturity guide](docs/maturity.md) before an evaluation.
@@ -209,6 +213,14 @@ target/debug/tellurion-ingest geopackage load --path demo.gpkg --table demo feat
 The batch route is a Tellurion extension: RFC 8142 standardizes its request sequence,
 but the route does not by itself advertise an OGC API Features batch-transaction
 conformance class.
+
+HTTP(S) source arguments to `tellurion-ingest load`, `geopackage load`, and
+`postgis load` require `curl`. Downloads are limited to 1 GiB and five minutes
+overall, including stalled transfers, regardless of `Content-Length`. They use
+unique private temporary files, removed after loading or on failure/cancellation.
+Local source files are never removed or subject to these download limits; download
+larger datasets separately and pass a local path. Forced process termination may
+still leave a temporary file behind.
 
 ### Scaling up: PostGIS
 
@@ -582,7 +594,7 @@ available for existing configurations.
 | `zarr` | off | `tellurion-zarr` | catalog, raster tiles (read-only) |
 | `iceberg` | off | `tellurion-iceberg` | catalog, features (read-only) — REST catalog; table files on the local filesystem or any S3-protocol store |
 | `duckdb` | off | `tellurion-duckdb` | catalog, features (read-only), embedded analytical engine |
-| `ui` | off | — | embeds the demo UI (`ui/dist`) into the binary |
+| `ui` | off | — | embeds the crate-local operator or public-demo UI into the binary |
 | `valkey` | off | — | L2 tile-cache backend |
 
 The `tellurion` server crate's `postgis` feature pulls in the PostGIS driver crate.
@@ -732,7 +744,8 @@ Build the static bundle:
 ```sh
 cd ui
 npm ci
-npm run build   # outputs ui/dist
+npm run build               # operator: crates/tellurion-server/ui/dist
+npm run build:public-demo   # public demo: crates/tellurion-server/ui/public-demo-dist
 ```
 
 Embed it in the server binary and serve it at `/ui` (default-off `ui` feature):
@@ -741,8 +754,11 @@ Embed it in the server binary and serve it at `/ui` (default-off `ui` feature):
 cargo build -p tellurion --features ui
 ```
 
-Building with `--features ui` before `ui/dist` exists fails fast with a message naming
-the `npm ci && npm run build` step above — the embed has nothing to embed otherwise.
+Both generated bundles are tracked because a Cargo package cannot run the UI toolchain
+when it compiles. Refresh and commit both directories with the commands above whenever the
+UI sources change. `--features ui` embeds the operator shell; `--features public-demo,ui`
+embeds the restricted public-demo shell. A missing selected bundle fails fast with a
+message naming its generation step.
 
 ## Deployment pyramid
 
@@ -805,6 +821,13 @@ server:
 settings:
   slow_request_ms: 1000
 ```
+
+Landing pages and tenant directories use relative links by default. To make
+their JSON immediately navigable outside the deployment — for example in a
+public demonstration — set `server.public_base_url` to the canonical
+`http(s)` URL. It may include a reverse-proxy path prefix, but must not carry
+credentials, a query, or a fragment. Tellurion never derives this value from
+request or forwarded headers.
 
 `slow_request_ms` inherits independently from platform through tenant and catalog to
 collection; the nearest declared value wins. On SIGINT or SIGTERM, Tellurion first makes
@@ -905,7 +928,7 @@ below the threshold do not emit it.
 
 ## Licensing
 
-Tellurion 0.4.0 is open-source software under the GNU Affero General Public License
+Tellurion 0.5.0-rc.1 is open-source software under the GNU Affero General Public License
 Version 3 (`AGPL-3.0-only`). Commercial use is allowed under that licence. If you
 modify Tellurion and let users interact with the modified version over a network,
 Section 13 requires a prominent offer of the corresponding source to those users.

@@ -314,7 +314,9 @@ fn set_last_modified(
 /// omits the cross-protocol link rather than emitting a guessed one.
 fn sibling_href(collection_href: &str, protocol: &str, suffix: &str) -> Option<String> {
     let mut segments: Vec<&str> = collection_href.split('/').collect();
-    let catalogs_index = segments.iter().position(|segment| *segment == "catalogs")?;
+    let catalogs_index = segments.iter().enumerate().rposition(|(index, segment)| {
+        *segment == "catalogs" && segments.get(index + 2) == Some(&"collections")
+    })?;
     if catalogs_index == 0 {
         return None;
     }
@@ -662,6 +664,13 @@ pub async fn list_collections(
     let (tenant_id, catalog_id) = resolve_tenant_catalog(&ctx, &params).await?;
     let self_path = uri.path().to_string();
     let state = ctx.current();
+    let public_base_url = state
+        .config
+        .server
+        .public_base_url
+        .as_deref()
+        .map(|base| base.trim_end_matches('/'))
+        .unwrap_or("");
     let page_request = parse_collections_query(&raw_query)?;
 
     let page = state
@@ -719,7 +728,11 @@ pub async fn list_collections(
         {
             continue;
         }
-        let href = format!("{}/{}", self_path.trim_end_matches('/'), decl.external_id());
+        let href = state.config.server.public_href(&format!(
+            "{}/{}",
+            self_path.trim_end_matches('/'),
+            decl.external_id()
+        ));
         let extent = extent_from_canonical(canonical.as_ref());
         let storage_srid = canonical.as_ref().and_then(|c| c.srid);
         let geometry_profile = geometry_profile_from_canonical(canonical.as_ref());
@@ -742,7 +755,7 @@ pub async fn list_collections(
                 catalog: &catalog_of(&params),
                 collection: decl.external_id(),
                 item_id: None,
-                base_url: "",
+                base_url: public_base_url,
                 tenant_id: &tenant_id,
                 catalog_id: &catalog_id,
                 collection_id: &decl.id,
@@ -755,13 +768,20 @@ pub async fn list_collections(
     }
 
     let mut links = vec![Link::new(
-        collections_href(&self_path, &raw_query, None),
+        state
+            .config
+            .server
+            .public_href(&collections_href(&self_path, &raw_query, None)),
         "self",
         JSON_MEDIA_TYPE,
     )];
     if let Some(next_token) = page.next.as_deref() {
         links.push(Link::new(
-            collections_href(&self_path, &raw_query, Some(next_token)),
+            state.config.server.public_href(&collections_href(
+                &self_path,
+                &raw_query,
+                Some(next_token),
+            )),
             "next",
             JSON_MEDIA_TYPE,
         ));
@@ -865,8 +885,9 @@ pub async fn get_collection(
     let storage_srid = canonical.as_ref().and_then(|c| c.srid);
     let geometry_profile = geometry_profile_from_canonical(canonical.as_ref());
 
+    let public_href = state.config.server.public_href(uri.path());
     let mut body = collection_summary(
-        uri.path(),
+        &public_href,
         &cid,
         extent,
         storage_srid,
@@ -882,7 +903,13 @@ pub async fn get_collection(
             catalog: &catalog_of(&params),
             collection: &cid,
             item_id: None,
-            base_url: "",
+            base_url: state
+                .config
+                .server
+                .public_base_url
+                .as_deref()
+                .map(|base| base.trim_end_matches('/'))
+                .unwrap_or(""),
             tenant_id: &tenant_id,
             catalog_id: &catalog_id,
             collection_id: &collection_id,
@@ -972,7 +999,11 @@ pub async fn get_queryables(
         None,
     );
 
-    let body = queryables::build_document(&canonical, &cid, uri.path().to_string());
+    let body = queryables::build_document(
+        &canonical,
+        &cid,
+        state.config.server.public_href(uri.path()),
+    );
     let mut response = (StatusCode::OK, Json(body)).into_response();
     set_content_type(&mut response, SCHEMA_JSON_MEDIA_TYPE);
     Ok(response)
@@ -1248,13 +1279,21 @@ pub async fn list_items(
 
     let path = uri.path().to_string();
     let mut links = vec![Link::new(
-        items_href(&path, &raw_query, &queryable_pairs, None),
+        state
+            .config
+            .server
+            .public_href(&items_href(&path, &raw_query, &queryable_pairs, None)),
         "self",
         GEOJSON_MEDIA_TYPE,
     )];
     if let Some(next_token) = page.next_token.as_deref() {
         links.push(Link::new(
-            items_href(&path, &raw_query, &queryable_pairs, Some(next_token)),
+            state.config.server.public_href(&items_href(
+                &path,
+                &raw_query,
+                &queryable_pairs,
+                Some(next_token),
+            )),
             "next",
             GEOJSON_MEDIA_TYPE,
         ));
@@ -1366,8 +1405,16 @@ pub async fn get_item(
     let feature = attach_links(
         feature,
         &[
-            Link::new(path, "self", GEOJSON_MEDIA_TYPE),
-            Link::new(collection_href, "collection", JSON_MEDIA_TYPE),
+            Link::new(
+                state.config.server.public_href(&path),
+                "self",
+                GEOJSON_MEDIA_TYPE,
+            ),
+            Link::new(
+                state.config.server.public_href(&collection_href),
+                "collection",
+                JSON_MEDIA_TYPE,
+            ),
         ],
     );
 
@@ -1394,6 +1441,21 @@ fn attach_links(mut feature: Value, links: &[Link]) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sibling_href_uses_the_fixed_route_when_the_public_prefix_contains_catalogs() {
+        assert_eq!(
+            sibling_href(
+                "https://maps.example.test/catalogs/proxy/public/features/catalogs/default/collections/catalogs",
+                "tiles",
+                "/tiles",
+            ),
+            Some(
+                "https://maps.example.test/catalogs/proxy/public/tiles/catalogs/default/collections/catalogs/tiles"
+                    .to_string()
+            )
+        );
+    }
 
     // `format_rfc3339`'s own civil-calendar round-trips — the same
     // known-date vectors `tellurion-core::sigv4`'s `civil_from_days` tests

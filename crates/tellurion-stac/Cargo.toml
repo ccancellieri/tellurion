@@ -2,10 +2,12 @@
 name = "tellurion-stac"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "STAC API implementation for the Tellurion geospatial serving engine: the STAC Catalog landing page, STAC Collections, and STAC Items, mapped from the driver-agnostic collection descriptor and feature source."
 readme.workspace = true
 keywords.workspace = true

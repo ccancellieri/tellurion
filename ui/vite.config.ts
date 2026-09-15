@@ -1,4 +1,25 @@
-import { defineConfig } from 'vite';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, type Plugin } from 'vite';
+
+const THIRD_PARTY_NOTICES = readFileSync(
+  fileURLToPath(
+    new URL('../crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt', import.meta.url),
+  ),
+);
+
+function thirdPartyNoticesPlugin(): Plugin {
+  return {
+    name: 'tellurion-third-party-notices',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'THIRD_PARTY_NOTICES.txt',
+        source: THIRD_PARTY_NOTICES,
+      });
+    },
+  };
+}
 
 // Dev-only convenience: the demo panels call the Tellurion API with
 // root-absolute paths under the tenant-scoped route tree (e.g.
@@ -14,14 +35,15 @@ import { defineConfig } from 'vite';
 // follow the same selected application origin too. Not used by `vite build`.
 const API_ROUTES = ['/public', '/metrics', '/_control', '/_auth', '/demo'];
 
-export default defineConfig(() => ({
-  // Relative asset paths: the exact same `ui/dist` bundle then works
+export default defineConfig(({ mode }) => ({
+  // Relative asset paths: each generated bundle then works
   // whether it's embedded by the server at `/ui/` or hosted standalone at
   // the root of any static file server — an absolute `/ui/` base would
   // break the latter. Relative paths only resolve correctly against a
   // document URL that ends in `/`, which is why the server redirects bare
   // `/ui` to `/ui/` before serving the shell (see `ui_assets.rs`).
   base: './',
+  plugins: [thirdPartyNoticesPlugin()],
   server: {
     proxy: Object.fromEntries(
       API_ROUTES.map((path) => [
@@ -32,5 +54,13 @@ export default defineConfig(() => ({
   },
   build: {
     target: 'es2022',
+    // The server crate owns both generated bundles so its Cargo package is
+    // self-contained. They remain separate because the public-demo feature
+    // must never embed the operator shell (or vice versa).
+    outDir:
+      mode === 'public-demo'
+        ? '../crates/tellurion-server/ui/public-demo-dist'
+        : '../crates/tellurion-server/ui/dist',
+    emptyOutDir: true,
   },
 }));

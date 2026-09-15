@@ -1,6 +1,6 @@
-# Tellurion 0.4.0 maturity
+# Tellurion 0.5.0-rc.1 maturity
 
-Tellurion 0.4.0 is a release candidate, not an announced stable release. This page
+Tellurion 0.5.0-rc.1 is a release candidate, not an announced stable release. This page
 separates demonstrated capabilities from preview work so an evaluator can choose an
 appropriate path without inferring a hosted service or production commitment.
 

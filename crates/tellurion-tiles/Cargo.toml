@@ -2,10 +2,12 @@
 name = "tellurion-tiles"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "OGC API - Tiles implementation for the Tellurion geospatial serving engine: MVT and PNG tiles plus styled map tiles on WebMercatorQuad."
 readme.workspace = true
 keywords.workspace = true

@@ -49,7 +49,7 @@ use tellurion_core::policy::{self, PolicyDecision, ResourceContext};
 use tellurion_core::timefmt::format_rfc3339_millis;
 use tellurion_core::{
     AppContext, Credential, Error as CoreError, JobRecord, JobScope, JobStatus, JobSubmission,
-    ProcessLane, ProcessTarget, RateCharge, RateCounter, RateVerdict,
+    ProcessLane, ProcessTarget, RateCharge, RateCounter, RateVerdict, ServerConfig,
 };
 
 use crate::conformance::{
@@ -256,7 +256,11 @@ fn mount_root(uri_path: &str, suffix: &str) -> String {
         .to_string()
 }
 
-fn process_summary(root: &str, description: &tellurion_core::ProcessDescription) -> ProcessSummary {
+fn process_summary(
+    root: &str,
+    description: &tellurion_core::ProcessDescription,
+    server: &ServerConfig,
+) -> ProcessSummary {
     ProcessSummary {
         id: description.id.clone(),
         version: description.version.clone(),
@@ -268,7 +272,7 @@ fn process_summary(root: &str, description: &tellurion_core::ProcessDescription)
             .map(|option| option.as_str().to_string())
             .collect(),
         links: vec![Link::new(
-            format!("{root}/processes/{}", description.id),
+            server.public_href(&format!("{root}/processes/{}", description.id)),
             REL_SELF,
             JSON_MEDIA_TYPE,
         )],
@@ -281,8 +285,8 @@ fn process_summary(root: &str, description: &tellurion_core::ProcessDescription)
 /// `/results` on a running job would resolve to the `404` Requirement 45
 /// mandates, and advertising a link the server knows is dead is the same
 /// dishonesty the tenant directory avoids for a disabled protocol root.
-fn status_info(root: &str, record: &JobRecord) -> StatusInfo {
-    let self_href = format!("{root}/jobs/{}", record.job_id);
+fn status_info(root: &str, record: &JobRecord, server: &ServerConfig) -> StatusInfo {
+    let self_href = server.public_href(&format!("{root}/jobs/{}", record.job_id));
     let mut links = vec![Link::new(&self_href, REL_SELF, JSON_MEDIA_TYPE)];
     if record.status == JobStatus::Successful {
         links.push(Link::new(
@@ -313,15 +317,17 @@ fn status_info(root: &str, record: &JobRecord) -> StatusInfo {
 /// page through. That is also precisely why the Core conformance class is
 /// withheld — Requirement 9 makes `limit` a SHALL. See `crate::conformance`.
 pub async fn list_processes(
+    State(ctx): State<Arc<AppContext>>,
     Extension(lane): Extension<Arc<ProcessLane>>,
     OriginalUri(uri): OriginalUri,
 ) -> Response {
     let root = mount_root(uri.path(), "/processes");
+    let state = ctx.current();
     let processes = lane
         .registry
         .descriptions()
         .iter()
-        .map(|description| process_summary(&root, description))
+        .map(|description| process_summary(&root, description, &state.config.server))
         .collect();
     let body = ProcessList {
         processes,
@@ -329,7 +335,10 @@ pub async fn list_processes(
         // for `alternate` in every other media type the service supports.
         // This server supports exactly one, so there is no alternate to link.
         links: vec![Link::new(
-            format!("{root}/processes"),
+            state
+                .config
+                .server
+                .public_href(&format!("{root}/processes")),
             REL_SELF,
             JSON_MEDIA_TYPE,
         )],
@@ -343,6 +352,7 @@ pub async fn list_processes(
 /// Requirement 14 (`/req/core/process-success`). An unknown id is the `404`
 /// Requirement 15 mandates, carrying its `no-such-process` exception type.
 pub async fn get_process(
+    State(ctx): State<Arc<AppContext>>,
     Extension(lane): Extension<Arc<ProcessLane>>,
     Path(params): Path<HashMap<String, String>>,
     OriginalUri(uri): OriginalUri,
@@ -353,7 +363,13 @@ pub async fn get_process(
         .registry
         .get(&process_id)
         .ok_or_else(|| no_such_process(&process_id))?;
-    let mut response = Json(process_summary(&root, &runner.description())).into_response();
+    let state = ctx.current();
+    let mut response = Json(process_summary(
+        &root,
+        &runner.description(),
+        &state.config.server,
+    ))
+    .into_response();
     set_content_type(&mut response, JSON_MEDIA_TYPE);
     Ok(response)
 }
@@ -396,6 +412,7 @@ pub async fn execute_process(
 ) -> Result<Response, ApiError> {
     let process_id = require_param(&params, "processID")?;
     let root = mount_root(uri.path(), &format!("/processes/{process_id}/execution"));
+    let state = ctx.current();
     let scope = resolve_scope(&ctx, &params).await?;
     let runner = lane
         .registry
@@ -421,8 +438,11 @@ pub async fn execute_process(
     };
     let record = lane.ledger.store.enqueue(&submission).await?;
 
-    let location = format!("{root}/jobs/{}", record.job_id);
-    let mut body = status_info(&root, &record);
+    let location = state
+        .config
+        .server
+        .public_href(&format!("{root}/jobs/{}", record.job_id));
+    let mut body = status_info(&root, &record, &state.config.server);
     // `#182` asks for a `rel="monitor"` link alongside the `Location` header;
     // the Standard itself only names that relation on the synchronous path
     // (Requirement 33), so this is an addition a client may use, never a
@@ -468,7 +488,8 @@ pub async fn get_job(
         .get(&scope, &job_id)
         .await?
         .ok_or_else(|| no_such_job(&job_id))?;
-    let mut response = Json(status_info(&root, &record)).into_response();
+    let state = ctx.current();
+    let mut response = Json(status_info(&root, &record, &state.config.server)).into_response();
     set_content_type(&mut response, JSON_MEDIA_TYPE);
     Ok(response)
 }
@@ -575,7 +596,8 @@ pub async fn dismiss_job(
             record.status
         ))));
     }
-    let mut response = Json(status_info(&root, &record)).into_response();
+    let state = ctx.current();
+    let mut response = Json(status_info(&root, &record, &state.config.server)).into_response();
     set_content_type(&mut response, JSON_MEDIA_TYPE);
     Ok(response)
 }
@@ -607,7 +629,11 @@ mod tests {
     #[test]
     fn only_a_successful_job_advertises_a_results_link() {
         for status in JobStatus::ALL {
-            let info = status_info("/public/processes/catalogs/default", &record(status));
+            let info = status_info(
+                "/public/processes/catalogs/default",
+                &record(status),
+                &ServerConfig::default(),
+            );
             let has_results = info.links.iter().any(|link| link.rel == REL_RESULTS);
             assert_eq!(
                 has_results,
@@ -622,7 +648,11 @@ mod tests {
     /// the Standard's own values.
     #[test]
     fn a_status_document_always_carries_its_three_required_members() {
-        let info = status_info("/root", &record(JobStatus::Accepted));
+        let info = status_info(
+            "/root",
+            &record(JobStatus::Accepted),
+            &ServerConfig::default(),
+        );
         assert_eq!(info.job_id, "job-1");
         assert_eq!(info.status, "accepted");
         assert_eq!(info.type_, "process");

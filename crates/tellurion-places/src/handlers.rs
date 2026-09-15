@@ -371,8 +371,8 @@ async fn tileset(
         return response;
     }
 
-    let base_path = uri.path();
-    axum::Json(tileset_json(base_path, &resolved.decl, &resolved.places3d)).into_response()
+    let base_path = ctx.current().config.server.public_href(uri.path());
+    axum::Json(tileset_json(&base_path, &resolved.decl, &resolved.places3d)).into_response()
 }
 
 fn glb_key(
@@ -1585,6 +1585,48 @@ collections:
         assert_eq!(
             json["root"]["boundingVolume"]["region"][5],
             tellurion_render::MAX_HEIGHT_METERS
+        );
+    }
+
+    #[tokio::test]
+    async fn configured_public_base_is_used_for_3d_content_and_subtree_templates() {
+        let ctx = test_context_with_config(
+            Arc::new(FakeTileSource::new()),
+            r#"
+server: { public_base_url: "https://maps.example.test/tellurion/" }
+storages: [ { id: main, driver: fake, url_env: DATABASE_URL } ]
+tenants: [ { id: public } ]
+catalogs: [ { id: default, tenant: public } ]
+collections:
+  - id: demo
+    catalog: default
+    storage: main
+    table: demo
+    geometry: geom
+    pk: id
+    tiles: { minzoom: 0, maxzoom: 5, caps: {} }
+    places3d: { height_property: height }
+"#,
+        );
+        let response = tileset(
+            State(ctx),
+            cid_path("demo"),
+            HeaderMap::new(),
+            tileset_uri("demo"),
+        )
+        .await;
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(
+            json["root"]["content"]["uri"],
+            "https://maps.example.test/tellurion/collections/demo/3dtiles/tiles/{level}/{y}/{x}.glb"
+        );
+        assert_eq!(
+            json["root"]["implicitTiling"]["subtrees"]["uri"],
+            "https://maps.example.test/tellurion/collections/demo/3dtiles/subtrees/{level}/{y}/{x}.subtree"
         );
     }
 

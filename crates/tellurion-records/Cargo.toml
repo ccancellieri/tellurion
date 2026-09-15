@@ -2,10 +2,12 @@
 name = "tellurion-records"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-publish.workspace = true
+publish = ["crates-io"]
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
 description = "Read-only OGC API - Records surface for the Tellurion geospatial serving engine: geometry-less record collections as a third projection of the canonical collection descriptor."
 readme.workspace = true
 keywords.workspace = true

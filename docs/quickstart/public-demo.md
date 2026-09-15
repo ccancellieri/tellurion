@@ -85,6 +85,16 @@ cargo test -p tellurion-http-source --test public_demo_inventory -- --ignored
 An identity mismatch is a release stop. Confirm the upstream change, licence,
 attribution, extent, and rendering before updating the recorded facts.
 
+### Browser layout regression check
+
+At desktop width (at least 1050 pixels), tab to the **Verified demos** link
+near the end of the page. The map must stop above the resources section, and
+all three onward links must remain visible and keyboard-accessible. Repeat
+with the initial gallery and after opening a temporary layer: these give the
+source panel different heights. At mobile width, verify the map and resources
+stack without horizontal scrolling. Unit tests do not measure browser layout;
+check this in a real browser before capturing launch material.
+
 ## Deploy with the Render Blueprint
 
 The repository-root [`render.yaml`](../../render.yaml) owns one service,

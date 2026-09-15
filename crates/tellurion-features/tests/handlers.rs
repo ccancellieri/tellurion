@@ -188,6 +188,18 @@ fn build_app_with_tenant_prefix(items: Vec<(&str, Value)>) -> axum::Router {
         .with_state(build_ctx(items))
 }
 
+fn build_app_with_public_base(items: Vec<(&str, Value)>) -> axum::Router {
+    let config = format!(
+        "{DEMO_CONFIG}\nserver: {{ public_base_url: 'https://maps.example.test/tellurion/' }}\n"
+    );
+    axum::Router::new()
+        .nest(
+            "/{tenant}/features/catalogs/{catalog}",
+            tellurion_features::router(),
+        )
+        .with_state(build_ctx_with_config(&config, items))
+}
+
 async fn body_json(response: Response) -> Value {
     let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
         .await
@@ -237,6 +249,79 @@ async fn list_items_paginates_with_keyset_token_round_trip() {
     assert_eq!(body2["numberReturned"], 1);
     assert_eq!(body2["features"][0]["id"], "c");
     assert!(find_link(&body2, "next").is_none());
+}
+
+#[tokio::test]
+async fn configured_public_base_makes_items_self_and_next_links_absolute() {
+    let app = build_app_with_public_base(vec![("a", feature("a")), ("b", feature("b"))]);
+
+    let response = get(
+        &app,
+        "/public/features/catalogs/default/collections/demo/items?limit=1",
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = body_json(response).await;
+
+    assert_eq!(
+        find_link(&body, "self").unwrap()["href"],
+        "https://maps.example.test/tellurion/public/features/catalogs/default/collections/demo/items?limit=1"
+    );
+    assert_eq!(
+        find_link(&body, "next").unwrap()["href"],
+        "https://maps.example.test/tellurion/public/features/catalogs/default/collections/demo/items?limit=1&token=a"
+    );
+
+    let collections = body_json(
+        get(
+            &app,
+            "/public/features/catalogs/default/collections?limit=1",
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        find_link(&collections, "self").unwrap()["href"],
+        "https://maps.example.test/tellurion/public/features/catalogs/default/collections?limit=1"
+    );
+    for link in collections["collections"][0]["links"].as_array().unwrap() {
+        assert!(
+            link["href"]
+                .as_str()
+                .unwrap()
+                .starts_with("https://maps.example.test/tellurion/"),
+            "server-generated collection link was not absolute: {link}"
+        );
+    }
+
+    let collection =
+        body_json(get(&app, "/public/features/catalogs/default/collections/demo").await).await;
+    for link in collection["links"].as_array().unwrap() {
+        assert!(
+            link["href"]
+                .as_str()
+                .unwrap()
+                .starts_with("https://maps.example.test/tellurion/"),
+            "server-generated collection link was not absolute: {link}"
+        );
+    }
+
+    let item = body_json(
+        get(
+            &app,
+            "/public/features/catalogs/default/collections/demo/items/a",
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        find_link(&item, "self").unwrap()["href"],
+        "https://maps.example.test/tellurion/public/features/catalogs/default/collections/demo/items/a"
+    );
+    assert_eq!(
+        find_link(&item, "collection").unwrap()["href"],
+        "https://maps.example.test/tellurion/public/features/catalogs/default/collections/demo"
+    );
 }
 
 /// `#184`: an over-budget page is trimmed (never refused), the `next` link's
@@ -2851,7 +2936,11 @@ collections:
 "#;
 
 fn build_queryables_app() -> axum::Router {
-    let config: AppConfig = serde_yaml::from_str(QUERYABLES_CONFIG).unwrap();
+    build_queryables_app_with_config(QUERYABLES_CONFIG)
+}
+
+fn build_queryables_app_with_config(config_yaml: &str) -> axum::Router {
+    let config: AppConfig = serde_yaml::from_str(config_yaml).unwrap();
     config.validate().unwrap();
 
     let source = Arc::new(FakeFeatureSource { items: vec![] });
@@ -2871,6 +2960,29 @@ fn build_queryables_app() -> axum::Router {
         style_store,
     ));
     tellurion_features::router().with_state(ctx)
+}
+
+#[tokio::test]
+async fn configured_public_base_makes_the_queryables_id_absolute() {
+    let config = format!(
+        "{QUERYABLES_CONFIG}\nserver: {{ public_base_url: 'https://maps.example.test/tellurion/' }}\n"
+    );
+    let app = axum::Router::new().nest(
+        "/{tenant}/features/catalogs/{catalog}",
+        build_queryables_app_with_config(&config),
+    );
+
+    let response = get(
+        &app,
+        "/public/features/catalogs/default/collections/demo/queryables",
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = body_json(response).await;
+    assert_eq!(
+        body["$id"],
+        "https://maps.example.test/tellurion/public/features/catalogs/default/collections/demo/queryables"
+    );
 }
 
 #[tokio::test]
@@ -4328,6 +4440,33 @@ async fn a_write_grant_allows_a_member_and_post_creates_returns_201_with_locatio
 }
 
 #[tokio::test]
+async fn configured_public_base_qualifies_the_created_item_location() {
+    let config = format!(
+        "server: {{ public_base_url: 'https://maps.example.test/tellurion/' }}\n{WRITE_CONFIG}"
+    );
+    let app = axum::Router::new().nest(
+        "/{tenant}/features/catalogs/{catalog}",
+        build_policy_app(&config, vec![]),
+    );
+
+    let response = send_write(
+        &app,
+        "POST",
+        "/public/features/catalogs/default/collections/demo/items",
+        Some("writer-token"),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    assert_eq!(
+        response
+            .headers()
+            .get(header::LOCATION)
+            .expect("a create response carries a Location header"),
+        "https://maps.example.test/tellurion/public/features/catalogs/default/collections/demo/items/1"
+    );
+}
+
+#[tokio::test]
 async fn two_creates_mint_distinct_monotonic_ids() {
     let app = build_policy_app(WRITE_CONFIG, vec![]);
 
@@ -5667,8 +5806,11 @@ impl tellurion_core::LinkContributor for ContributingFake {
                 anchor: tellurion_core::LinkAnchor::Collection,
                 rel: "tiles".to_string(),
                 href: format!(
-                    "/{}/tiles/catalogs/{}/collections/{}/tiles/WebMercatorQuad/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.mvt",
-                    resource.tenant, resource.catalog, resource.collection
+                    "{}/{}/tiles/catalogs/{}/collections/{}/tiles/WebMercatorQuad/{{tileMatrix}}/{{tileRow}}/{{tileCol}}.mvt",
+                    resource.base_url.trim_end_matches('/'),
+                    resource.tenant,
+                    resource.catalog,
+                    resource.collection
                 ),
                 media_type: "application/vnd.mapbox-vector-tile".to_string(),
                 title: Some("Vector tiles (MVT)".to_string()),
@@ -5690,7 +5832,14 @@ impl tellurion_core::LinkContributor for ContributingFake {
 /// from every other fixture in this file, so any behavioral delta in these
 /// tests is attributable to registration alone.
 fn build_contributing_app(items: Vec<(&str, Value)>) -> axum::Router {
-    let config: AppConfig = serde_yaml::from_str(DEMO_CONFIG).unwrap();
+    build_contributing_app_with_config(DEMO_CONFIG, items)
+}
+
+fn build_contributing_app_with_config(
+    config_yaml: &str,
+    items: Vec<(&str, Value)>,
+) -> axum::Router {
+    let config: AppConfig = serde_yaml::from_str(config_yaml).unwrap();
     config.validate().unwrap();
     let source = Arc::new(FakeFeatureSource {
         items: items
@@ -5709,6 +5858,26 @@ fn build_contributing_app(items: Vec<(&str, Value)>) -> axum::Router {
     let ctx = AppContext::new(config, core_router, resolver, None, cache, style_store)
         .with_link_contributors(contributors);
     tellurion_features::router().with_state(Arc::new(ctx))
+}
+
+#[tokio::test]
+async fn configured_public_base_is_passed_to_contributors_without_breaking_uri_templates() {
+    let config = format!(
+        "{DEMO_CONFIG}\nserver: {{ public_base_url: 'https://maps.example.test/tellurion/' }}\n"
+    );
+    let app = axum::Router::new().nest(
+        "/{tenant}/features/catalogs/{catalog}",
+        build_contributing_app_with_config(&config, vec![("a", feature("a"))]),
+    );
+
+    let body =
+        body_json(get(&app, "/public/features/catalogs/default/collections/demo").await).await;
+    let tiles = find_link(&body, "tiles").expect("contributed tiles link present");
+    assert_eq!(
+        tiles["href"],
+        "https://maps.example.test/tellurion/public/tiles/catalogs/default/collections/demo/tiles/WebMercatorQuad/{tileMatrix}/{tileRow}/{tileCol}.mvt"
+    );
+    assert_eq!(tiles["templated"], true);
 }
 
 /// `GET /collections/{cid}` appends Collection-anchored contributed links

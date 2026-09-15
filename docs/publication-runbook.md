@@ -2,6 +2,9 @@
 
 This runbook prepares evidence for an owner decision; it does not authorize publication.
 
+The separate [crates.io publishing runbook](crates-io-publishing.md) covers the
+manual, dependency-ordered registry release and its one-time owner setup.
+
 1. Create a fresh mirror of the candidate and record its immutable commit.
 2. Create the private snapshot in an empty directory outside every repository, including disclosure-surface downloads:
    `scripts/snapshot-publication-state.sh --download-disclosure-surfaces OWNER/REPOSITORY /private/path`.

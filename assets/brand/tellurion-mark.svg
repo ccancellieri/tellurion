@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Tellurion</title>
+  <desc id="description">A model Earth formed by spatial layers around a central letter T.</desc>
+  <defs>
+    <clipPath id="sphere">
+      <circle cx="256" cy="256" r="224"/>
+    </clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="224" fill="#062a4b"/>
+  <g clip-path="url(#sphere)">
+    <path fill="#24c7b5" d="M50 111c67-56 142-77 223-63 73 12 137 49 189 109-52-15-96-13-132 6-42 23-84 28-126 15-46-14-97-10-154 12z"/>
+    <path fill="#10a99f" d="M38 161c62 25 121 30 178 14 49-14 93-15 133-3 39 12 81 13 125 3l-5 42c-52 24-102 27-150 8-46-18-88-18-128 0-45 20-95 22-151 5z"/>
+    <path fill="#36c8f4" d="M18 221c80 24 157 31 231 20 76-11 157-9 245 7l-8 62c-62-5-116-2-162 11-28 8-43 24-43 49v105h-50V370c0-25-14-41-42-49-47-13-101-16-163-11z"/>
+    <path fill="#159fd7" d="M36 304c52 4 101 17 147 39 25 12 38 32 38 60v77l-58-18c-11-51-30-83-58-98-21-12-45-19-73-22z"/>
+    <path fill="#22b9e8" d="M291 350c53-27 113-42 181-46l-8 48c-34 5-61 16-82 33-25 21-40 53-46 96l-45 8z"/>
+    <path fill="#ffb743" d="M42 344c49 10 86 34 111 71l20 45c-55-20-96-54-124-101z"/>
+  </g>
+  <circle cx="256" cy="256" r="224" fill="none" stroke="#0b466b" stroke-width="8"/>
+</svg>

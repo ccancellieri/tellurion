@@ -1,6 +1,6 @@
 # Tellurion commercial licensing notice
 
-Tellurion 0.4.0 is open-source software under the [GNU Affero General Public License
+Tellurion 0.5.0-rc.1 is open-source software under the [GNU Affero General Public License
 Version 3](LICENSE) (`AGPL-3.0-only`). The AGPL permits commercial use; organisations do
 not need a separate licence when they can comply with its terms.
 

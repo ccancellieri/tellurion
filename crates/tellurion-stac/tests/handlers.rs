@@ -109,6 +109,12 @@ collections:
     pk: id
 "#;
 
+const PUBLIC_BASE_URL: &str = "https://geo.example.test/tellurion";
+
+fn with_public_base(config_yaml: &str) -> String {
+    format!("server: {{ public_base_url: '{PUBLIC_BASE_URL}/' }}\n{config_yaml}")
+}
+
 fn build_ctx(config_yaml: &str) -> Arc<AppContext> {
     let config: AppConfig = serde_yaml::from_str(config_yaml).unwrap();
     config.validate().unwrap();
@@ -436,6 +442,41 @@ async fn list_collections_paginates_with_a_limit_and_a_next_link() {
         find_link(&second_body, "next").is_none(),
         "the last page must have no next link"
     );
+}
+
+#[tokio::test]
+async fn collection_pagination_links_use_the_canonical_base_and_path_prefix() {
+    let config = with_public_base(MULTI_COLLECTION_CONFIG);
+    let app = build_app(&config);
+
+    let first = body_json(get(&app, "/collections?limit=2").await).await;
+    assert_eq!(
+        link_href(&first, "self"),
+        format!("{PUBLIC_BASE_URL}/collections?limit=2")
+    );
+    let next = link_href(&first, "next");
+    assert!(next.starts_with(&format!("{PUBLIC_BASE_URL}/collections?")));
+    assert!(next.contains("limit=2"));
+    assert!(next.contains("token=bravo"));
+    let first_collection = &first["collections"][0];
+    assert_eq!(
+        link_href(first_collection, "root"),
+        PUBLIC_BASE_URL.to_string()
+    );
+    assert_eq!(
+        link_href(first_collection, "self"),
+        format!("{PUBLIC_BASE_URL}/collections/alpha")
+    );
+    assert_eq!(
+        link_href(first_collection, "items"),
+        format!("{PUBLIC_BASE_URL}/collections/alpha/items")
+    );
+
+    let local_next = next
+        .strip_prefix(PUBLIC_BASE_URL)
+        .expect("the next URL uses the configured base");
+    let second = body_json(get(&app, local_next).await).await;
+    assert_eq!(second["collections"][0]["id"], "charlie");
 }
 
 #[tokio::test]
@@ -1192,6 +1233,43 @@ async fn list_items_paginates_with_keyset_token_round_trip() {
     assert_eq!(body2["numberReturned"], 1);
     assert_eq!(body2["features"][0]["id"], "c");
     assert!(find_link(&body2, "next").is_none());
+}
+
+#[tokio::test]
+async fn item_pagination_and_item_links_use_the_canonical_base_and_path_prefix() {
+    let config = with_public_base(&items_config_yaml(""));
+    let app = build_items_app(
+        &config,
+        vec![
+            ("a", stac_feature("a", json!({}))),
+            ("b", stac_feature("b", json!({}))),
+            ("c", stac_feature("c", json!({}))),
+        ],
+        false,
+    );
+
+    let first = body_json(get(&app, "/collections/demo/items?limit=2").await).await;
+    assert_eq!(
+        link_href(&first, "self"),
+        format!("{PUBLIC_BASE_URL}/collections/demo/items?limit=2")
+    );
+    let next = link_href(&first, "next");
+    assert!(next.starts_with(&format!("{PUBLIC_BASE_URL}/collections/demo/items?")));
+    assert!(next.contains("token=b"));
+    assert_eq!(
+        link_href(&first["features"][0], "self"),
+        format!("{PUBLIC_BASE_URL}/collections/demo/items/a")
+    );
+    assert_eq!(
+        link_href(&first["features"][0], "collection"),
+        format!("{PUBLIC_BASE_URL}/collections/demo")
+    );
+
+    let local_next = next
+        .strip_prefix(PUBLIC_BASE_URL)
+        .expect("the next URL uses the configured base");
+    let second = body_json(get(&app, local_next).await).await;
+    assert_eq!(second["features"][0]["id"], "c");
 }
 
 #[tokio::test]
@@ -2118,6 +2196,10 @@ fn build_search_app(specs: Vec<SearchCollectionFixture>) -> axum::Router {
     build_search_app_with_sources(specs).0
 }
 
+fn build_search_app_with_public_base(specs: Vec<SearchCollectionFixture>) -> axum::Router {
+    build_search_app_with_sources_and_base(specs, Some(PUBLIC_BASE_URL)).0
+}
+
 /// [`build_search_app`] plus each fixture's own `FilterableFeatureSource`,
 /// keyed by collection id — needed only by the `#248` tests, which assert on
 /// what the handler *handed the driver* (`ItemsQuery::filter_crs`) rather than
@@ -2125,6 +2207,14 @@ fn build_search_app(specs: Vec<SearchCollectionFixture>) -> axum::Router {
 #[allow(clippy::type_complexity)]
 fn build_search_app_with_sources(
     specs: Vec<SearchCollectionFixture>,
+) -> (axum::Router, HashMap<String, Arc<FilterableFeatureSource>>) {
+    build_search_app_with_sources_and_base(specs, None)
+}
+
+#[allow(clippy::type_complexity)]
+fn build_search_app_with_sources_and_base(
+    specs: Vec<SearchCollectionFixture>,
+    public_base_url: Option<&str>,
 ) -> (axum::Router, HashMap<String, Arc<FilterableFeatureSource>>) {
     let mut drivers: HashMap<String, (String, Option<i32>, Arc<FilterableFeatureSource>)> =
         HashMap::new();
@@ -2164,8 +2254,11 @@ fn build_search_app_with_sources(
         .keys()
         .map(|id| format!("  - {{ id: {id}, driver: filterable-fake, url_env: DATABASE_URL }}\n"))
         .collect();
+    let server_yaml = public_base_url
+        .map(|url| format!("server: {{ public_base_url: '{url}/' }}\n"))
+        .unwrap_or_default();
     let config_yaml = format!(
-        "storages:\n{storages_yaml}tenants: [ {{ id: public }} ]\ncatalogs: [ {{ id: default, tenant: public }} ]\ncollections:\n{collections_yaml}"
+        "{server_yaml}storages:\n{storages_yaml}tenants: [ {{ id: public }} ]\ncatalogs: [ {{ id: default, tenant: public }} ]\ncollections:\n{collections_yaml}"
     );
 
     let config: AppConfig = serde_yaml::from_str(&config_yaml).unwrap();
@@ -2264,6 +2357,48 @@ async fn search_get_and_post_return_the_same_items_for_equivalent_parameters() {
     assert_eq!(item_ids(&get_body), vec!["a".to_string()]);
     assert_eq!(item_ids(&get_body), item_ids(&post_body));
     assert_eq!(get_body["numberReturned"], post_body["numberReturned"]);
+}
+
+#[tokio::test]
+async fn search_pagination_and_result_links_use_the_canonical_base_and_path_prefix() {
+    let app = build_search_app_with_public_base(vec![search_collection(
+        "demo",
+        vec![
+            (
+                "a",
+                search_feature("a", 1.0, 1.0, "alpha", 10, "2020-01-01T00:00:00Z"),
+            ),
+            (
+                "b",
+                search_feature("b", 2.0, 2.0, "beta", 20, "2020-01-02T00:00:00Z"),
+            ),
+        ],
+    )]);
+
+    let first = body_json(get(&app, "/search?collections=demo&limit=1").await).await;
+    assert_eq!(
+        link_href(&first, "self"),
+        format!("{PUBLIC_BASE_URL}/search?limit=1&collections=demo")
+    );
+    let next = link_href(&first, "next");
+    assert!(next.starts_with(&format!("{PUBLIC_BASE_URL}/search?")));
+    assert!(next.contains("collections=demo"));
+    assert!(next.contains("limit=1"));
+    assert!(next.contains("token="));
+    assert_eq!(
+        link_href(&first["features"][0], "root"),
+        PUBLIC_BASE_URL.to_string()
+    );
+    assert_eq!(
+        link_href(&first["features"][0], "self"),
+        format!("{PUBLIC_BASE_URL}/collections/demo/items/a")
+    );
+
+    let local_next = next
+        .strip_prefix(PUBLIC_BASE_URL)
+        .expect("the next URL uses the configured base");
+    let second = body_json(get(&app, local_next).await).await;
+    assert_eq!(second["features"][0]["id"], "b");
 }
 
 #[tokio::test]
