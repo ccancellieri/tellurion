@@ -1,0 +1,1 @@
+import{t as e}from"./places3d-panel-DegNGend.js";export{e as WebGLDevice};

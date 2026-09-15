@@ -20,6 +20,7 @@ path = "src/main.rs"
 [dependencies]
 clap = { workspace = true }
 anyhow = { workspace = true }
+tempfile = "3"
 # `harvest stac` (`#191`): its `StacFetch` seam is a `dyn` trait with an
 # async method, so the page walk — and its bookmark, and its whole report —
 # stays unit-testable against an in-memory catalog with no server and no
@@ -83,7 +84,6 @@ geo-types = "0.7"
 
 [dev-dependencies]
 async-trait = { workspace = true }
-tempfile = "3"
 # `#138`: this crate's live tests share one PostgreSQL with
 # `tellurion-postgis`'s own, so they must take the same fixture locks. The
 # harness lives there because that is the crate that already owns this

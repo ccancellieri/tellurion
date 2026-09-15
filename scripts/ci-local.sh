@@ -182,6 +182,7 @@ phase_test() {
     fi
     printf 'no live test skipped: the database-backed suite genuinely ran\n'
     rm -f "$log"
+    ./scripts/tests/test_cargo_package_install.sh
 }
 
 phase_smoke() { # ci.yml job: smoke
