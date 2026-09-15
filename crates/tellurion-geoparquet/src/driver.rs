@@ -100,8 +100,9 @@
 //!
 //! ## CRS assumption
 //!
-//! GeoParquet's `crs` field, absent or JSON `null`, means OGC:CRS84 per
-//! spec — this driver reports that as `srid: Some(4326)`. A present `crs` is
+//! An absent GeoParquet `crs` field means OGC:CRS84 per spec — this driver
+//! reports that as `srid: Some(4326)`. Explicit JSON `null` means unknown
+//! CRS and is reported as `srid: None`. A non-null `crs` is
 //! a full PROJJSON document; deriving an EPSG code from an arbitrary
 //! datum+projection tree is out of scope for v0.1 — only the common
 //! straightforward case (a top-level `id: {authority, code}` member, what
@@ -567,7 +568,8 @@ fn geometry_type_name(geometry_types: &[String]) -> Option<String> {
 /// See this module's "CRS assumption" docs.
 fn srid_from_crs(crs: Option<&serde_json::Value>) -> Option<i32> {
     match crs {
-        None | Some(serde_json::Value::Null) => Some(4326),
+        None => Some(4326),
+        Some(serde_json::Value::Null) => None,
         Some(value) => {
             let id = value.get("id")?;
             let authority = id.get("authority")?.as_str()?;
@@ -1481,6 +1483,28 @@ mod tests {
     #[test]
     fn factory_name_matches_the_config_driver_key() {
         assert_eq!(GeoparquetDriverFactory::new().name(), "geoparquet");
+    }
+
+    #[test]
+    fn metadata_crs_preserves_missing_null_and_explicit_epsg_semantics() {
+        for (field, expected) in [
+            ("", Some(4326)),
+            (r#", "crs": null"#, None),
+            (
+                r#", "crs": {"id":{"authority":"EPSG","code":4326}}"#,
+                Some(4326),
+            ),
+            (
+                r#", "crs": {"id":{"authority":"EPSG","code":3857}}"#,
+                Some(3857),
+            ),
+        ] {
+            let raw = format!(
+                r#"{{"version":"1.1.0","primary_column":"geometry","columns":{{"geometry":{{"encoding":"WKB","geometry_types":["Point"]{field}}}}}}}"#
+            );
+            let metadata = parse_geo_metadata(&raw).unwrap();
+            assert_eq!(srid_from_crs(metadata.crs.as_ref()), expected, "{raw}");
+        }
     }
 
     #[test]
