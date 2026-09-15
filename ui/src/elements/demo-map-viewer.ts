@@ -38,7 +38,14 @@ export class TellurionDemoMapViewer extends ElementBase {
           </div>
           <p class="demo-map__status" data-field="status" role="status">Choose a public HTTPS source to open a temporary layer.</p>
         </header>
-        <div class="demo-map__canvas" data-field="map" aria-label="Temporary source map"></div>
+        <div class="demo-map__viewport">
+          <div class="demo-map__canvas" data-field="map" aria-label="Temporary source map"></div>
+          <div class="demo-map__empty" data-field="empty">
+            <h3>A map starts with a source</h3>
+            <p>Choose a sample dataset or paste a public HTTPS address. Inspect the source, choose its appearance, then open your map here.</p>
+            <p>COG · GeoParquet · ZIP Shapefile</p>
+          </div>
+        </div>
         <p class="demo-map__attribution" data-field="attribution">Basemap intentionally omitted.</p>
       </section>
     `;
@@ -101,6 +108,7 @@ export class TellurionDemoMapViewer extends ElementBase {
       map.addSource(handoff.sourceId, { type: 'vector', tiles: [handoff.template], minzoom: 0, maxzoom: 22 });
       map.addLayer(vectorLayer(handoff, opacity, style));
       this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId };
+      this.#field('empty').hidden = true;
       fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
       this.#field('status').textContent = 'Temporary vector map opened. It expires with this browser session.';
       this.#field('attribution').textContent = `Temporary source: ${handoff.attribution}`;
@@ -119,6 +127,7 @@ export class TellurionDemoMapViewer extends ElementBase {
     map.addSource(handoff.sourceId, { type: 'raster', tiles: [tileTemplate], tileSize: 256, minzoom: 0, maxzoom: 22 });
     map.addLayer({ id: handoff.layerId, type: 'raster', source: handoff.sourceId, paint: { 'raster-opacity': opacity } });
     this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId };
+    this.#field('empty').hidden = true;
     if (handoff.extent) fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
     this.#field('status').textContent = 'Temporary source map opened. It expires with this browser session.';
     this.#field('attribution').textContent = `Temporary source: ${handoff.attribution}`;
@@ -154,6 +163,7 @@ export class TellurionDemoMapViewer extends ElementBase {
       if (map.getSource(registration.sourceId)) map.removeSource(registration.sourceId);
     }
     this.#registration = null;
+    this.#field('empty').hidden = false;
     this.#field('status').textContent = 'Choose a public HTTPS source to open a temporary layer.';
     this.#field('attribution').textContent = 'Basemap intentionally omitted.';
   }

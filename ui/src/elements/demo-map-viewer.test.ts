@@ -87,6 +87,16 @@ afterEach(() => {
 });
 
 describe('temporary demo map viewer', () => {
+  it('guides an empty session and restores the guidance after removing its source', () => {
+    const element = mount();
+    const empty = element.querySelector<HTMLElement>('[data-field="empty"]')!;
+    expect(empty.hidden).toBe(false);
+    document.dispatchEvent(new CustomEvent('tellurion-demo-map', { detail: { source, opacity: 1 } }));
+    expect(empty.hidden).toBe(true);
+    document.dispatchEvent(new CustomEvent('tellurion-demo-map-reset', { detail: { sourceId: source.id } }));
+    expect(empty.hidden).toBe(false);
+  });
+
   it('maps the same-origin handoff and reports its attribution', () => {
     const element = mount();
 
