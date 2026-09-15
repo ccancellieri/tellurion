@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tellurion CQL2 query demo</title>
+  <meta name="description" content="Run bounded CQL2 text filters against a live Tellurion OGC API Features collection and see the GeoJSON result.">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="../viewer.css">
+  <link rel="stylesheet" href="../protocol.css">
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <a class="back" href="../../">← All Tellurion demos</a>
+      <p class="eyebrow">OGC API Features · CQL2 text</p>
+      <h1>Ask the roads a precise question.</h1>
+      <p class="intro">Choose a bounded filter or write your own. Tellurion compiles it through the GeoPackage driver and returns ordinary GeoJSON.</p>
+      <label class="control-label" for="filter">CQL2 expression</label>
+      <div class="control-row">
+        <input id="filter" value="highway = 'residential'" spellcheck="false" aria-label="CQL2 expression">
+        <button id="run" type="button">Run query</button>
+      </div>
+      <div class="mode-switch" aria-label="Query examples">
+        <button type="button" data-filter="highway = 'residential'" class="active">Residential</button>
+        <button type="button" data-filter="highway = 'primary'">Primary</button>
+        <button type="button" data-filter="name IS NOT NULL">Named</button>
+      </div>
+      <div class="status" id="status" role="status"><strong>Waking the public service…</strong><br>Render may need a short cold start.</div>
+      <div class="links">
+        <a class="button" id="raw" href="#">Open raw GeoJSON</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-demos">Reproduce</a>
+      </div>
+      <p class="notes">The request uses <code>filter-lang=cql2-text</code> and a hard limit of 50. This demonstrates the advertised filter classes of this deployed GeoPackage collection; it is not a blanket claim about every driver or every optional CQL2 function.</p>
+    </section>
+    <section class="protocol-stage">
+      <div class="protocol-card">
+        <p class="eyebrow">Request ledger</p>
+        <h2>Expression in. GeoJSON out.</h2>
+        <div class="metric-grid">
+          <div class="metric"><strong id="returned">—</strong><span>features returned</span></div>
+          <div class="metric"><strong id="geometry">—</strong><span>geometry type</span></div>
+          <div class="metric"><strong>50</strong><span>response limit</span></div>
+        </div>
+        <code class="request" id="request">Preparing request…</code>
+        <div class="result-map"><div id="map"></div></div>
+      </div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.js"></script>
+  <script>
+    const service = "https://tellurion-vector-demo.onrender.com";
+    const base = `${service}/public/features/catalogs/default/collections/sample_roads/items`;
+    const empty = {type:"FeatureCollection",features:[]};
+    const statusBox = document.getElementById("status");
+    const filterInput = document.getElementById("filter");
+    const runButton = document.getElementById("run");
+    const requestBox = document.getElementById("request");
+    const rawLink = document.getElementById("raw");
+    const returnedMetric = document.getElementById("returned");
+    const geometryMetric = document.getElementById("geometry");
+    const map = new maplibregl.Map({container:"map",center:[12.49,41.903],zoom:12.2,style:{version:8,sources:{results:{type:"geojson",data:empty}},layers:[{id:"background",type:"background",paint:{"background-color":"#06110f"}},{id:"result-lines",type:"line",source:"results",paint:{"line-color":"#75e6c4","line-width":["interpolate",["linear"],["zoom"],9,1,15,4],"line-opacity":.94}}]}});
+    map.addControl(new maplibregl.NavigationControl(),"top-right");
+
+    function queryUrl(expression) {
+      const params = new URLSearchParams({limit:"50",filter:expression,"filter-lang":"cql2-text"});
+      return `${base}?${params}`;
+    }
+
+    async function runQuery(expression) {
+      const url = queryUrl(expression);
+      requestBox.textContent = url;
+      rawLink.href = url;
+      statusBox.innerHTML = "<strong>Querying the live collection…</strong><br>The map will update when the GeoJSON arrives.";
+      try {
+        const response = await fetch(url, {headers:{accept:"application/geo+json"}});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const features = Array.isArray(data.features) ? data.features : [];
+        map.getSource("results").setData(data);
+        returnedMetric.textContent = data.numberReturned ?? features.length;
+        geometryMetric.textContent = features[0]?.geometry?.type ?? "none";
+        statusBox.innerHTML = `<strong>Live result: ${features.length} feature${features.length === 1 ? "" : "s"}.</strong><br>The response media type is application/geo+json.`;
+      } catch (error) {
+        statusBox.innerHTML = `<strong>The query did not complete.</strong><br>${error.message}. Check the expression or retry after the service wakes.`;
+      }
+    }
+
+    runButton.addEventListener("click", () => runQuery(filterInput.value.trim()));
+    filterInput.addEventListener("keydown", event => { if (event.key === "Enter") runQuery(filterInput.value.trim()); });
+    document.querySelectorAll("[data-filter]").forEach(button => button.addEventListener("click", () => {
+      document.querySelectorAll("[data-filter]").forEach(item => item.classList.remove("active"));
+      button.classList.add("active");
+      filterInput.value = button.dataset.filter;
+      runQuery(filterInput.value);
+    }));
+    map.on("load", () => runQuery(filterInput.value));
+  </script>
+</body>
+</html>

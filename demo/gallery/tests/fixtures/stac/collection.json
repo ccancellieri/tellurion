@@ -1,0 +1,20 @@
+{
+  "type": "Collection",
+  "id": "esa-worldcover",
+  "stac_version": "1.0.0",
+  "description": "ESA WorldCover 10 m 2021 v200 land-cover map.",
+  "license": "CC-BY-4.0",
+  "providers": [
+    {"name": "ESA", "roles": ["producer"]},
+    {"name": "ESA WorldCover Consortium", "roles": ["processor"]},
+    {"name": "Microsoft", "roles": ["host"]}
+  ],
+  "extent": {
+    "spatial": {"bbox": [[-180, -90, 180, 90]]},
+    "temporal": {"interval": [["2021-01-01T00:00:00Z", "2021-12-31T23:59:59Z"]]}
+  },
+  "links": [
+    {"rel": "self", "href": "https://planetarycomputer.microsoft.com/api/stac/v1/collections/esa-worldcover", "type": "application/json"},
+    {"rel": "root", "href": "https://planetarycomputer.microsoft.com/api/stac/v1", "type": "application/json"}
+  ]
+}

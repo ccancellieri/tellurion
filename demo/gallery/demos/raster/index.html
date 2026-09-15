@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tellurion COG raster demo</title>
+  <meta name="description" content="A human-facing map of Tellurion reading a Cloud Optimized GeoTIFF and rendering PNG tiles.">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="../viewer.css">
+</head>
+<body>
+  <main class="layout">
+    <aside class="panel">
+      <a class="back" href="../../">← All Tellurion demos</a>
+      <p class="eyebrow">02 / COG raster</p>
+      <h1>Read a window.<br>Render a tile.</h1>
+      <p class="intro">A categorical ESA WorldCover sample is authored as a Cloud Optimized GeoTIFF, read through the Tellurion COG driver and rendered as PNG.</p>
+      <div class="status" id="status" role="status"><strong>Starting the public service…</strong><br>Render may need a short cold start.</div>
+      <div class="links">
+        <a class="button" href="https://tellurion-raster-demo.onrender.com/public/tiles/catalogs/default/collections/sample_landcover/tiles/WebMercatorQuad/13/3044/4380.png">Open sample PNG tile</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-demos">Reproduce</a>
+      </div>
+      <p class="notes">© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium. CC BY 4.0.</p>
+    </aside>
+    <section class="map-wrap" aria-label="Interactive raster map"><div id="map"></div><div class="legend"><strong>sample_landcover</strong><br>Live PNG tiles rendered from a local COG. Empty requests outside the sample return HTTP 204.</div></section>
+  </main>
+  <script src="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.js"></script>
+  <script>
+    const service = "https://tellurion-raster-demo.onrender.com";
+    const status = document.getElementById("status");
+    const map = new maplibregl.Map({container:"map",center:[12.49,41.903],zoom:13.2,style:{version:8,sources:{land:{type:"raster",tiles:[`${service}/public/tiles/catalogs/default/collections/sample_landcover/tiles/WebMercatorQuad/{z}/{y}/{x}.png`],tileSize:256,minzoom:0,maxzoom:14}},layers:[{id:"background",type:"background",paint:{"background-color":"#071310"}},{id:"land",type:"raster",source:"land",paint:{"raster-opacity":.95,"raster-resampling":"nearest"}}]}});
+    map.addControl(new maplibregl.NavigationControl(),"top-right");
+    map.on("load",()=>{status.innerHTML="<strong>Live raster tiles from Tellurion.</strong><br>Pan and zoom to request rendered PNG windows from the COG.";});
+    map.on("error",event=>{if(event.error) status.innerHTML="<strong>Unable to load the live layer.</strong><br>Retry once; if it persists, inspect the sample PNG and repository evidence.";});
+  </script>
+</body>
+</html>

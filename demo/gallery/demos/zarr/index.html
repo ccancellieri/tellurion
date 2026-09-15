@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tellurion Zarr demo</title>
+  <meta name="description" content="Compare two fixed time slices from a deterministic multidimensional Zarr v2 field rendered by Tellurion.">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="../viewer.css">
+</head>
+<body>
+  <main class="layout">
+    <aside class="panel">
+      <a class="back" href="../../">← All Tellurion demos</a>
+      <p class="eyebrow">03 / Zarr</p>
+      <h1>One array.<br>Two fixed slices.</h1>
+      <p class="intro">Two collections select T0 and T1 from the same deterministic Zarr v2 field shaped `[time, y, x]`, then render the values through a Viridis ramp.</p>
+      <div class="switcher" aria-label="Select time slice"><button class="active" data-slice="t0">Time T0</button><button data-slice="t1">Time T1</button></div>
+      <div class="status" id="status" role="status"><strong>Starting the public service…</strong><br>Render may need a short cold start.</div>
+      <div class="links"><a class="button" href="https://github.com/ccancellieri/tellurion-demos">Inspect and reproduce</a></div>
+      <p class="notes">Synthetic capability data, not an environmental observation. This demo proves fixed leading-index reads; it does not claim on-wire dimension selection or OGC API EDR conformance.</p>
+    </aside>
+    <section class="map-wrap" aria-label="Interactive Zarr raster map"><div id="map"></div><div class="legend"><strong id="legend-title">sample_zarr_t0</strong><br>Switch slices to compare different values from the same multidimensional field.</div></section>
+  </main>
+  <script src="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.js"></script>
+  <script>
+    const service = "https://tellurion-zarr-demo.onrender.com";
+    const status = document.getElementById("status");
+    const sources = {
+      t0:`${service}/public/tiles/catalogs/default/collections/sample_zarr_t0/tiles/WebMercatorQuad/{z}/{y}/{x}.png`,
+      t1:`${service}/public/tiles/catalogs/default/collections/sample_zarr_t1/tiles/WebMercatorQuad/{z}/{y}/{x}.png`
+    };
+    const map = new maplibregl.Map({container:"map",center:[.02,.015],zoom:13.4,style:{version:8,sources:{field:{type:"raster",tiles:[sources.t0],tileSize:256,minzoom:0,maxzoom:14}},layers:[{id:"background",type:"background",paint:{"background-color":"#071310"}},{id:"field",type:"raster",source:"field",paint:{"raster-resampling":"nearest","raster-fade-duration":250}}]}});
+    map.addControl(new maplibregl.NavigationControl(),"top-right");
+    map.on("load",()=>{status.innerHTML="<strong>Live Zarr slice T0 from Tellurion.</strong><br>Select T1 to request a different fixed index from the same field.";});
+    map.on("error",event=>{if(event.error) status.innerHTML="<strong>Unable to load the live layer.</strong><br>Retry once; if it persists, inspect the service and repository evidence.";});
+    document.querySelectorAll("[data-slice]").forEach(button=>button.addEventListener("click",()=>{
+      const slice=button.dataset.slice;
+      document.querySelectorAll("[data-slice]").forEach(item=>item.classList.toggle("active",item===button));
+      const source=map.getSource("field");
+      if(source) source.setTiles([sources[slice]]);
+      document.getElementById("legend-title").textContent=`sample_zarr_${slice}`;
+      status.innerHTML=`<strong>Live Zarr slice ${slice.toUpperCase()} from Tellurion.</strong><br>The fixed leading index changed; the protocol route remained the same shape.`;
+    }));
+  </script>
+</body>
+</html>

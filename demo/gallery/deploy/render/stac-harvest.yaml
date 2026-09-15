@@ -1,0 +1,110 @@
+server:
+  port: 10000
+  request_timeout_s: 30
+  log_json: true
+  public_base_url: https://tellurion-stac-harvest-demo.onrender.com
+
+cache:
+  memory_percent: 10.0
+
+storages:
+  - id: harvested_items
+    driver: geopackage
+    url_env: TELLURION_GEOPACKAGE_PATH
+  - id: harvested_cog
+    driver: cog
+    url_env: TELLURION_COG_URL
+  - id: harvested_italy_mosaic
+    driver: cog-mosaic
+    url_env: TELLURION_COG_MOSAIC_MANIFEST
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: esa_worldcover_2021_rome
+    title: ESA WorldCover 2021 — Rome tile footprint
+    description: Read-only ESA WorldCover v200 2021 N39E012 footprint. Features and STAC metadata are served from a harvested local GeoPackage; raster tiles read a byte-identical copy from ESA's public S3 bucket.
+    catalog: default
+    storage: harvested_items
+    routing:
+      features: harvested_items
+      tiles: harvested_cog
+    tiles:
+      minzoom: 0
+      maxzoom: 14
+      caps: {}
+    schema:
+      properties:
+        - { name: source_item_id, type: string }
+        - { name: start_datetime, type: string }
+        - { name: end_datetime, type: string }
+        - { name: product_version, type: string }
+        - { name: grid_code, type: string }
+    settings:
+      stac:
+        license: CC-BY-4.0
+        keywords: [ESA, WorldCover, land cover, "2021"]
+        providers:
+          - { name: ESA, roles: [licensor, producer], url: "https://esa-worldcover.org" }
+          - { name: ESA WorldCover Consortium, roles: [processor], url: "https://esa-worldcover.org" }
+          - { name: Microsoft, roles: [host], url: "https://planetarycomputer.microsoft.com" }
+        assets:
+          source_cog:
+            href: https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39E012_Map.tif
+            type: image/tiff; application=geotiff; profile=cloud-optimized
+            title: ESA WorldCover v200 2021 COG — byte-identical official mirror
+            roles: [data]
+          source_snapshot:
+            href: https://raw.githubusercontent.com/ccancellieri/tellurion-demos/main/data/stac/esa-worldcover/item.json
+            type: application/geo+json
+            title: Harvested upstream STAC Item snapshot
+            roles: [metadata]
+          provenance_manifest:
+            href: https://raw.githubusercontent.com/ccancellieri/tellurion-demos/main/data/stac/esa-worldcover/manifest.json
+            type: application/json
+            title: Harvest provenance manifest
+            roles: [metadata, provenance]
+
+  - id: esa_worldcover_2021_italy
+    title: ESA WorldCover 2021 — bounded Italy mosaic
+    description: Read-only national demonstration over 17 verified ESA WorldCover v200 2021 COGs. Feature and STAC metadata come from the local harvested GeoPackage; raster tiles use one deterministic, provenance-checked local mosaic.
+    catalog: default
+    storage: harvested_items
+    routing:
+      features: harvested_items
+      tiles: harvested_italy_mosaic
+    tiles:
+      minzoom: 0
+      maxzoom: 14
+      caps: {}
+    schema:
+      properties:
+        - { name: source_item_id, type: string }
+        - { name: start_datetime, type: string }
+        - { name: end_datetime, type: string }
+        - { name: product_version, type: string }
+        - { name: grid_code, type: string }
+    settings:
+      stac:
+        license: CC-BY-4.0
+        keywords: [ESA, WorldCover, land cover, "2021", Italy, mosaic]
+        providers:
+          - { name: ESA, roles: [licensor, producer], url: "https://esa-worldcover.org" }
+          - { name: ESA WorldCover Consortium, roles: [processor], url: "https://esa-worldcover.org" }
+          - { name: Microsoft, roles: [host], url: "https://planetarycomputer.microsoft.com" }
+        assets:
+          source_snapshot:
+            href: https://raw.githubusercontent.com/ccancellieri/tellurion-demos/main/data/stac/esa-worldcover-italy/manifest.json
+            type: application/json
+            title: Harvested source-set and provenance snapshot
+            roles: [metadata, provenance]
+          boundary_snapshot:
+            href: https://raw.githubusercontent.com/ccancellieri/tellurion-demos/main/data/stac/esa-worldcover-italy/boundary.geojson
+            type: application/geo+json
+            title: Pinned GISCO Italy selection boundary
+            roles: [metadata]

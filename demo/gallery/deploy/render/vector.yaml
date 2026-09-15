@@ -1,0 +1,42 @@
+server:
+  port: 10000
+  request_timeout_s: 30
+  log_json: true
+  public_base_url: https://tellurion-vector-demo.onrender.com
+
+cache:
+  memory_percent: 10.0
+
+storages:
+  - id: sample_vectors
+    driver: geopackage
+    url_env: TELLURION_GEOPACKAGE_PATH
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: sample_roads
+    title: OpenStreetMap road sample
+    description: Read-only vector sample derived from the reproducible Rome field case.
+    catalog: default
+    storage: sample_vectors
+    tiles:
+      minzoom: 0
+      maxzoom: 14
+      caps: {}
+    schema:
+      properties:
+        - { name: highway, type: string }
+        - { name: name, type: string }
+        - { name: railway, type: string }
+    settings:
+      tile_properties: [highway, name, railway]
+
+styles:
+  - id: roads-night
+    path: /app/styles/roads.json

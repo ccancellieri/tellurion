@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tellurion vector demo</title>
+  <meta name="description" content="A human-facing map of Tellurion serving an OpenStreetMap road sample through vector tiles and OGC API Features.">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="../viewer.css">
+</head>
+<body>
+  <main class="layout">
+    <aside class="panel">
+      <a class="back" href="../../">← All Tellurion demos</a>
+      <p class="eyebrow">01 / Vector</p>
+      <h1>Roads,<br>served once.</h1>
+      <p class="intro">Tellurion reads a 5,603-feature GeoPackage sample and exposes the same collection as queryable features and Mapbox Vector Tiles.</p>
+      <div class="status" id="status" role="status"><strong>Starting the public service…</strong><br>Render may need a short cold start.</div>
+      <div class="links">
+        <a class="button" href="https://tellurion-vector-demo.onrender.com/public/features/catalogs/default/collections/sample_roads/items?limit=10">Inspect 10 features</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-demos">Reproduce</a>
+      </div>
+      <p class="notes">OpenStreetMap sample from the Rome field case. © OpenStreetMap contributors, ODbL. The hosted viewer is functional evidence, not a performance benchmark.</p>
+    </aside>
+    <section class="map-wrap" aria-label="Interactive vector map"><div id="map"></div><div class="legend"><span class="swatch"></span><strong>sample_roads</strong><br>Pan and zoom to request live MVT tiles from Tellurion.</div></section>
+  </main>
+  <script src="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.js"></script>
+  <script>
+    const service = "https://tellurion-vector-demo.onrender.com";
+    const status = document.getElementById("status");
+    const map = new maplibregl.Map({container:"map",center:[12.49,41.903],zoom:13.3,style:{version:8,sources:{roads:{type:"vector",tiles:[`${service}/public/tiles/catalogs/default/collections/sample_roads/tiles/WebMercatorQuad/{z}/{y}/{x}.mvt`],minzoom:0,maxzoom:14}},layers:[{id:"background",type:"background",paint:{"background-color":"#071310"}},{id:"roads-casing",type:"line",source:"roads","source-layer":"sample_roads",paint:{"line-color":"#102d27","line-width":["interpolate",["linear"],["zoom"],8,2,15,8]}},{id:"roads",type:"line",source:"roads","source-layer":"sample_roads",paint:{"line-color":"#75e6c4","line-opacity":.92,"line-width":["interpolate",["linear"],["zoom"],8,.7,15,3.2]}}]}});
+    map.addControl(new maplibregl.NavigationControl(),"top-right");
+    map.on("load",()=>{status.innerHTML="<strong>Live vector tiles from Tellurion.</strong><br>Drag and zoom; each viewport requests MVT from the public service.";});
+    map.on("error",event=>{if(event.error) status.innerHTML="<strong>Unable to load the live layer.</strong><br>Retry once; if it persists, inspect the feature endpoint and repository evidence.";});
+  </script>
+</body>
+</html>

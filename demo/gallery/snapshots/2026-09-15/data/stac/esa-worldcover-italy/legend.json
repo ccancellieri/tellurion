@@ -1,0 +1,57 @@
+[
+  {
+    "color": "#006400",
+    "label": "Tree cover",
+    "value": 10
+  },
+  {
+    "color": "#FFBB22",
+    "label": "Shrubland",
+    "value": 20
+  },
+  {
+    "color": "#FFFF4C",
+    "label": "Grassland",
+    "value": 30
+  },
+  {
+    "color": "#F096FF",
+    "label": "Cropland",
+    "value": 40
+  },
+  {
+    "color": "#FA0000",
+    "label": "Built-up",
+    "value": 50
+  },
+  {
+    "color": "#B4B4B4",
+    "label": "Bare / sparse vegetation",
+    "value": 60
+  },
+  {
+    "color": "#F0F0F0",
+    "label": "Snow and ice",
+    "value": 70
+  },
+  {
+    "color": "#0064C8",
+    "label": "Permanent water bodies",
+    "value": 80
+  },
+  {
+    "color": "#0096A0",
+    "label": "Herbaceous wetland",
+    "value": 90
+  },
+  {
+    "color": "#00CF75",
+    "label": "Mangroves",
+    "value": 95
+  },
+  {
+    "color": "#FAE6A0",
+    "label": "Moss and lichen",
+    "value": 100
+  }
+]

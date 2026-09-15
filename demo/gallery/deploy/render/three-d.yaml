@@ -1,0 +1,37 @@
+server:
+  port: 10000
+  request_timeout_s: 30
+  log_json: true
+
+cache:
+  memory_percent: 10.0
+
+storages:
+  - id: sample_buildings
+    driver: geopackage
+    url_env: TELLURION_3D_GEOPACKAGE_PATH
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: sample_buildings_3d
+    title: Synthetic building blocks — 3D capability fixture
+    description: Thirty deterministic polygon footprints with synthetic heights. Not observational city data.
+    catalog: default
+    storage: sample_buildings
+    tiles:
+      minzoom: 0
+      maxzoom: 14
+      caps: {}
+    places3d:
+      height_property: height
+      min_height_property: min_height
+      default_height: 12.0
+      exaggeration: 1.0
+    settings:
+      tile_properties: [name, height, min_height]

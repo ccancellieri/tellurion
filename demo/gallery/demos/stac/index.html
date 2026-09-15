@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tellurion Italy land-cover explorer</title>
+  <meta name="description" content="Explore a live Italy-scale ESA WorldCover mosaic, then inspect its released source records, provenance, and service resources.">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="../viewer.css">
+  <link rel="stylesheet" href="../protocol.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header class="release-bar">
+    <nav aria-label="Site navigation">
+      <a class="back" href="../../">← All Tellurion demos</a>
+      <a href="../../proof/">Proof brief</a>
+    </nav>
+    <span>Italy release / live evaluation</span>
+  </header>
+
+  <main class="layout harvest-layout" id="main-content">
+    <section class="panel harvest-panel">
+      <p class="eyebrow">STAC harvest · live evaluation</p>
+      <h1>Italy, from source records to live tiles.</h1>
+      <p class="intro">A reviewed release of 17 ESA WorldCover source records becomes one national mosaic. Start on the map, then inspect the resources and provenance behind it.</p>
+      <div class="status live-status" id="status" role="status">
+        <strong>Live evaluation path verified.</strong><br>
+        Pan and zoom the map, or open a returned representation below. Hosted availability is not a service-level commitment.
+      </div>
+      <div class="links" aria-label="Italy evaluation links">
+        <a class="button" href="https://tellurion-stac-harvest-demo.onrender.com/public/stac/catalogs/default/collections/esa_worldcover_2021_italy">Open the collection</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-demos/blob/main/data/stac/esa-worldcover-italy/manifest.json">Release manifest</a>
+        <a class="button" href="../../docs/articles/from-one-cog-to-italy.md">Read the field note</a>
+      </div>
+      <p class="notes"><strong>Attribution:</strong> © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium. Source STAC metadata is preserved from Microsoft Planetary Computer; served COGs use ESA's public S3 mirror. <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover CC BY 4.0 and citation guidance</a>. Italy boundary: Non-commercial use; © EuroGeographics for the administrative boundaries; GISCO boundary terms apply. Dynamic PNG tile composition, not a raster OGC API Maps conformance claim.</p>
+    </section>
+
+    <section class="protocol-stage harvest-stage" aria-label="Italy land-cover explorer">
+      <div class="protocol-card harvest-card">
+        <div class="harvest-heading">
+          <div>
+            <p class="eyebrow">Live evaluation</p>
+            <h2>A national mosaic that stays inspectable.</h2>
+          </div>
+          <p>The viewer requests tiles from the deployed service. The released records, source footprints, class legend, and raw representations stay one deliberate step away.</p>
+        </div>
+
+        <div class="harvest-map" aria-label="Interactive Italy land-cover map">
+          <div id="map"></div>
+          <div class="map-place-controls" aria-label="Choose a map view">
+            <button type="button" data-place="italy" aria-pressed="true">Italy</button>
+            <button type="button" data-place="milan" aria-pressed="false">Milan</button>
+            <button type="button" data-place="venice" aria-pressed="false">Venice</button>
+            <button type="button" data-place="rome" aria-pressed="false">Rome</button>
+            <button type="button" data-place="naples" aria-pressed="false">Naples</button>
+            <button type="button" data-place="palermo" aria-pressed="false">Palermo</button>
+          </div>
+          <div class="scale-rail" aria-hidden="true">
+            <span class="scale-step is-current">Country overview</span>
+            <span class="scale-step">City window</span>
+            <span class="scale-step">Neighbourhood window</span>
+            <strong>17-source ESA WorldCover release</strong>
+          </div>
+          <p class="map-fallback">The tile layer is the subject of this evaluation. If it does not load, inspect a representative PNG and the released manifest rather than inferring a benchmark result.</p>
+          <span class="map-credit">ESA WorldCover 2021 · Tellurion raster tiles</span>
+        </div>
+
+        <div class="release-ledger" aria-label="National release summary">
+          <article>
+            <span class="ledger-mark source-mark"></span>
+            <strong>17</strong>
+            <p>byte-verified source Items in the committed release</p>
+          </article>
+          <article>
+            <span class="ledger-mark derived-mark"></span>
+            <strong>1</strong>
+            <p>national mosaic, composed from relevant source windows</p>
+          </article>
+          <article>
+            <span class="ledger-mark live-mark"></span>
+            <strong>Live</strong>
+            <p>map route and representative service resources verified at deployment time</p>
+          </article>
+        </div>
+
+        <p class="evidence-status" id="evidence-status" aria-live="polite">Reading the committed release manifest and legend…</p>
+
+        <section class="transect" aria-labelledby="transect-title">
+          <div class="transect-head">
+            <div><p class="eyebrow">Evidence transect</p><h3 id="transect-title">Source records, composition, returned tiles</h3></div>
+            <p><span class="source-key">Source asset</span><span class="derived-key">Derived by Tellurion</span></p>
+          </div>
+          <ol class="provenance-graph">
+            <li class="source-node"><span class="node-mark tree"></span><strong>Planetary Computer STAC snapshot</strong><a href="https://github.com/ccancellieri/tellurion-demos/blob/main/data/stac/esa-worldcover-italy/manifest.json">Preserved national release</a></li>
+            <li class="source-node"><span class="node-mark crop"></span><strong>17 Official ESA COG mirrors</strong><a href="https://esa-worldcover.org/en/data-access">Public source data</a></li>
+            <li class="derived-node"><span class="node-mark water"></span><strong>Tellurion COG driver · mosaic composition</strong><span>Reads source windows without request-time catalog federation</span></li>
+            <li class="derived-node"><span class="node-mark built"></span><strong>raster TileSet / PNG tiles</strong><span>Deployed representation routes for this bounded release</span></li>
+            <li class="derived-node"><span class="node-mark moss"></span><strong>interactive browser map</strong><span>Live Italy map from Tellurion.</span></li>
+          </ol>
+        </section>
+
+        <section class="evidence-grid" aria-label="Preserved release metadata">
+          <div class="evidence-block identity-block">
+            <p class="eyebrow">Preserved identity</p>
+            <dl class="facts">
+              <div><dt>Source collection</dt><dd id="source-collection">—</dd></div>
+              <div><dt>Preserved source Items</dt><dd id="source-items">—</dd></div>
+              <div><dt>Harvested</dt><dd id="harvested-at">—</dd></div>
+              <div><dt>Collection digest</dt><dd id="collection-digest">—</dd></div>
+              <div><dt>Mosaic digest</dt><dd id="mosaic-digest">—</dd></div>
+              <div><dt>Boundary digest</dt><dd id="boundary-digest">—</dd></div>
+            </dl>
+          </div>
+          <div class="evidence-block legend-block">
+            <p class="eyebrow">Generated class legend</p>
+            <p class="legend-note">The committed legend is generated from preserved WorldCover class metadata; the source COG palette remains authoritative at render time.</p>
+            <div class="worldcover-legend" id="legend" aria-live="polite"><p>Reading preserved class metadata…</p></div>
+          </div>
+        </section>
+
+        <section class="resource-checks" aria-labelledby="resource-title">
+          <div class="resource-heading">
+            <div><p class="eyebrow">Returned representations</p><h3 id="resource-title">Inspect the live resources</h3></div>
+            <p>These are direct, read-only representations from the bounded Italy release. They make availability inspectable, not guaranteed.</p>
+          </div>
+          <div class="resource-list resource-list-five live-resources">
+            <article class="resource resource-ready"><a href="https://tellurion-stac-harvest-demo.onrender.com/public/stac/catalogs/default/collections/esa_worldcover_2021_italy">STAC Collection</a><code>/public/stac/…/esa_worldcover_2021_italy</code><p>Release identity and links</p></article>
+            <article class="resource resource-ready"><a href="https://tellurion-stac-harvest-demo.onrender.com/public/features/catalogs/default/collections/esa_worldcover_2021_italy/items?limit=1">FeatureCollection</a><code>/public/features/…/items?limit=1</code><p>Bounded release footprint</p></article>
+            <article class="resource resource-ready"><a href="https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad">Raster TileSet</a><code>/public/tiles/…/WebMercatorQuad</code><p>Tile template and limits</p></article>
+            <article class="resource resource-ready"><a href="https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad/5/11/17.png">Country PNG tile</a><code>…/WebMercatorQuad/5/11/17.png</code><p>National overview window</p></article>
+            <article class="resource resource-ready"><a href="https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad/13/3043/4380.png">Rome PNG tile</a><code>…/WebMercatorQuad/13/3043/4380.png</code><p>Neighbourhood-scale window</p></article>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="release-footer">
+    <span>Tellurion Italy live evaluation</span>
+    <span>Public evidence · not a production SLA or benchmark</span>
+  </footer>
+
+  <script src="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.js"></script>
+  <script>
+    const service = "https://tellurion-stac-harvest-demo.onrender.com";
+    const collection = "esa_worldcover_2021_italy";
+    const status = document.getElementById("status");
+    const places = {
+      italy: {center: [12.5, 42.5], zoom: 5.25},
+      milan: {center: [9.19, 45.46], zoom: 12.1},
+      venice: {center: [12.33, 45.44], zoom: 12.1},
+      rome: {center: [12.49, 41.90], zoom: 12.1},
+      naples: {center: [14.27, 40.85], zoom: 12.1},
+      palermo: {center: [13.36, 38.12], zoom: 12.1}
+    };
+    const tileTemplate = `${service}/public/tiles/catalogs/default/collections/${collection}/tiles/WebMercatorQuad/{z}/{y}/{x}.png`;
+    const map = new maplibregl.Map({
+      container: "map",
+      center: places.italy.center,
+      zoom: places.italy.zoom,
+      style: {
+        version: 8,
+        sources: {worldcover: {type: "raster", tiles: [tileTemplate], tileSize: 256, minzoom: 0, maxzoom: 14}},
+        layers: [
+          {id: "background", type: "background", paint: {"background-color": "#071310"}},
+          {id: "worldcover", type: "raster", source: "worldcover", paint: {"raster-opacity": 0.96, "raster-resampling": "nearest"}}
+        ]
+      }
+    });
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.on("load", () => {
+      status.innerHTML = "<strong>Live Italy map from Tellurion.</strong><br>Choose a place or pan and zoom to request a different raster window from the reviewed source set.";
+    });
+    map.on("error", event => {
+      if (event.error) status.innerHTML = "<strong>Unable to load the live layer.</strong><br>Retry once; if it persists, inspect the representative PNG and release manifest.";
+    });
+    document.querySelectorAll("[data-place]").forEach(button => button.addEventListener("click", () => {
+      const place = places[button.dataset.place];
+      map.flyTo({center: place.center, zoom: place.zoom, essential: true});
+      document.querySelectorAll("[data-place]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+    }));
+
+    const evidenceStatus = document.getElementById("evidence-status");
+    function renderLegend(entries) {
+      const legend = document.getElementById("legend");
+      legend.replaceChildren();
+      entries.forEach(entry => {
+        const row = document.createElement("div");
+        row.className = "legend-row";
+        const swatch = document.createElement("span");
+        swatch.className = "legend-swatch";
+        swatch.style.backgroundColor = entry.color;
+        const label = document.createElement("span");
+        label.textContent = entry.label;
+        const value = document.createElement("code");
+        value.textContent = entry.value;
+        row.append(swatch, label, value);
+        legend.append(row);
+      });
+    }
+    async function loadEvidence() {
+      try {
+        const [legendResponse, manifestResponse] = await Promise.all([fetch("legend.json"), fetch("manifest.json")]);
+        if (!legendResponse.ok || !manifestResponse.ok) throw new Error(`metadata HTTP ${legendResponse.status}/${manifestResponse.status}`);
+        const [legend, manifest] = await Promise.all([legendResponse.json(), manifestResponse.json()]);
+        renderLegend(Array.isArray(legend) ? legend : []);
+        const source = manifest.source || {};
+        const digests = manifest.digests || {};
+        const boundary = manifest.boundary || {};
+        const sourceItems = Object.keys(manifest.verified_assets || {}).length;
+        document.getElementById("source-collection").textContent = source.collection_id || "—";
+        document.getElementById("source-items").textContent = sourceItems ? `${sourceItems} byte-verified Items` : "—";
+        document.getElementById("harvested-at").textContent = manifest.retrieved_at || "—";
+        document.getElementById("collection-digest").textContent = digests.collection || "—";
+        document.getElementById("mosaic-digest").textContent = digests.mosaic || "—";
+        document.getElementById("boundary-digest").textContent = boundary.digest || "—";
+        evidenceStatus.textContent = "Committed release evidence loaded. The map and representative resources were verified at deployment time.";
+      } catch (error) {
+        document.getElementById("legend").textContent = "The preserved legend could not be read.";
+        evidenceStatus.textContent = "Committed evidence could not be read in this browser. Use the public release manifest link.";
+      }
+    }
+    loadEvidence();
+  </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "snapshot": "2026-09-15",
+  "gallery_commit": "020fa04b8f04cf03daa25325e4bf5546b1d68bdf",
+  "releases": [
+    {
+      "version": "v0.3.0",
+      "engine_license": "BUSL-1.1",
+      "lanes": {
+        "raster": "https://tellurion-raster-demo.onrender.com",
+        "zarr": "https://tellurion-zarr-demo.onrender.com",
+        "3d": "https://tellurion-3d-demo.onrender.com"
+      }
+    },
+    {
+      "version": "v0.5.0-rc.1",
+      "engine_license": "AGPL-3.0-only",
+      "lanes": {
+        "vector": "https://tellurion-vector-demo.onrender.com",
+        "query": "https://tellurion-vector-demo.onrender.com",
+        "maps": "https://tellurion-vector-demo.onrender.com",
+        "stac": "https://tellurion-stac-harvest-demo.onrender.com"
+      }
+    }
+  ]
+}
