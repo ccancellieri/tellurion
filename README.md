@@ -214,6 +214,14 @@ The batch route is a Tellurion extension: RFC 8142 standardizes its request sequ
 but the route does not by itself advertise an OGC API Features batch-transaction
 conformance class.
 
+HTTP(S) source arguments to `tellurion-ingest load`, `geopackage load`, and
+`postgis load` require `curl`. Downloads are limited to 1 GiB and five minutes
+overall, including stalled transfers, regardless of `Content-Length`. They use
+unique private temporary files, removed after loading or on failure/cancellation.
+Local source files are never removed or subject to these download limits; download
+larger datasets separately and pass a local path. Forced process termination may
+still leave a temporary file behind.
+
 ### Scaling up: PostGIS
 
 A database-backed storage is the deliberate move once a single `.gpkg` file's
