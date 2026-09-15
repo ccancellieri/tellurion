@@ -9,6 +9,32 @@ spec.loader.exec_module(publisher)
 
 
 class PublicationTests(unittest.TestCase):
+    def test_rejects_publication_metadata_symlink(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source, target = Path(temporary) / 'source', Path(temporary) / 'target'
+            source.mkdir()
+            target.mkdir()
+            (source / 'index.html').write_text('Gallery')
+            outside = Path(temporary) / 'outside.json'
+            outside.write_text('Do not overwrite')
+            (target / 'publication.json').symlink_to(outside)
+            with self.assertRaisesRegex(ValueError, 'publication metadata'):
+                publisher.plan_export(source, target)
+            self.assertEqual(outside.read_text(), 'Do not overwrite')
+
+    def test_rejects_new_files_inside_existing_immutable_directories(self):
+        for directory in ('snapshots/old', 'releases/v0.3.0'):
+            with self.subTest(directory=directory), tempfile.TemporaryDirectory() as temporary:
+                source, target = Path(temporary) / 'source', Path(temporary) / 'target'
+                for root in (source, target):
+                    (root / directory).mkdir(parents=True)
+                (source / 'index.html').write_text('Gallery')
+                (target / directory / 'index.html').write_text('Original')
+                (source / directory / 'new.html').write_text('Injected')
+                with self.assertRaisesRegex(ValueError, 'immutable'):
+                    publisher.plan_export(source, target)
+                self.assertFalse((target / directory / 'new.html').exists())
+
     def test_preserves_executable_scripts(self):
         with tempfile.TemporaryDirectory() as temporary:
             source, target = Path(temporary) / 'source', Path(temporary) / 'target'

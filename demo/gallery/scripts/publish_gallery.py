@@ -17,6 +17,9 @@ ROOTS = ('index.html', 'styles.css', 'favicon.svg', 'LICENSE', 'NOTICE.md',
 
 
 def plan_export(source, target):
+    metadata = target / 'publication.json'
+    if metadata.is_symlink() or (metadata.exists() and not metadata.is_file()):
+        raise ValueError('Unsafe publication metadata destination')
     if not (source / 'index.html').is_file():
         raise ValueError('Source needs a gallery index')
     planned = {}
@@ -40,12 +43,13 @@ def plan_export(source, target):
                 if ancestor.is_symlink():
                     raise ValueError(f'destination symlink: {relative}')
             content = path.read_bytes()
-            if destination.exists() and destination.read_bytes() != content:
-                if relative.parts[0] == 'snapshots' or (
-                    relative.parts[0] == 'releases' and len(relative.parts) > 2
-                ):
+            mode = 0o755 if path.stat().st_mode & 0o111 else 0o644
+            immutable = relative.parts[0] in ('snapshots', 'releases') and len(relative.parts) > 2
+            if immutable and (target / relative.parts[0] / relative.parts[1]).exists():
+                if (not destination.is_file() or destination.read_bytes() != content
+                        or destination.stat().st_mode & 0o777 != mode):
                     raise ValueError(f'immutable version differs: {relative}')
-            planned[relative] = (content, 0o755 if path.stat().st_mode & 0o111 else 0o644)
+            planned[relative] = (content, mode)
     return planned
 
 

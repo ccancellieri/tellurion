@@ -41,6 +41,7 @@ include_directories = [
 ]
 
 exclude_globs = [
+  "demo/gallery/dist/*.zip",
   "docs/design/**",
   "**/node_modules/**",
   "**/target/**",

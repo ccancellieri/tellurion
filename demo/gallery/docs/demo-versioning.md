@@ -22,6 +22,11 @@ evidence bytes, not third-party CDN files, external datasets or service uptime.
 Historical engine archives keep their BUSL-1.1 terms. Public source is AGPL;
 dataset-specific terms and attribution remain unchanged.
 
+Source release exports omit vendored archives under `demo/gallery/dist/*.zip`
+to avoid nesting previous full source releases inside new ones. Gallery source,
+documentation and frozen viewers remain included. Use the Git checkout when
+publishing the complete gallery with its historical downloadable archives.
+
 ## New release procedure
 
 1. Commit the reviewed gallery, configurations and data provenance with the
