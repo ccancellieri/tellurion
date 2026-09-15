@@ -153,13 +153,27 @@ mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+    async fn read_request_headers(socket: &mut tokio::net::TcpStream) -> std::io::Result<()> {
+        let mut headers = Vec::new();
+        while headers.len() < 8192 {
+            // A byte read handles fragmented headers and reports premature EOF.
+            headers.push(socket.read_u8().await?);
+            if headers.ends_with(b"\r\n\r\n") {
+                return Ok(());
+            }
+        }
+        Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "fixture request headers exceed 8192 bytes",
+        ))
+    }
+
     async fn serve(response: &'static [u8]) -> (String, tokio::task::JoinHandle<()>) {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let url = format!("http://{}/data.geojson", listener.local_addr().unwrap());
         let task = tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut request = [0; 4096];
-            socket.read(&mut request).await.unwrap();
+            read_request_headers(&mut socket).await.unwrap();
             socket.write_all(response).await.unwrap();
         });
         (url, task)
@@ -273,13 +287,13 @@ mod tests {
         let (started, ready) = tokio::sync::oneshot::channel();
         let server = tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut request = [0; 4096];
-            socket.read(&mut request).await.unwrap();
+            read_request_headers(&mut socket).await.unwrap();
             socket
                 .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\npartial")
                 .await
                 .unwrap();
             started.send(()).unwrap();
+            let mut request = [0; 1];
             tokio::time::timeout(std::time::Duration::from_secs(1), socket.read(&mut request)).await
         });
         let temp_dir = dir.path().to_path_buf();
@@ -304,8 +318,7 @@ mod tests {
         let url = format!("http://{}/data", listener.local_addr().unwrap());
         let server = tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut request = [0; 4096];
-            socket.read(&mut request).await.unwrap();
+            read_request_headers(&mut socket).await.unwrap();
             socket
                 .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\na")
                 .await
@@ -342,8 +355,7 @@ mod tests {
         let listener = tokio::net::TcpListener::bind(address).await.unwrap();
         let server = tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut request = [0; 4096];
-            socket.read(&mut request).await.unwrap();
+            read_request_headers(&mut socket).await.unwrap();
             socket
                 .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n[]")
                 .await
