@@ -31,10 +31,21 @@ struct RawColumnMetadata {
     geometry_types: Vec<String>,
     #[serde(default)]
     bbox: Option<Vec<f64>>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_present_crs")]
     crs: Option<serde_json::Value>,
     #[serde(default)]
     covering: Option<RawCovering>,
+}
+
+// Serde's ordinary Option deserializer maps both missing and null to None.
+// GeoParquet assigns them different meanings, so retain an explicit null.
+fn deserialize_present_crs<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<serde_json::Value>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    serde_json::Value::deserialize(deserializer).map(Some)
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,10 +77,9 @@ pub(crate) struct GeoMetadata {
     /// `bbox` entry (legal per spec) or the entry isn't a well-formed 2D/3D
     /// bbox array.
     pub bbox: Option<[f64; 4]>,
-    /// `None` here means CRS84 (the spec's default when `crs` is absent or
-    /// JSON `null`) — see `driver.rs::srid_from_crs` for the
-    /// absent-vs-unrecognized distinction that later collapses onto
-    /// `PhysicalCollection::srid`.
+    /// `None` means CRS84 (the spec's default when `crs` is absent).
+    /// `Some(Value::Null)` means undefined/unknown CRS; other values retain
+    /// the explicit PROJJSON for `driver.rs::srid_from_crs` to resolve.
     pub crs: Option<serde_json::Value>,
     pub covering: Option<CoveringPaths>,
 }

@@ -131,8 +131,48 @@ collections:
 }
 
 #[tokio::test]
+async fn null_crs_features_remain_readable_without_claiming_a_known_srid() {
+    let (path, table) = crs_fixture(serde_json::Value::Null);
+    let env_var = "TELLURION_GEOPARQUET_BOOT_VALIDATION_NULL_CRS_FEATURES";
+    std::env::set_var(env_var, &path);
+    let config: AppConfig = serde_yaml::from_str(&format!(
+        r#"
+storages: [ {{ id: main, driver: geoparquet, url_env: {env_var} }} ]
+tenants: [ {{ id: public }} ]
+catalogs: [ {{ id: default, tenant: public }} ]
+collections:
+  - id: demo
+    catalog: default
+    storage: main
+    table: {table}
+"#
+    ))
+    .unwrap();
+    let mut registry = Registry::new();
+    registry.register(Arc::new(GeoparquetDriverFactory::new()));
+    let router = Router::build(&config, &registry).unwrap();
+    router.validate_catalog().await.unwrap();
+    let (decl, source) = router
+        .resolve_features("public", "default", "demo")
+        .await
+        .unwrap();
+    assert_eq!(decl.srid, None);
+    let page = source
+        .items(&decl, &tellurion_core::ItemsQuery::default())
+        .await
+        .unwrap();
+    assert_eq!(page.features_geojson.len(), 1);
+    let coordinates = &page.features_geojson[0]["geometry"]["coordinates"];
+    assert_eq!(coordinates[0].as_f64(), Some(0.0));
+    assert_eq!(coordinates[1].as_f64(), Some(0.0));
+    std::env::remove_var(env_var);
+    std::fs::remove_file(path).unwrap();
+}
+
+#[tokio::test]
 async fn metadata_resolved_projected_and_unknown_crs_cannot_boot_or_resolve_a_tiles_lane() {
     for crs in [
+        serde_json::Value::Null,
         serde_json::json!({ "id": { "authority": "EPSG", "code": 3857 } }),
         serde_json::json!({ "id": { "authority": "OGC", "code": "CRS84" } }),
     ] {
