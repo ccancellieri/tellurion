@@ -135,7 +135,8 @@ main {
 
 @media (min-width: 1050px) {
   .public-demo-shell { grid-template-columns: minmax(360px, 0.8fr) minmax(0, 1.5fr); align-items: start; }
-  .public-demo-shell tellurion-demo-map-viewer { position: sticky; top: 1rem; }
+  .public-demo-shell tellurion-demo-map-viewer { align-self: stretch; }
+  .public-demo-shell .demo-map { position: sticky; top: 1rem; }
   .public-demo-shell .demo-map__canvas { min-height: clamp(460px, 66vh, 850px); }
   .public-demo-shell__resources { grid-column: 1 / -1; }
 }

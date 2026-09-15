@@ -1,4 +1,4 @@
-import{c as e,o as t,x as n,y as r}from"./index-BlxMdZkL.js";import{a as i,n as a,t as o}from"./api-DcdVQm8X.js";n();var s=`tellurion-png`,c=class extends HTMLElement{#e=null;#t;#n;#r=[];connectedCallback(){this.innerHTML=`
+import{c as e,o as t,x as n,y as r}from"./index-CD1PBZL2.js";import{a as i,n as a,t as o}from"./api-DcdVQm8X.js";n();var s=`tellurion-png`,c=class extends HTMLElement{#e=null;#t;#n;#r=[];connectedCallback(){this.innerHTML=`
       <div class="panel__controls">
         <label>
           Collection
