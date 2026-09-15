@@ -1,0 +1,57 @@
+FROM alpine:3.22 AS builder
+
+RUN apk add --no-cache ca-certificates curl python3 tar
+
+WORKDIR /build
+
+ARG TELLURION_VERSION=v0.3.0
+ARG TELLURION_TARGET=x86_64-unknown-linux-musl
+
+ENV TELLURION_ARCHIVE=tellurion-${TELLURION_VERSION}-${TELLURION_TARGET}.tar.gz
+ENV TELLURION_RELEASE=https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-${TELLURION_VERSION}
+
+RUN curl --fail --location --retry 3 \
+      --output "${TELLURION_ARCHIVE}" "${TELLURION_RELEASE}/${TELLURION_ARCHIVE}" \
+    && curl --fail --location --retry 3 \
+      --output SHA256SUMS "${TELLURION_RELEASE}/SHA256SUMS" \
+    && grep "  ${TELLURION_ARCHIVE}$" SHA256SUMS > tellurion.sha256 \
+    && sha256sum -c tellurion.sha256 \
+    && mkdir tellurion \
+    && tar -xzf "${TELLURION_ARCHIVE}" --strip-components=1 -C tellurion
+
+COPY deploy/render/build_3d_demo.py /build/build_3d_demo.py
+
+RUN mkdir -p /app/data /app/licenses \
+    && install -m 0755 tellurion/tellurion tellurion/tellurion-ingest /app/ \
+    && install -m 0644 tellurion/LICENSE tellurion/COMMERCIAL-LICENSE.md /app/licenses/ \
+    && python3 /build/build_3d_demo.py /build/sample-buildings.geojson \
+    && /app/tellurion-ingest geopackage create-tables \
+      --path /app/data/sample-buildings.gpkg \
+      --table sample_buildings_3d \
+      --geometry geom \
+      --srid 4326 \
+      --geometry-type POLYGON \
+      --columns name:TEXT,height:REAL,min_height:REAL \
+    && /app/tellurion-ingest geopackage load \
+      --path /app/data/sample-buildings.gpkg \
+      --table sample_buildings_3d \
+      /build/sample-buildings.geojson > /tmp/sample-3d-load.jsonl \
+    && grep -Fq '"applied":30' /tmp/sample-3d-load.jsonl \
+    && chmod 0555 /app/data \
+    && chmod 0444 /app/data/sample-buildings.gpkg
+
+FROM scratch
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /app/tellurion /app/tellurion
+COPY --from=builder /app/data /app/data
+COPY --from=builder /app/licenses /app/licenses
+COPY deploy/render/three-d.yaml /app/config.yaml
+
+ENV TELLURION_CONFIG=/app/config.yaml
+ENV TELLURION_3D_GEOPACKAGE_PATH=/app/data/sample-buildings.gpkg
+
+USER 10001:10001
+EXPOSE 10000
+
+ENTRYPOINT ["/app/tellurion"]

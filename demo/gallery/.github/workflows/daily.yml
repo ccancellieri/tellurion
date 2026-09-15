@@ -1,0 +1,270 @@
+name: Daily verification and deployment gate
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-verification-and-deploy
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: deployment and fixture contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Verify daily automation policy
+        run: sh tests/daily_automation_contract.sh
+
+      - name: Verify STAC harvest transformation
+        run: python3 -m unittest -v tests.test_harvest_esa_worldcover tests.test_harvest_esa_worldcover_italy tests.test_canonical_links
+
+      - name: Verify deployment contracts
+        run: |
+          sh tests/render_deployment_contract.sh
+          sh tests/render_raster_contract.sh
+          sh tests/render_stac_harvest_contract.sh
+          sh tests/render_zarr_contract.sh
+          sh tests/render_3d_contract.sh
+          sh tests/render_protocol_gallery_contract.sh
+          sh tests/docs_site_contract.sh
+          sh tests/proof_brief_contract.sh
+          python3 tests/static_site_links.py
+
+      - name: Verify human-facing pages
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/tellurion-demos-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:8080/ >/tmp/tellurion-demos-index.html; then
+              break
+            fi
+            sleep 0.25
+          done
+          grep -Fq '<title>Tellurion demos' /tmp/tellurion-demos-index.html
+          curl --fail --silent http://127.0.0.1:8080/proof/ | grep -Fq '<title>Tellurion proof brief'
+          for page in vector raster zarr 3d query stac maps; do
+            curl --fail --silent "http://127.0.0.1:8080/demos/$page/" | grep -Fq '<title>Tellurion'
+          done
+
+  distribution:
+    name: public distribution manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify release manifest is public and complete
+        run: |
+          release=https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0
+          curl --fail --location --retry 3 --output SHA256SUMS "$release/SHA256SUMS"
+          grep -Fq 'tellurion-v0.3.0-aarch64-apple-darwin.tar.gz' SHA256SUMS
+          grep -Fq 'tellurion-v0.3.0-source-b6eb4a5.zip' SHA256SUMS
+          grep -Fq 'tellurion-v0.3.0-x86_64-pc-windows-gnu.zip' SHA256SUMS
+          grep -Fq 'tellurion-v0.3.0-x86_64-unknown-linux-musl.tar.gz' SHA256SUMS
+
+  live-endpoints:
+    name: ${{ matrix.demo }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - demo: human-facing gallery
+            url: https://ccancellieri.github.io/tellurion-demos/
+            content_type: text/html
+            minimum_bytes: 1000
+          - demo: vector landing links
+            url: https://tellurion-vector-demo.onrender.com/public
+            content_type: application/json
+            minimum_bytes: 200
+            expected_base_url: https://tellurion-vector-demo.onrender.com
+            link_contract: landing
+          - demo: vector features
+            url: https://tellurion-vector-demo.onrender.com/public/features/catalogs/default/collections/sample_roads/items?limit=1
+            content_type: application/geo+json
+            minimum_bytes: 200
+            expected_base_url: https://tellurion-vector-demo.onrender.com
+            link_contract: items
+          - demo: CQL2 feature filter
+            url: "https://tellurion-vector-demo.onrender.com/public/features/catalogs/default/collections/sample_roads/items?filter=highway%20%3D%20%27residential%27&filter-lang=cql2-text&limit=1"
+            content_type: application/geo+json
+            minimum_bytes: 200
+          - demo: STAC feature projection
+            url: https://tellurion-vector-demo.onrender.com/public/stac/catalogs/default/collections/sample_roads/items?limit=1
+            content_type: application/geo+json
+            minimum_bytes: 200
+          - demo: styled server map
+            url: "https://tellurion-vector-demo.onrender.com/public/tiles/catalogs/default/collections/sample_roads/map?bbox=12.45,41.88,12.53,41.93&bbox-crs=http://www.opengis.net/def/crs/OGC/1.3/CRS84&crs=http://www.opengis.net/def/crs/OGC/1.3/CRS84&width=800&height=500&style=roads-night"
+            content_type: image/png
+            minimum_bytes: 1000
+          - demo: named style document
+            url: https://tellurion-vector-demo.onrender.com/public/styles/catalogs/default/styles/roads-night
+            content_type: application/vnd.mapbox.style+json
+            minimum_bytes: 200
+          - demo: raster tile
+            url: https://tellurion-raster-demo.onrender.com/public/tiles/catalogs/default/collections/sample_landcover/tiles/WebMercatorQuad/13/3044/4380.png
+            content_type: image/png
+            minimum_bytes: 1000
+          - demo: Zarr tile
+            url: https://tellurion-zarr-demo.onrender.com/public/tiles/catalogs/default/collections/sample_zarr_t0/tiles/WebMercatorQuad/13/4095/4096.png
+            content_type: image/png
+            minimum_bytes: 1000
+          - demo: 3D GLB tile
+            url: https://tellurion-3d-demo.onrender.com/public/3dtiles/catalogs/default/collections/sample_buildings_3d/3dtiles/tiles/13/4095/4096.glb
+            content_type: model/gltf-binary
+            minimum_bytes: 1000
+          - demo: STAC harvest landing links
+            url: https://tellurion-stac-harvest-demo.onrender.com/public
+            content_type: application/json
+            minimum_bytes: 200
+            expected_base_url: https://tellurion-stac-harvest-demo.onrender.com
+            link_contract: landing
+          - demo: STAC Collection
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/stac/catalogs/default/collections/esa_worldcover_2021_rome
+            content_type: application/json
+            minimum_bytes: 500
+          - demo: STAC Item
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/stac/catalogs/default/collections/esa_worldcover_2021_rome/items/1
+            content_type: application/geo+json
+            minimum_bytes: 500
+          - demo: raster TileSet
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_rome/tiles/WebMercatorQuad
+            content_type: application/json
+            minimum_bytes: 300
+          - demo: ESA WorldCover PNG tile
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_rome/tiles/WebMercatorQuad/13/3043/4380.png
+            content_type: image/png
+            minimum_bytes: 1000
+    steps:
+      - name: Wake and verify public endpoint
+        env:
+          DEMO_URL: ${{ matrix.url }}
+          EXPECTED_CONTENT_TYPE: ${{ matrix.content_type }}
+          MINIMUM_BYTES: ${{ matrix.minimum_bytes }}
+          EXPECTED_BASE_URL: ${{ matrix.expected_base_url }}
+          LINK_CONTRACT: ${{ matrix.link_contract }}
+        run: |
+          for attempt in $(seq 1 12); do
+            : > headers.txt
+            : > body.bin
+            status=$(curl --silent --show-error --location --max-time 70 \
+              --dump-header headers.txt --output body.bin \
+              --write-out '%{http_code}' "$DEMO_URL" || true)
+            size=$(wc -c < body.bin 2>/dev/null || printf '0')
+            if [ "$status" = 200 ] \
+              && grep -Fiq "content-type: ${EXPECTED_CONTENT_TYPE}" headers.txt \
+              && [ "$size" -ge "$MINIMUM_BYTES" ]; then
+              if [ -n "$LINK_CONTRACT" ] && ! python3 tests/canonical_links.py \
+                --kind "$LINK_CONTRACT" \
+                --body body.bin \
+                --expected-base "$EXPECTED_BASE_URL" \
+                --request-url "$DEMO_URL"; then
+                printf 'Attempt %s: response links did not satisfy the canonical URL contract\n' "$attempt"
+                sleep 10
+                continue
+              fi
+              printf 'Verified HTTP 200, %s, %s bytes\n' "$EXPECTED_CONTENT_TYPE" "$size"
+              exit 0
+            fi
+            printf 'Attempt %s: HTTP %s, %s bytes; waiting for the free service to wake\n' \
+              "$attempt" "$status" "$size"
+            sleep 10
+          done
+          printf 'Public endpoint did not satisfy its contract\n' >&2
+          cat headers.txt >&2 || true
+          exit 1
+
+  # Set the repository variable to true after deployment activates these routes.
+  italy-endpoints:
+    name: Italy WorldCover endpoints (deployment activation required) — ${{ matrix.demo }}
+    if: ${{ vars.ITALY_WORLDCOVER_SMOKE_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - demo: Italy STAC Collection
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/stac/catalogs/default/collections/esa_worldcover_2021_italy
+            content_type: application/json
+            minimum_bytes: 500
+          - demo: Italy FeatureCollection
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/features/catalogs/default/collections/esa_worldcover_2021_italy/items?limit=1
+            content_type: application/geo+json
+            minimum_bytes: 500
+            expected_base_url: https://tellurion-stac-harvest-demo.onrender.com
+            link_contract: items
+          - demo: Italy raster TileSet
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad
+            content_type: application/json
+            minimum_bytes: 300
+          - demo: Italy country PNG tile
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad/5/11/17.png
+            content_type: image/png
+            minimum_bytes: 1000
+          - demo: Italy Milan PNG tile
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad/13/2931/4305.png
+            content_type: image/png
+            minimum_bytes: 1000
+          - demo: Italy Venice PNG tile
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad/13/2932/4376.png
+            content_type: image/png
+            minimum_bytes: 1000
+          - demo: Italy Rome PNG tile
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad/13/3043/4380.png
+            content_type: image/png
+            minimum_bytes: 1000
+          - demo: Italy Naples PNG tile
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad/13/3075/4420.png
+            content_type: image/png
+            minimum_bytes: 1000
+          - demo: Italy Palermo PNG tile
+            url: https://tellurion-stac-harvest-demo.onrender.com/public/tiles/catalogs/default/collections/esa_worldcover_2021_italy/tiles/WebMercatorQuad/13/3156/4400.png
+            content_type: image/png
+            minimum_bytes: 1000
+    steps:
+      - name: Wake and verify public endpoint
+        env:
+          DEMO_URL: ${{ matrix.url }}
+          EXPECTED_CONTENT_TYPE: ${{ matrix.content_type }}
+          MINIMUM_BYTES: ${{ matrix.minimum_bytes }}
+          EXPECTED_BASE_URL: ${{ matrix.expected_base_url }}
+          LINK_CONTRACT: ${{ matrix.link_contract }}
+        run: |
+          for attempt in $(seq 1 12); do
+            : > headers.txt
+            : > body.bin
+            status=$(curl --silent --show-error --location --max-time 70 \
+              --dump-header headers.txt --output body.bin \
+              --write-out '%{http_code}' "$DEMO_URL" || true)
+            size=$(wc -c < body.bin 2>/dev/null || printf '0')
+            if [ "$status" = 200 ] \
+              && grep -Fiq "content-type: ${EXPECTED_CONTENT_TYPE}" headers.txt \
+              && [ "$size" -ge "$MINIMUM_BYTES" ]; then
+              if [ -n "$LINK_CONTRACT" ] && ! python3 tests/canonical_links.py \
+                --kind "$LINK_CONTRACT" \
+                --body body.bin \
+                --expected-base "$EXPECTED_BASE_URL" \
+                --request-url "$DEMO_URL"; then
+                printf 'Attempt %s: response links did not satisfy the canonical URL contract\n' "$attempt"
+                sleep 10
+                continue
+              fi
+              printf 'Verified HTTP 200, %s, %s bytes\n' "$EXPECTED_CONTENT_TYPE" "$size"
+              exit 0
+            fi
+            printf 'Attempt %s: HTTP %s, %s bytes; waiting for the free service to wake\n' \
+              "$attempt" "$status" "$size"
+            sleep 10
+          done
+          printf 'Public endpoint did not satisfy its contract\n' >&2
+          cat headers.txt >&2 || true
+          exit 1

@@ -1,6 +1,7 @@
 /target
 /ui/node_modules
 /bench/results
+/demo/gallery
 .?*
 *.md
 docs

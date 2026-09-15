@@ -118,6 +118,8 @@ class ExportPublicCoreTests(unittest.TestCase):
             "demo/public-demo.yaml",
             "demo/sources/README.md",
             "demo/sources/public-examples.yaml",
+            "demo/gallery/index.html",
+            "demo/gallery/docs/demo-versioning.md",
             "bench/data/README.md",
             "bench/data/ingest-osm.sh",
             "bench/data/prepare.sh",
@@ -138,13 +140,36 @@ class ExportPublicCoreTests(unittest.TestCase):
         self.assertFalse((destination / "docs" / "design").exists())
         self.assertFalse((destination / "bench" / "compare").exists())
         self.assertFalse((destination / "bench" / "spike-131-materialization").exists())
+        nested_archives = tuple(
+            REPOSITORY_ROOT.glob("demo/gallery/dist/*.zip")
+        )
+        self.assertFalse(self.exporter.is_allowed(
+            "demo/gallery/dist/tellurion-source.zip", policy
+        ))
+        for archive in nested_archives:
+            relative_path = archive.relative_to(REPOSITORY_ROOT).as_posix()
+            self.assertFalse((destination / relative_path).exists())
+            self.assertIn(relative_path, manifest.excluded_paths)
         if (REPOSITORY_ROOT / "docs" / "design").exists():
             self.assertTrue(
                 any(path.startswith("docs/design/") for path in manifest.excluded_paths)
             )
         if (REPOSITORY_ROOT / "bench" / "README.md").exists():
             self.assertIn("bench/README.md", manifest.excluded_paths)
-        self.assertEqual(manifest.bare_issue_references, 0)
+        # Preserve the imported historical plan, including issue references and
+        # a numeric CSS colour counted by the deliberately conservative scanner.
+        historical_plans = {
+            "demo/gallery/docs/plans/2026-08-03-esa-stac-harvest-demo.md": 10,
+            "demo/gallery/snapshots/2026-09-15/docs/plans/2026-08-03-esa-stac-harvest-demo.md": 10,
+        }
+        observed = {
+            path: len(self.exporter._bare_issue_references(destination / path))
+            for path in manifest.copied_paths
+            if Path(path).suffix.lower() in {".md", ".markdown"}
+            and self.exporter._bare_issue_references(destination / path)
+        }
+        self.assertEqual(observed, historical_plans)
+        self.assertEqual(manifest.bare_issue_references, sum(historical_plans.values()))
 
     def test_committed_policy_candidate_passes_license_audit(self):
         policy = self.exporter.load_policy(

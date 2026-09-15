@@ -1,0 +1,57 @@
+name: Commit deployment gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-deployment-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: deterministic deployment contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Verify automation policy
+        run: sh tests/daily_automation_contract.sh
+
+      - name: Verify STAC harvest transformation
+        run: python3 -m unittest -v tests.test_harvest_esa_worldcover tests.test_harvest_esa_worldcover_italy tests.test_canonical_links
+
+      - name: Verify deployment contracts
+        run: |
+          sh tests/render_deployment_contract.sh
+          sh tests/render_raster_contract.sh
+          sh tests/render_stac_harvest_contract.sh
+          sh tests/render_zarr_contract.sh
+          sh tests/render_3d_contract.sh
+          sh tests/render_protocol_gallery_contract.sh
+          sh tests/docs_site_contract.sh
+          sh tests/proof_brief_contract.sh
+          python3 tests/static_site_links.py
+
+      - name: Verify human-facing pages
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/tellurion-demos-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:8080/ >/tmp/tellurion-demos-index.html; then
+              break
+            fi
+            sleep 0.25
+          done
+          grep -Fq '<title>Tellurion demos' /tmp/tellurion-demos-index.html
+          curl --fail --silent http://127.0.0.1:8080/proof/ | grep -Fq '<title>Tellurion proof brief'
+          for page in vector raster zarr 3d query stac maps; do
+            curl --fail --silent "http://127.0.0.1:8080/demos/$page/" | grep -Fq '<title>Tellurion'
+          done

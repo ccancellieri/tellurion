@@ -1,0 +1,56 @@
+FROM rust:1.97.1-slim-bookworm@sha256:99e09cb2284e2ddbb73a995deee3e91783fd04d177602ccf6eab326d778ee777 AS source-builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      build-essential ca-certificates cmake curl pkg-config unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+ARG TELLURION_VERSION=v0.3.0
+ARG TELLURION_REVISION=b6eb4a5
+
+ENV TELLURION_RELEASE=https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-${TELLURION_VERSION}
+ENV SOURCE_ARCHIVE=tellurion-${TELLURION_VERSION}-source-${TELLURION_REVISION}.zip
+
+RUN curl --fail --location --retry 3 \
+      --output "${SOURCE_ARCHIVE}" "${TELLURION_RELEASE}/${SOURCE_ARCHIVE}" \
+    && curl --fail --location --retry 3 \
+      --output SHA256SUMS "${TELLURION_RELEASE}/SHA256SUMS" \
+    && grep "  ${SOURCE_ARCHIVE}$" SHA256SUMS > source.sha256 \
+    && sha256sum -c source.sha256 \
+    && unzip -q "${SOURCE_ARCHIVE}"
+
+RUN cargo build --release --locked -p tellurion --no-default-features --features zarr
+
+FROM debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818 AS data-builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+COPY deploy/render/build_zarr_demo.py /build/build_zarr_demo.py
+
+RUN mkdir -p /app/data \
+    && python3 /build/build_zarr_demo.py /app/data \
+    && find /app/data -type d -exec chmod 0555 {} + \
+    && find /app/data -type f -exec chmod 0444 {} +
+
+FROM debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818
+
+COPY --from=source-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=source-builder /build/target/release/tellurion /app/tellurion
+COPY --from=source-builder /build/LICENSE /app/licenses/LICENSE
+COPY --from=source-builder /build/COMMERCIAL-LICENSE.md /app/licenses/COMMERCIAL-LICENSE.md
+COPY --from=data-builder /app/data /app/data
+COPY deploy/render/zarr.yaml /app/config.yaml
+
+ENV TELLURION_CONFIG=/app/config.yaml
+ENV TELLURION_ZARR_T0_PATH=/app/data/sample_zarr_t0
+ENV TELLURION_ZARR_T1_PATH=/app/data/sample_zarr_t1
+
+USER 10001:10001
+EXPOSE 10000
+
+ENTRYPOINT ["/app/tellurion"]

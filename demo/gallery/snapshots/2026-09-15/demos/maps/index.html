@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tellurion Maps and Styles demo</title>
+  <meta name="description" content="Request a bounded server-rendered map from Tellurion and switch between its default and a named MapLibre style.">
+  <link rel="stylesheet" href="../viewer.css">
+  <link rel="stylesheet" href="../protocol.css">
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <a class="back" href="../../">← All Tellurion demos</a>
+      <p class="eyebrow">OGC API Maps 1.0 · Styles draft</p>
+      <h1>One request becomes a finished map.</h1>
+      <p class="intro">Tellurion selects the covering vector tiles, renders the requested CRS84 window and returns a single PNG. Switch to the named style to exercise the read-only Styles registry too.</p>
+      <div class="mode-switch" aria-label="Map style">
+        <button type="button" data-style="" class="active">Collection default</button>
+        <button type="button" data-style="roads-night">roads-night</button>
+      </div>
+      <div class="status" id="status" role="status"><strong>Requesting the public map…</strong><br>Render may need a short cold start.</div>
+      <div class="links">
+        <a class="button" id="raw-map" href="#">Open PNG</a>
+        <a class="button" href="https://tellurion-vector-demo.onrender.com/public/styles/catalogs/default/styles/roads-night">Inspect style JSON</a>
+        <a class="button" href="https://tellurion-vector-demo.onrender.com/public/styles/catalogs/default/styles/roads-night/metadata">Style metadata</a>
+      </div>
+      <p class="notes">OGC API — Maps Part 1 is an approved 1.0 standard. OGC API — Styles is a draft, so this page describes a draft-aligned read-only surface rather than claiming certified conformance.</p>
+    </section>
+    <section class="protocol-stage">
+      <div class="protocol-card">
+        <p class="eyebrow">Bounded server rendering</p>
+        <h2>Rome · CRS84 · 800 × 500</h2>
+        <code class="request" id="request">Preparing map request…</code>
+        <img class="map-image" id="map-image" alt="Server-rendered road map of Rome from Tellurion">
+      </div>
+    </section>
+  </main>
+  <script>
+    const base = "https://tellurion-vector-demo.onrender.com/public/tiles/catalogs/default/collections/sample_roads/map?";
+    const statusBox = document.getElementById("status");
+    const requestBox = document.getElementById("request");
+    const rawMapLink = document.getElementById("raw-map");
+    const mapImage = document.getElementById("map-image");
+    const params = {
+      bbox:"12.45,41.88,12.53,41.93",
+      "bbox-crs":"http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+      crs:"http://www.opengis.net/def/crs/OGC/1.3/CRS84",
+      width:"800",
+      height:"500"
+    };
+
+    function showMap(style) {
+      const query = new URLSearchParams(params);
+      if (style) query.set("style", style);
+      const url = `${base}${query}`;
+      requestBox.textContent = url;
+      rawMapLink.href = url;
+      statusBox.innerHTML = `<strong>Requesting ${style || "the collection default"}.</strong><br>The image is rendered on the server, not styled by this page.`;
+      mapImage.onload = () => { statusBox.innerHTML = `<strong>Live PNG rendered by Tellurion.</strong><br>${style ? `Named style: ${style}.` : "Collection default style."}`; };
+      mapImage.onerror = () => { statusBox.innerHTML = "<strong>The map is not ready.</strong><br>Retry after the public service wakes or inspect the request URL."; };
+      mapImage.src = url;
+    }
+
+    document.querySelectorAll("[data-style]").forEach(button => button.addEventListener("click", () => {
+      document.querySelectorAll("[data-style]").forEach(item => item.classList.remove("active"));
+      button.classList.add("active");
+      showMap(button.dataset.style);
+    }));
+    showMap("");
+  </script>
+</body>
+</html>

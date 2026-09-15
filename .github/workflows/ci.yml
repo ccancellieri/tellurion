@@ -363,6 +363,8 @@ jobs:
       - name: CI topology contract
         run: |
           ./scripts/check-ci-workflows.sh
+      - name: Versioned demo gallery contracts
+        run: bash scripts/check-gallery.sh
       - name: CI topology mutation tests
         run: |
           ./scripts/test-ci-workflows.sh

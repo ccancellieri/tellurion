@@ -1,0 +1,243 @@
+{
+  "assets": {
+    "input_quality": {
+      "created": "2022-08-03T16:43:52.733279Z",
+      "description": "Per pixel quality indicator showing the quality of the input data.",
+      "href": "https://ai4edataeuwest.blob.core.windows.net/esa-worldcover/v200/2021/input_quality/ESA_WorldCover_10m_2021_v200_N39E018_InputQuality.tif",
+      "proj:shape": [
+        6000,
+        6000
+      ],
+      "proj:transform": [
+        0.0005,
+        0.0,
+        18.0,
+        0.0,
+        -0.0005,
+        42.0
+      ],
+      "raster:bands": [
+        {
+          "data_type": "int16",
+          "description": "Number of Sentinel-1 GAMMA0 observations used in the classification workflow",
+          "name": "Band1",
+          "nodata": -1,
+          "sampling": "area",
+          "spatial_resolution": 60
+        },
+        {
+          "data_type": "int16",
+          "description": "Number of Sentinel-2 L2A observations used in the classification workflow",
+          "name": "Band2",
+          "nodata": -1,
+          "sampling": "area",
+          "spatial_resolution": 60
+        },
+        {
+          "data_type": "int16",
+          "description": "Percentage (0-100) of invalid S2 observations discarded in the classification workflow (after cloud and cloud shadow filtering)",
+          "name": "Band3",
+          "nodata": -1,
+          "sampling": "area",
+          "spatial_resolution": 60
+        }
+      ],
+      "roles": [
+        "metadata"
+      ],
+      "title": "Classification Input Data Quality",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    },
+    "map": {
+      "classification:classes": [
+        {
+          "color-hint": "006400",
+          "description": "Tree cover",
+          "value": 10
+        },
+        {
+          "color-hint": "FFBB22",
+          "description": "Shrubland",
+          "value": 20
+        },
+        {
+          "color-hint": "FFFF4C",
+          "description": "Grassland",
+          "value": 30
+        },
+        {
+          "color-hint": "F096FF",
+          "description": "Cropland",
+          "value": 40
+        },
+        {
+          "color-hint": "FA0000",
+          "description": "Built-up",
+          "value": 50
+        },
+        {
+          "color-hint": "B4B4B4",
+          "description": "Bare / sparse vegetation",
+          "value": 60
+        },
+        {
+          "color-hint": "F0F0F0",
+          "description": "Snow and ice",
+          "value": 70
+        },
+        {
+          "color-hint": "0064C8",
+          "description": "Permanent water bodies",
+          "value": 80
+        },
+        {
+          "color-hint": "0096A0",
+          "description": "Herbaceous wetland",
+          "value": 90
+        },
+        {
+          "color-hint": "00CF75",
+          "description": "Mangroves",
+          "value": 95
+        },
+        {
+          "color-hint": "FAE6A0",
+          "description": "Moss and lichen",
+          "value": 100
+        }
+      ],
+      "created": "2022-10-21T07:35:40.236136Z",
+      "description": "Discrete classification according to the Land Cover Classification System scheme developed by the United Nations Food and Agriculture Organization",
+      "href": "https://ai4edataeuwest.blob.core.windows.net/esa-worldcover/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39E018_Map.tif",
+      "proj:shape": [
+        36000,
+        36000
+      ],
+      "proj:transform": [
+        8.333333333333333e-05,
+        0.0,
+        18.0,
+        0.0,
+        -8.333333333333333e-05,
+        42.0
+      ],
+      "raster:bands": [
+        {
+          "data_type": "uint8",
+          "description": "Classification values",
+          "name": "Band1",
+          "nodata": 0,
+          "sampling": "area",
+          "spatial_resolution": 10
+        }
+      ],
+      "roles": [
+        "data"
+      ],
+      "title": "Land Cover Classes",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+    }
+  },
+  "bbox": [
+    18.0,
+    39.0,
+    21.0,
+    42.0
+  ],
+  "collection": "esa-worldcover",
+  "geometry": {
+    "coordinates": [
+      [
+        [
+          19.9239167,
+          39
+        ],
+        [
+          21,
+          39
+        ],
+        [
+          21,
+          42
+        ],
+        [
+          18.6575833,
+          42
+        ],
+        [
+          18,
+          40.9709167
+        ],
+        [
+          18,
+          39.6104167
+        ],
+        [
+          18.0618333,
+          39.57775
+        ],
+        [
+          18.07575,
+          39.5716667
+        ],
+        [
+          18.2644167,
+          39.5093333
+        ],
+        [
+          19.9239167,
+          39
+        ]
+      ]
+    ],
+    "type": "Polygon"
+  },
+  "id": "ESA_WorldCover_10m_2021_v200_N39E018",
+  "links": [
+    {
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/collections/esa-worldcover",
+      "rel": "collection",
+      "type": "application/json"
+    },
+    {
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/collections/esa-worldcover",
+      "rel": "parent",
+      "type": "application/json"
+    },
+    {
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/",
+      "rel": "root",
+      "type": "application/json"
+    },
+    {
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/collections/esa-worldcover/items/ESA_WorldCover_10m_2021_v200_N39E018",
+      "rel": "self",
+      "type": "application/geo+json"
+    }
+  ],
+  "properties": {
+    "created": "2023-04-06T16:46:34.208018Z",
+    "datetime": null,
+    "description": "ESA WorldCover product at 10m resolution",
+    "end_datetime": "2021-12-31T23:59:59Z",
+    "esa_worldcover:product_tile": "N39E018",
+    "esa_worldcover:product_version": "2.0.0",
+    "grid:code": "ESAWORLDCOVER-N39E018",
+    "instruments": [
+      "c-sar",
+      "msi"
+    ],
+    "mission": "sentinel-1, sentinel-2",
+    "platform": "sentinel-1a, sentinel-1b, sentinel-2a, sentinel-2b",
+    "proj:epsg": 4326,
+    "start_datetime": "2021-01-01T00:00:00Z"
+  },
+  "stac_extensions": [
+    "https://stac-extensions.github.io/projection/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/grid/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+    "https://stac-extensions.github.io/classification/v1.0.0/schema.json"
+  ],
+  "stac_version": "1.0.0",
+  "type": "Feature"
+}
