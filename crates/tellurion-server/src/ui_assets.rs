@@ -10,17 +10,13 @@
 //! release — the point of this feature is a self-contained binary
 //! regardless of how it was built.
 //!
-//! The workspace's `ui/vite.config.ts` builds with a relative asset base (`./assets/...`)
-//! rather than an absolute `/ui/assets/...` one, so the exact same
-//! bundles also work hosted standalone at the root of any static
-//! file server, not just embedded here. The server therefore exposes
-//! shell routes only at document URLs whose relative assets resolve under
-//! `/ui/`; trailing-slash and deeper control paths redirect to their
-//! canonical, file-like route before the shell is served.
+//! The standalone bundle keeps Vite's relative asset base. Embedded scoped
+//! control shells add a `/ui/` base element so deep links resolve the same
+//! assets without changing the standalone bundle.
 
 use std::sync::Arc;
 
-use axum::extract::{Path, RawQuery};
+use axum::extract::{OriginalUri, Path, RawQuery};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::get;
@@ -28,6 +24,8 @@ use axum::Router;
 use rust_embed::RustEmbed;
 
 use tellurion_core::AppContext;
+
+use crate::control_workspace::ControlWorkspace;
 
 #[derive(RustEmbed)]
 #[cfg(not(feature = "public-demo"))]
@@ -58,6 +56,21 @@ async fn serve_index() -> Response {
     asset_response(INDEX_HTML)
 }
 
+async fn serve_control_index() -> Response {
+    let Some(file) = UiAssets::get(INDEX_HTML) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let Ok(index) = std::str::from_utf8(file.data.as_ref()) else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html")],
+        index.replacen("<head>", "<head><base href=\"/ui/\">", 1),
+    )
+        .into_response()
+}
+
 async fn serve_third_party_notices() -> Response {
     (
         StatusCode::OK,
@@ -79,8 +92,16 @@ fn redirect_with_query(path: &str, query: Option<&str>) -> Redirect {
     Redirect::permanent(&location)
 }
 
-async fn redirect_control(RawQuery(query): RawQuery) -> Redirect {
-    redirect_with_query("/ui/control", query.as_deref())
+async fn control_deep_link(OriginalUri(uri): OriginalUri) -> Response {
+    let path = uri.path();
+    let canonical = path.strip_suffix('/').unwrap_or(path);
+    if ControlWorkspace::parse(canonical).is_none() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    if canonical != path {
+        return redirect_with_query(canonical, uri.query()).into_response();
+    }
+    serve_control_index().await
 }
 
 async fn redirect_control_demo(RawQuery(query): RawQuery) -> Redirect {
@@ -96,8 +117,8 @@ pub fn router() -> Router<Arc<AppContext>> {
         .route("/ui", get(|| async { Redirect::permanent("/ui/") }))
         .route("/ui/", get(serve_index))
         .route("/ui/control", get(serve_index))
-        .route("/ui/control/", get(redirect_control))
-        .route("/ui/control/{*path}", get(redirect_control))
+        .route("/ui/control/", get(control_deep_link))
+        .route("/ui/control/{*path}", get(control_deep_link))
         .route("/ui/control-demo", get(serve_index))
         .route("/ui/control-demo/", get(redirect_control_demo))
         .route("/ui/control-demo/{*path}", get(redirect_control_demo))
@@ -203,7 +224,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn control_routes_canonicalize_before_serving_relative_assets() {
+    async fn control_routes_preserve_scope_and_canonicalize_only_trailing_slashes() {
         let app = test_app();
         let response = app
             .clone()
@@ -228,11 +249,39 @@ mod tests {
             )
             .await
             .unwrap();
-        assert!(response.status().is_redirection());
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert!(String::from_utf8_lossy(&body).contains("<base href=\"/ui/\">"));
+
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/ui/control/tenants/acme/catalogs/roads/?panel=collections")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers()[header::LOCATION],
-            "/ui/control?panel=settings&scope=effective"
+            "/ui/control/tenants/acme/catalogs/roads?panel=collections"
         );
+
+        for path in [
+            "/ui/control/tenants/acme/settings",
+            "/ui/control/tenants/acme/catalogs/roads/collections",
+            "/ui/control/tenants/acme/catalogs/roads//",
+            "/ui/control/tenants/a%2Fb",
+        ] {
+            let response = app
+                .clone()
+                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::NOT_FOUND, "{path}");
+        }
 
         let response = app
             .oneshot(
@@ -265,6 +314,10 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         assert!(String::from_utf8_lossy(&body).contains("Tellurion"));
+        assert_eq!(
+            body.as_ref(),
+            UiAssets::get(INDEX_HTML).unwrap().data.as_ref()
+        );
     }
 
     #[tokio::test]

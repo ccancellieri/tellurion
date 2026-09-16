@@ -11,10 +11,12 @@ use base64::Engine as _;
 use rand::Rng as _;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use tellurion_control::{control_read_checkpoint, ControlMiddlewareError, ControlRouteRegistry};
 use tellurion_core::auth::Credential;
 use tellurion_core::config::OidcConfig;
 use tellurion_core::{
-    AppContext, AuthenticatedSubject, ControlBrowserAuthConfig, PrincipalIdentity, TrustedIssuerSet,
+    AppContext, AuthenticatedSubject, ControlBrowserAuthConfig, PrincipalIdentity, StaticResolver,
+    TrustedIssuerSet,
 };
 use tokio::sync::Mutex;
 use tokio::time::Instant;
@@ -23,6 +25,7 @@ use url::Url;
 use crate::control_session::{
     ControlBrowserSession, ControlSessionStore, InMemoryControlSessionStore, PendingControlLogin,
 };
+use crate::control_workspace::ControlWorkspace;
 
 const CONTROL_SESSION_COOKIE: &str = "tellurion_control_session";
 const CONTROL_LOGIN_COOKIE: &str = "tellurion_control_login";
@@ -200,7 +203,17 @@ pub(crate) trait BrowserIdentityVerifier: Send + Sync {
 #[async_trait]
 pub(crate) trait ControlCredentialAuthorizer: Send + Sync {
     async fn subject(&self, credential: &Credential) -> Option<AuthenticatedSubject>;
-    async fn authorize_platform_admin(&self, credential: &Credential) -> Option<String>;
+    async fn admit_workspace(
+        &self,
+        subject: &AuthenticatedSubject,
+        workspace: &ControlWorkspace<'_>,
+    ) -> Result<(), WorkspaceAdmissionError>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum WorkspaceAdmissionError {
+    Denied,
+    StoreUnavailable,
 }
 
 struct TrustedBrowserIdentity {
@@ -233,13 +246,43 @@ impl ControlCredentialAuthorizer for CurrentControlAuthorizer {
         })
     }
 
-    async fn authorize_platform_admin(&self, credential: &Credential) -> Option<String> {
-        let context = self.context.upgrade()?;
-        let authorizer = context.current().authorizer.clone()?;
-        match authorizer.authorize_platform_admin(credential).await {
-            tellurion_core::auth::PlatformAdminDecision::Allow { principal } => Some(principal),
-            tellurion_core::auth::PlatformAdminDecision::Deny(_) => None,
-        }
+    async fn admit_workspace(
+        &self,
+        subject: &AuthenticatedSubject,
+        workspace: &ControlWorkspace<'_>,
+    ) -> Result<(), WorkspaceAdmissionError> {
+        let context = self
+            .context
+            .upgrade()
+            .ok_or(WorkspaceAdmissionError::StoreUnavailable)?;
+        let store = context
+            .control_store
+            .as_ref()
+            .ok_or(WorkspaceAdmissionError::StoreUnavailable)?;
+        let snapshot = store
+            .load_snapshot()
+            .await
+            .map_err(|_| WorkspaceAdmissionError::StoreUnavailable)?;
+        let resolver = StaticResolver::build(&snapshot.snapshot.config);
+        let (descriptor, path) = workspace.admission();
+        let registry = ControlRouteRegistry::new([descriptor])
+            .expect("fixed browser admission descriptor is valid");
+        control_read_checkpoint(
+            subject,
+            "GET",
+            path.as_bytes(),
+            descriptor.template(),
+            &registry,
+            "",
+            &snapshot,
+            &resolver,
+            |_| (),
+        )
+        .await
+        .map_err(|error| match error {
+            ControlMiddlewareError::InvalidSnapshot => WorkspaceAdmissionError::StoreUnavailable,
+            _ => WorkspaceAdmissionError::Denied,
+        })
     }
 }
 
@@ -548,15 +591,25 @@ async fn callback_inner(
         Err(()) => return auth_failure(StatusCode::BAD_REQUEST),
     };
     let credential = Credential::Bearer(tokens.access_token.clone());
-    let expected_principal = principal_name(&id_principal);
-    if auth
-        .control_authorizer
-        .authorize_platform_admin(&credential)
-        .await
-        .as_deref()
-        != Some(expected_principal.as_str())
-    {
+    let Some(subject) = auth.control_authorizer.subject(&credential).await else {
         return auth_failure(StatusCode::FORBIDDEN);
+    };
+    if subject.principal != id_principal {
+        return auth_failure(StatusCode::FORBIDDEN);
+    }
+    let Some(workspace) = ControlWorkspace::parse(&pending.return_to) else {
+        return auth_failure(StatusCode::FORBIDDEN);
+    };
+    match auth
+        .control_authorizer
+        .admit_workspace(&subject, &workspace)
+        .await
+    {
+        Ok(()) => {}
+        Err(WorkspaceAdmissionError::Denied) => return auth_failure(StatusCode::FORBIDDEN),
+        Err(WorkspaceAdmissionError::StoreUnavailable) => {
+            return auth_failure(StatusCode::SERVICE_UNAVAILABLE)
+        }
     }
     let session_ttl = tokens
         .expires_in_s
@@ -716,16 +769,7 @@ fn validated_return_to(raw_query: Option<&str>) -> Option<String> {
     }
     let value = url::form_urlencoded::parse(raw_query.as_bytes())
         .find_map(|(key, value)| (key == "return_to").then(|| value.into_owned()))?;
-    if !value.starts_with("/ui/")
-        || value.starts_with("//")
-        || value.contains(['?', '#', '\\', '\0'])
-        || value
-            .split('/')
-            .any(|segment| matches!(segment, "." | ".."))
-    {
-        return None;
-    }
-    Some(value)
+    ControlWorkspace::parse(&value).map(|_| value)
 }
 
 fn session_cookie(headers: &HeaderMap) -> Result<Option<String>, ()> {
@@ -901,6 +945,7 @@ mod tests {
     struct FakeControlAuthorizer {
         principal: PrincipalIdentity,
         sysadmin: bool,
+        store_unavailable: bool,
     }
 
     #[async_trait]
@@ -914,10 +959,17 @@ mod tests {
             )
         }
 
-        async fn authorize_platform_admin(&self, credential: &Credential) -> Option<String> {
-            (self.sysadmin
-                && matches!(credential, Credential::Bearer(token) if token == "upstream-access"))
-            .then(|| format!("{}#{}", self.principal.issuer, self.principal.subject))
+        async fn admit_workspace(
+            &self,
+            _: &AuthenticatedSubject,
+            workspace: &ControlWorkspace<'_>,
+        ) -> Result<(), WorkspaceAdmissionError> {
+            if self.store_unavailable {
+                return Err(WorkspaceAdmissionError::StoreUnavailable);
+            }
+            (self.sysadmin && matches!(workspace, ControlWorkspace::Platform))
+                .then_some(())
+                .ok_or(WorkspaceAdmissionError::Denied)
         }
     }
 
@@ -958,11 +1010,211 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn durable_workspace_admission_respects_scope_policy_and_siblings() {
+        use tellurion_core::{
+            AppConfig, ControlBootstrapMode, ControlScope, ControlSnapshot, ControlStore,
+            FileStyleStore, InMemoryControlStore, MokaTileCache, PathPolicy, PolicyEffect,
+            Registry, Resolver, RoleBinding, Router as CoreRouter, StaticResolver, StyleStore,
+            TileCache,
+        };
+
+        let config: AppConfig = serde_yaml::from_str(
+            r#"
+tenants:
+  - { id: one-internal, external_id: one }
+  - { id: two-internal, external_id: two }
+catalogs:
+  - { id: roads-internal, external_id: roads, tenant: one-internal }
+  - { id: land-internal, external_id: land, tenant: one-internal }
+auth:
+  trusted_issuers:
+    - { issuer: https://id.example.com, audience: tellurion-test, claims: { tenants: tenants } }
+"#,
+        )
+        .unwrap();
+        let tenant_one = PrincipalIdentity {
+            subject: "tenant-one".into(),
+            ..principal()
+        };
+        let tenant_two = PrincipalIdentity {
+            subject: "tenant-two".into(),
+            ..principal()
+        };
+        let catalog_admin = PrincipalIdentity {
+            subject: "catalog-admin".into(),
+            ..principal()
+        };
+        let custom_reader = PrincipalIdentity {
+            subject: "custom-reader".into(),
+            ..principal()
+        };
+        let explicitly_denied = PrincipalIdentity {
+            subject: "explicitly-denied".into(),
+            ..principal()
+        };
+        let bindings = vec![
+            (
+                tenant_one.clone(),
+                "tenant_admin",
+                ControlScope::Tenant {
+                    tenant_id: "one-internal".into(),
+                },
+            ),
+            (
+                tenant_two.clone(),
+                "tenant_admin",
+                ControlScope::Tenant {
+                    tenant_id: "two-internal".into(),
+                },
+            ),
+            (
+                catalog_admin.clone(),
+                "catalog_admin",
+                ControlScope::Catalog {
+                    tenant_id: "one-internal".into(),
+                    catalog_id: "roads-internal".into(),
+                },
+            ),
+            (
+                custom_reader.clone(),
+                "custom-reader",
+                ControlScope::Tenant {
+                    tenant_id: "one-internal".into(),
+                },
+            ),
+            (
+                explicitly_denied.clone(),
+                "explicitly-denied",
+                ControlScope::Tenant {
+                    tenant_id: "one-internal".into(),
+                },
+            ),
+            (principal(), "sysadmin", ControlScope::Platform),
+        ];
+        let snapshot = ControlSnapshot {
+            config: config.clone(),
+            role_bindings: bindings
+                .into_iter()
+                .map(|(principal, role, scope)| RoleBinding {
+                    principal,
+                    role: role.into(),
+                    scope,
+                })
+                .collect(),
+            path_policies: vec![
+                PathPolicy::new(
+                    "custom-tenant-read",
+                    "custom-reader",
+                    ControlScope::Tenant {
+                        tenant_id: "one-internal".into(),
+                    },
+                    PolicyEffect::Allow,
+                    ["GET"],
+                    ["/_control/v1/tenants/one/catalogs"],
+                ),
+                PathPolicy::new(
+                    "explicit-allow",
+                    "explicitly-denied",
+                    ControlScope::Tenant {
+                        tenant_id: "one-internal".into(),
+                    },
+                    PolicyEffect::Allow,
+                    ["GET"],
+                    ["/_control/v1/tenants/one/catalogs"],
+                ),
+                PathPolicy::new(
+                    "explicit-deny",
+                    "explicitly-denied",
+                    ControlScope::Tenant {
+                        tenant_id: "one-internal".into(),
+                    },
+                    PolicyEffect::Deny,
+                    ["GET"],
+                    ["/_control/v1/tenants/one/catalogs"],
+                ),
+            ],
+            tombstoned_resources: Vec::new(),
+        };
+        let store = Arc::new(InMemoryControlStore::new());
+        store
+            .bootstrap_if_empty(
+                &snapshot,
+                &principal(),
+                ControlBootstrapMode::AllowEmptyPlatform,
+            )
+            .await
+            .unwrap();
+        let registry = Registry::new();
+        let router = CoreRouter::build(&config, &registry).unwrap();
+        let resolver: Arc<dyn Resolver> = Arc::new(StaticResolver::build(&config));
+        let cache: Arc<dyn TileCache> = Arc::new(MokaTileCache::with_byte_budget(1_000_000));
+        let styles: Arc<dyn StyleStore> = Arc::new(FileStyleStore::new(&[]));
+        let context = Arc::new(
+            AppContext::new(config, router, resolver, None, cache, styles)
+                .with_control_store(Arc::clone(&store) as Arc<dyn ControlStore>),
+        );
+        let authorizer = CurrentControlAuthorizer {
+            context: Arc::downgrade(&context),
+        };
+        let subject = |principal| AuthenticatedSubject {
+            principal,
+            claims: HashMap::new(),
+        };
+
+        for (identity, path, allowed) in [
+            (tenant_one.clone(), "/ui/control/tenants/one", true),
+            (tenant_one.clone(), "/ui/control/tenants/two", false),
+            (tenant_two.clone(), "/ui/control/tenants/two", true),
+            (tenant_two.clone(), "/ui/control/tenants/one", false),
+            (
+                catalog_admin.clone(),
+                "/ui/control/tenants/one/catalogs/roads",
+                true,
+            ),
+            (
+                catalog_admin.clone(),
+                "/ui/control/tenants/one/catalogs/land",
+                false,
+            ),
+            (catalog_admin.clone(), "/ui/control/tenants/one", false),
+            (custom_reader.clone(), "/ui/control/tenants/one", true),
+            (explicitly_denied.clone(), "/ui/control/tenants/one", false),
+            (principal(), "/ui/control", true),
+        ] {
+            let workspace = ControlWorkspace::parse(path).unwrap();
+            let result = authorizer
+                .admit_workspace(&subject(identity), &workspace)
+                .await;
+            assert_eq!(result.is_ok(), allowed, "{path}: {result:?}");
+        }
+    }
+
     fn auth_with(
         store: Arc<InMemoryControlSessionStore>,
         token_result: Result<OidcTokens, ()>,
         reject_identity: bool,
         sysadmin: bool,
+    ) -> Arc<ControlBrowserAuth> {
+        auth_with_subjects(
+            store,
+            token_result,
+            reject_identity,
+            sysadmin,
+            principal(),
+            principal(),
+            false,
+        )
+    }
+
+    fn auth_with_subjects(
+        store: Arc<InMemoryControlSessionStore>,
+        token_result: Result<OidcTokens, ()>,
+        reject_identity: bool,
+        sysadmin: bool,
+        id_principal: PrincipalIdentity,
+        access_principal: PrincipalIdentity,
+        store_unavailable: bool,
     ) -> Arc<ControlBrowserAuth> {
         ControlBrowserAuth::new_with_dependencies(
             config(),
@@ -980,14 +1232,88 @@ mod tests {
             Arc::new(FakeIdentity {
                 expected_id_token: "browser-id-token",
                 expected_nonce: "login-nonce",
-                principal: principal(),
+                principal: id_principal,
                 reject: reject_identity,
             }),
             Arc::new(FakeControlAuthorizer {
-                principal: principal(),
+                principal: access_principal,
                 sysadmin,
+                store_unavailable,
             }),
         )
+    }
+
+    #[tokio::test]
+    async fn callback_refuses_structurally_different_subjects_and_unavailable_store_without_session(
+    ) {
+        let id_principal = PrincipalIdentity {
+            issuer: "https://id.example.com#alice".into(),
+            subject: "bob".into(),
+        };
+        let access_principal = PrincipalIdentity {
+            issuer: "https://id.example.com".into(),
+            subject: "alice#bob".into(),
+        };
+        assert_eq!(
+            principal_name(&id_principal),
+            principal_name(&access_principal)
+        );
+        for (case, id_principal, access_principal, unavailable, expected) in [
+            (
+                "principal",
+                id_principal,
+                access_principal,
+                false,
+                StatusCode::FORBIDDEN,
+            ),
+            (
+                "store",
+                principal(),
+                principal(),
+                true,
+                StatusCode::SERVICE_UNAVAILABLE,
+            ),
+        ] {
+            let store = Arc::new(InMemoryControlSessionStore::new(16));
+            seed_login(&store, case, Duration::from_secs(30)).await;
+            let auth = auth_with_subjects(
+                Arc::clone(&store),
+                Ok(OidcTokens {
+                    access_token: "upstream-access".into(),
+                    id_token: "browser-id-token".into(),
+                    expires_in_s: Some(600),
+                }),
+                false,
+                true,
+                id_principal,
+                access_principal,
+                unavailable,
+            );
+            let response = router::<()>(auth)
+                .oneshot(
+                    Request::builder()
+                        .uri(format!("/_auth/control/callback?code=code&state={case}"))
+                        .header(
+                            header::COOKIE,
+                            format!("{CONTROL_LOGIN_COOKIE}={TEST_BROWSER_BINDING}"),
+                        )
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), expected, "{case}");
+            assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+            assert!(response
+                .headers()
+                .get_all(header::SET_COOKIE)
+                .iter()
+                .all(|value| !value
+                    .to_str()
+                    .unwrap()
+                    .starts_with("tellurion_control_session=")));
+            assert_eq!(response_text(response).await, "authentication failed");
+        }
     }
 
     async fn seed_login(store: &InMemoryControlSessionStore, state: &str, lifetime: Duration) {
@@ -1099,6 +1425,10 @@ mod tests {
             "return_to=/ui/control?next=/other",
             "return_to=/ui/control%23fragment",
             "return_to=/ui/control&next=/ui/other",
+            "return_to=/ui/control-demo",
+            "return_to=/ui/control/tenants/acme/settings",
+            "return_to=/ui/control/tenants/acme/catalogs/roads/collections",
+            "return_to=/ui/control/tenants/a%2Fb",
         ];
         for query in rejected {
             let store = Arc::new(InMemoryControlSessionStore::new(16));
@@ -1123,6 +1453,7 @@ mod tests {
         for query in [
             "return_to=/ui/control",
             "return_to=/ui/control/tenants/acme",
+            "return_to=/ui/control/tenants/acme/catalogs/roads",
         ] {
             let accepted = validated_return_to(Some(query)).expect("safe deep link");
             let resolved = origin.join(&accepted).unwrap();
@@ -1525,6 +1856,7 @@ mod tests {
             Arc::new(FakeControlAuthorizer {
                 principal: principal(),
                 sysadmin: true,
+                store_unavailable: false,
             }),
         );
 

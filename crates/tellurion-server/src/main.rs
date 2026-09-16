@@ -13,6 +13,7 @@ mod control_browser_auth;
 mod control_checkpoint;
 mod control_consumer;
 mod control_session;
+mod control_workspace;
 mod generation_consumer;
 mod landing;
 mod link_contributors;
