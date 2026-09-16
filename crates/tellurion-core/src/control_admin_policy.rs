@@ -652,6 +652,11 @@ fn validate_mutation_intent(
             "PUT" | "PATCH",
             ControlOperation::ReplacePlatformSettings(candidate),
         ) => replaces_only_platform_settings(candidate, &snapshot.config),
+        (
+            ControlRouteDescriptor::PlatformSettings,
+            "PUT" | "PATCH",
+            ControlOperation::SetPlatformSettings(_),
+        ) => operation.expected_entity_version.is_some(),
         (ControlRouteDescriptor::Tenant, "PUT", ControlOperation::PutTenant(tenant)) => {
             matches!(
                 resolved_scope,

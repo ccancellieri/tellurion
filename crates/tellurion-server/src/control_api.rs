@@ -109,7 +109,10 @@ pub(crate) fn router_with_browser(
             get(effective_settings),
         )
         .route("/_control/v1/platform/audit", get(audit))
-        .route("/_control/v1/platform/settings", put(mutate).patch(mutate))
+        .route(
+            "/_control/v1/platform/settings",
+            get(get_platform_settings).put(mutate).patch(mutate),
+        )
         .route("/_control/v1/platform/import", post(mutate))
         .route("/_control/v1/tenants", get(list_tenants).post(mutate))
         .route(
@@ -345,6 +348,30 @@ async fn effective_settings(
             effective: crate::config_view::platform_effective_config_view(&read.state),
         },
         applied_revision,
+    )
+}
+
+async fn get_platform_settings(
+    State(ctx): State<Arc<AppContext>>,
+    Extension(routes): Extension<Arc<ControlRouteRegistry>>,
+    Extension(ControlRequestCredential(credential)): Extension<ControlRequestCredential>,
+    OriginalUri(uri): OriginalUri,
+    matched: MatchedPath,
+    method: Method,
+) -> Response {
+    let read =
+        match authorized_read_prelude(&ctx, &routes, &uri, &matched, &method, &credential).await {
+            Ok(read) => read,
+            Err(response) => return response,
+        };
+    let version = entity_version(&read.snapshot, &ControlScope::Platform);
+    json_with_entity_etag(
+        ResourceEnvelope {
+            control_revision: read.snapshot.revision,
+            entity_version: version.clone(),
+            resource: read.snapshot.snapshot.config.settings.clone(),
+        },
+        &version,
     )
 }
 
@@ -1940,10 +1967,11 @@ auth:
         (request.body(body).unwrap(), polled)
     }
 
-    const READ_ROUTES: [&str; 3] = [
+    const READ_ROUTES: [&str; 4] = [
         "/_control/v1/platform/overview",
         "/_control/v1/platform/effective-settings",
         "/_control/v1/platform/audit",
+        "/_control/v1/platform/settings",
     ];
 
     fn read_request(uri: &str, bearer: Option<&str>) -> Request<Body> {
@@ -3209,6 +3237,188 @@ auth:
             serde_json::from_value(response_json(commit).await).unwrap();
         assert_eq!(commit.revision, 2);
         assert!(!commit.replayed);
+    }
+
+    #[tokio::test]
+    async fn durable_platform_settings_read_has_matching_value_version_and_entity_etag() {
+        let (ctx, store) = fixture_context(true).await;
+        let initial = store.load_snapshot().await.unwrap();
+        let mut settings = initial.snapshot.config.settings.clone();
+        settings.cache_ttl_s = Some(61);
+        let changes = ControlChangeSet {
+            idempotency_key: Some("settings-read-consistency".to_string()),
+            operations: vec![VersionedControlOperation {
+                expected_entity_version: Some("0".to_string()),
+                operation: ControlOperation::SetPlatformSettings(settings.clone()),
+            }],
+        };
+        let write = super::router(&ctx)
+            .with_state(Arc::clone(&ctx))
+            .oneshot(
+                Request::builder()
+                    .method("PUT")
+                    .uri("/_control/v1/platform/settings")
+                    .header("authorization", "Bearer verified")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&changes).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(write.status(), StatusCode::OK);
+
+        let durable = store.load_snapshot().await.unwrap();
+        let read = super::router(&ctx)
+            .with_state(Arc::clone(&ctx))
+            .oneshot(read_request(
+                "/_control/v1/platform/settings",
+                Some("verified"),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(read.status(), StatusCode::OK);
+        assert_eq!(read.headers()["etag"], "\"control-entity-2\"");
+        let body = response_json(read).await;
+        assert_eq!(body["control_revision"], durable.revision);
+        assert_eq!(body["entity_version"], durable.entity_versions["platform"]);
+        assert_eq!(body["resource"], serde_json::to_value(&settings).unwrap());
+        assert!(body.get("config").is_none());
+        assert!(body.get("tenants").is_none());
+        let mut expected = initial.snapshot.config;
+        expected.settings = settings;
+        assert_eq!(durable.snapshot.config, expected);
+    }
+
+    #[tokio::test]
+    async fn settings_editor_rejects_missing_and_stale_preconditions_without_writing() {
+        let (ctx, store) = fixture_context(true).await;
+        let original = store.load_snapshot().await.unwrap();
+        for (expected, status, code) in [
+            (None, StatusCode::BAD_REQUEST, "InvalidControlMutation"),
+            (
+                Some("stale".to_string()),
+                StatusCode::CONFLICT,
+                "ControlEntityVersionConflict",
+            ),
+        ] {
+            let changes = ControlChangeSet {
+                idempotency_key: None,
+                operations: vec![VersionedControlOperation {
+                    expected_entity_version: expected,
+                    operation: ControlOperation::SetPlatformSettings(SettingsDecl {
+                        cache_ttl_s: Some(62),
+                        ..SettingsDecl::default()
+                    }),
+                }],
+            };
+            let response = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(
+                    Request::builder()
+                        .method("PUT")
+                        .uri("/_control/v1/platform/settings")
+                        .header("authorization", "Bearer verified")
+                        .header("content-type", "application/json")
+                        .body(Body::from(serde_json::to_vec(&changes).unwrap()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), status);
+            assert_eq!(response_json(response).await["code"], code);
+            assert_eq!(store.load_snapshot().await.unwrap(), original);
+        }
+    }
+
+    #[tokio::test]
+    async fn settings_editor_denies_a_verified_principal_without_platform_authority() {
+        let mut denied_snapshot = snapshot();
+        denied_snapshot.role_bindings.clear();
+        let (ctx, store) = fixture_context_with(
+            true,
+            Some(Arc::new(VerifiedAuthorizer {
+                identity: principal(),
+            })),
+            denied_snapshot,
+        )
+        .await;
+        let before = store.load_snapshot().await.unwrap();
+        let changes = ControlChangeSet {
+            idempotency_key: None,
+            operations: vec![VersionedControlOperation {
+                expected_entity_version: Some("0".to_string()),
+                operation: ControlOperation::SetPlatformSettings(SettingsDecl {
+                    cache_ttl_s: Some(64),
+                    ..SettingsDecl::default()
+                }),
+            }],
+        };
+        let response = super::router(&ctx)
+            .with_state(Arc::clone(&ctx))
+            .oneshot(
+                Request::builder()
+                    .method("PUT")
+                    .uri("/_control/v1/platform/settings")
+                    .header("authorization", "Bearer verified")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_vec(&changes).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        assert_eq!(store.load_snapshot().await.unwrap(), before);
+    }
+
+    #[tokio::test]
+    async fn settings_editor_dry_run_then_apply_and_replay_use_one_frozen_request() {
+        let (ctx, store) = fixture_context(true).await;
+        let before = store.load_snapshot().await.unwrap();
+        let before_audit = store.audit_since(0, 100).await.unwrap();
+        let before_events = store.changes_since(None, 100).await.unwrap();
+        let changes = ControlChangeSet {
+            idempotency_key: Some("settings-frozen-request".to_string()),
+            operations: vec![VersionedControlOperation {
+                expected_entity_version: Some("0".to_string()),
+                operation: ControlOperation::SetPlatformSettings(SettingsDecl {
+                    cache_ttl_s: Some(63),
+                    ..SettingsDecl::default()
+                }),
+            }],
+        };
+        let body = serde_json::to_vec(&changes).unwrap();
+        for (uri, replayed) in [
+            ("/_control/v1/platform/settings?dry_run=true", None),
+            ("/_control/v1/platform/settings", Some(false)),
+            ("/_control/v1/platform/settings", Some(true)),
+        ] {
+            let response = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(
+                    Request::builder()
+                        .method("PUT")
+                        .uri(uri)
+                        .header("authorization", "Bearer verified")
+                        .header("content-type", "application/json")
+                        .body(Body::from(body.clone()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+            let json = response_json(response).await;
+            if let Some(replayed) = replayed {
+                assert_eq!(json["replayed"], replayed);
+                assert_eq!(json["revision"], 2);
+            } else {
+                assert_eq!(json["base_revision"], 1);
+                assert_eq!(json["entity_versions"]["platform"], "2");
+                assert_eq!(store.load_snapshot().await.unwrap(), before);
+                assert_eq!(store.audit_since(0, 100).await.unwrap(), before_audit);
+                assert_eq!(store.changes_since(None, 100).await.unwrap(), before_events);
+            }
+        }
+        assert_eq!(store.load_snapshot().await.unwrap().revision, 2);
     }
 
     #[tokio::test]
