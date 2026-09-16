@@ -551,9 +551,12 @@ Human identities can be verified against multiple platform-approved
 `auth.trusted_issuers`. The unverified JWT issuer is used only to select an
 already configured validator; signature, audience, expiry and required `sub`
 checks complete before the `(issuer, sub)` identity is usable. Dynamic control
-snapshots bind that exact identity to roles. Only a stored `sysadmin` binding at
-platform scope grants control-plane administration. Raw tenant/role claims are
-inert unless an issuer explicitly enables its registered claim mapping. SAML
+snapshots bind that exact identity to roles. A stored `sysadmin` binding at
+platform scope grants platform-wide administration; stored scoped bindings can
+grant tenant or catalog administration without platform access. See the
+[administration guide](docs/administration.md) for the browser workspaces and
+their current editing limits. Raw tenant/role claims are inert unless an issuer
+explicitly enables its registered claim mapping. SAML
 remains an upstream concern of an OIDC broker, keeping one token
 validation path inside Tellurion. The singular `auth.oidc` form remains
 available for existing configurations.

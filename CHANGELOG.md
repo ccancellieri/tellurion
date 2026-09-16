@@ -16,6 +16,22 @@ repository.
 
 ## [Unreleased]
 
+### Added
+
+- Tenant and catalog administration workspaces use the operator's existing
+  browser sign-in and admit only the requested authorized scope. Their inventories
+  do not require access to platform administration.
+- Platform, tenant, and catalog administrators can preview and apply cache
+  lifetime settings with entity-version checks, idempotent retries, and explicit
+  conflict rebasing. Other settings and entity configuration are preserved;
+  public fixture workspaces remain non-mutating.
+
+### Fixed
+
+- Native dependency notice collection includes SQLite's embedded public-domain
+  disclaimer and nested zstd license texts, with exact-byte evidence and
+  regressions for missing or changed source notices.
+
 ## [0.5.0-rc.1] - 2026-09-02
 
 ### Changed
