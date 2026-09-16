@@ -199,10 +199,29 @@ native_gate_step="$(step_block 'Gate prebuilt native binary release')"
 printf '%s\n' "$native_gate_step" | rg -q 'scripts/check-native-binary-release-readiness\.sh' \
     || fail "native matrix must gate prebuilt binary release readiness"
 
-build_step="$(step_block 'Build default-feature binaries')"
+native_ui_step="$(step_block 'Build operator UI for native binary')"
+for native_ui_requirement in \
+    'shell:[[:space:]]*pwsh' \
+    'npm ci' \
+    'npm run build' \
+    'Get-FileHash -Algorithm SHA256 \$notice' \
+    'release-source-evidence/THIRD_PARTY_NOTICES\.txt' \
+    'crates/tellurion-server/ui/dist/THIRD_PARTY_NOTICES\.txt'; do
+    printf '%s\n' "$native_ui_step" | rg -q -- "$native_ui_requirement" \
+        || fail "native operator UI build is missing $native_ui_requirement"
+done
+ui_build_line="$(rg -n '^[[:space:]]*- name: Build operator UI for native binary$' "$workflow" | cut -d: -f1)"
+native_gate_line="$(rg -n '^[[:space:]]*- name: Gate prebuilt native binary release$' "$workflow" | cut -d: -f1)"
+native_build_line="$(rg -n '^[[:space:]]*- name: Build native binaries with operator UI$' "$workflow" | cut -d: -f1)"
+if [ -z "$ui_build_line" ] || [ -z "$native_gate_line" ] || [ -z "$native_build_line" ] ||
+   [ "$native_gate_line" -ge "$ui_build_line" ] || [ "$ui_build_line" -ge "$native_build_line" ]; then
+    fail "native readiness gate, operator UI build, and Rust build must run in that order"
+fi
+
+build_step="$(step_block 'Build native binaries with operator UI')"
 printf '%s\n' "$build_step" | rg -q \
-    'cargo \+1\.97\.1 build.*--release.*--locked.*--target[[:space:]]+\$\{\{ matrix\.target \}\}.*-p[[:space:]]+tellurion.*-p[[:space:]]+tellurion-ingest' \
-    || fail "native build must invoke locked Cargo directly for both binaries"
+    'cargo \+1\.97\.1 build.*--release.*--locked.*--target[[:space:]]+\$\{\{ matrix\.target \}\}.*-p[[:space:]]+tellurion[[:space:]]+-p[[:space:]]+tellurion-ingest[[:space:]]+--features[[:space:]]+tellurion/ui[[:space:]]*$' \
+    || fail "native operator UI build must invoke locked Cargo for both binaries with only tellurion/ui"
 if printf '%s\n' "$build_step" | rg -q '(^|[[:space:]])target='; then
     fail "native build uses shell-specific target assignment"
 fi
@@ -218,6 +237,7 @@ for package_requirement in \
     'Copy-Item LICENSE, COPYRIGHT\.md, README\.md' \
     'Copy-Item COMMERCIAL-LICENSE\.md' \
     'Copy-Item .*THIRD_PARTY_NOTICES\.json' \
+    'Copy-Item .*release-source-evidence/THIRD_PARTY_NOTICES\.txt.*UI_THIRD_PARTY_NOTICES\.txt' \
     'example-geopackage\.yaml' \
     'Copy-Item docs/licensing\.md' \
     'Join-Path \$package_dir "docs"' \
@@ -225,11 +245,27 @@ for package_requirement in \
     'Compress-Archive' \
     'tar -C dist -czf'; do
     printf '%s\n' "$package_step" | rg -q -- "$package_requirement" \
-        || fail "release package is missing $package_requirement"
+        || fail "native operator UI release package is missing $package_requirement"
 done
-if printf '%s\n' "$package_step" | rg -q 'Copy-Item .*THIRD_PARTY_NOTICES\.txt'; then
+for feature_requirement in 'server-features=default,ui' 'ingest-features=default' 'ui-bundle=operator'; do
+    printf '%s\n' "$package_step" | rg -Fq "$feature_requirement" \
+        || fail "native operator UI build identity is missing $feature_requirement"
+done
+if printf '%s\n' "$package_step" | rg -q 'Copy-Item .*THIRD_PARTY_NOTICES\.txt" -Destination "\$package_dir"'; then
     fail "native release package must not mislabel the UI notice as native dependency evidence"
 fi
+smoke_step="$(step_block 'Smoke test packaged demo')"
+for native_ui_requirement in \
+    'Invoke-WebRequest -Uri "\$base_url/ui/control".*-PassThru' \
+    'Invoke-WebRequest -Uri \$assetUrl.*-OutFile \$assetFile -PassThru' \
+    'Get-FileHash -Algorithm SHA256 \$assetFile' \
+    'Invoke-WebRequest -Uri "\$base_url/ui/".*-PassThru' \
+    'Get-FileHash -Algorithm SHA256 "crates/tellurion-server/ui/dist/index\.html"' \
+    'Invoke-WebRequest -Uri "\$base_url/ui/THIRD_PARTY_NOTICES\.txt".*-PassThru' \
+    'UI_THIRD_PARTY_NOTICES\.txt'; do
+    printf '%s\n' "$smoke_step" | rg -q -- "$native_ui_requirement" \
+        || fail "native operator UI smoke test is missing $native_ui_requirement"
+done
 printf '%s\n' "$package_step" | rg -q '\$package_name = "tellurion-v\$version-\$target"' \
     || fail "platform archive name must be derived from the workspace version"
 

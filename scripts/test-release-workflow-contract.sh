@@ -104,10 +104,28 @@ expect_rejected() {
 
     case "$name" in
         windows-shell)
-            perl -0pi -e 's#(- name: Build default-feature binaries\n)#$1        shell: pwsh\n        run: |\n          target=windows-target\n#' "$fixture/workflows/release-artifacts.yml"
+            perl -0pi -e 's#(- name: Build native binaries with operator UI\n)#$1        shell: pwsh\n        run: |\n          target=windows-target\n#' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-native-release-gate)
             perl -0pi -e 's#\n      - name: Gate prebuilt native binary release\n        run: \./scripts/check-native-binary-release-readiness\.sh\n##' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-ui-feature)
+            perl -0pi -e 's#(--target \$\{\{ matrix\.target \}\} -p tellurion -p tellurion-ingest) --features tellurion/ui#$1#' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-ui-build)
+            perl -0pi -e 's#\n      - name: Build operator UI for native binary\n.*?(?=\n      - name:)##s' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-ui-package-notice)
+            perl -0pi -e 's#^.*Copy-Item .*UI_THIRD_PARTY_NOTICES\.txt.*\n##m' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-ui-smoke)
+            perl -0pi -e 's#\n            \$ui = Invoke-WebRequest -Uri "\$base_url/ui/".*?\n            }\n##s' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-ui-assets)
+            perl -0pi -e 's#^.*\$assetResponse = Invoke-WebRequest.*\n##m' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-control-smoke)
+            perl -0pi -e 's#^.*\$control = Invoke-WebRequest.*\n##m' "$fixture/workflows/release-artifacts.yml"
             ;;
         smoke-directory)
             perl -0pi -e 's#\n          New-Item -ItemType Directory -Force -Path \$smoke_dir \| Out-Null##' "$fixture/workflows/release-artifacts.yml"
@@ -343,7 +361,7 @@ expect_rejected() {
             perl -0pi -e 's#^[[:space:]]*Copy-Item .*THIRD_PARTY_NOTICES\.json.*\n##m' "$fixture/workflows/release-artifacts.yml"
             ;;
         unexpected-native-ui-notice)
-            perl -0pi -e 's#(Copy-Item .*THIRD_PARTY_NOTICES\.json.*\n)#$1          Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.txt" -Destination "$package_dir"\n#' "$fixture/workflows/release-artifacts.yml"
+            perl -0pi -e 's#-Destination \(Join-Path \$package_dir "UI_THIRD_PARTY_NOTICES\.txt"\)#-Destination "$package_dir"#' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-notice-checksum)
             perl -0pi -e 's# THIRD_PARTY_NOTICES\.txt(?= > SHA256SUMS)##' "$fixture/workflows/release-artifacts.yml"
@@ -419,10 +437,13 @@ expect_rejected() {
             expected_message='release package'
             ;;
         unexpected-native-ui-notice)
-            expected_message='must not mislabel the UI notice'
+            expected_message='native operator UI release package'
             ;;
         missing-native-release-gate)
             expected_message='gate prebuilt binary release readiness'
+            ;;
+        missing-native-ui-feature|missing-native-ui-build|missing-native-ui-package-notice|missing-native-ui-smoke|missing-native-ui-assets|missing-native-control-smoke)
+            expected_message='native operator UI'
             ;;
         missing-notice-checksum)
             expected_message='aggregate checksum'
@@ -457,6 +478,8 @@ MUTATIONS=(
 )
 
 FINAL_FIX_MUTATIONS=(
+    missing-native-ui-assets
+    missing-native-control-smoke
     release-workflow-unexpected-read-scope
     release-job-permission-override
     release-aggregation-extra-scope
@@ -479,6 +502,10 @@ FINAL_FIX_MUTATIONS=(
     missing-native-notice
     unexpected-native-ui-notice
     missing-native-release-gate
+    missing-native-ui-feature
+    missing-native-ui-build
+    missing-native-ui-package-notice
+    missing-native-ui-smoke
     missing-notice-checksum
     tag-version-mismatch-accepted
 )
@@ -554,6 +581,16 @@ if [ "$mutation_partition" = all ] || [ "$mutation_partition" = final-fixes ]; t
         '\$env:GITHUB_REF_NAME -ne "v\$\{\{ steps\.version\.outputs\.version \}\}"'; do
         if ! rg -q -- "$required_behavior" .github/workflows/release-artifacts.yml; then
             echo "FAIL: final release evidence behavior is missing $required_behavior" >&2
+            failures=$((failures + 1))
+        fi
+    done
+    for native_ui_behavior in \
+        'npm run build' \
+        'build.*--features tellurion/ui' \
+        'UI_THIRD_PARTY_NOTICES\.txt' \
+        'Invoke-WebRequest -Uri "\$base_url/ui/"'; do
+        if ! rg -q -- "$native_ui_behavior" .github/workflows/release-artifacts.yml; then
+            echo "FAIL: native operator UI release behavior is missing $native_ui_behavior" >&2
             failures=$((failures + 1))
         fi
     done
