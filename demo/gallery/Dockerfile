@@ -32,7 +32,7 @@ WORKDIR /build
 
 ARG DEMO_VERSION=v0.2.0
 ENV DEMO_ARCHIVE=tellurion-italy-demo-${DEMO_VERSION}.zip
-ENV DEMO_RELEASE=https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-${DEMO_VERSION}
+ENV DEMO_RELEASE=https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-${DEMO_VERSION}
 
 COPY --from=source-builder /build/target/release/tellurion-ingest /usr/local/bin/tellurion-ingest
 

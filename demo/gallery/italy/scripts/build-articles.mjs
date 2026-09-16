@@ -6,8 +6,8 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptDir, "..");
 const sourceDir = path.join(root, "content", "articles");
 const releaseBase =
-  "https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0";
-const siteBase = "https://ccancellieri.github.io/tellurion-italy-demo";
+  "https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0";
+const siteBase = "https://ccancellieri.github.io/tellurion/italy";
 const bundleUrl = `${releaseBase}/tellurion-italy-demo-v0.2.0.zip`;
 
 const articles = [
@@ -24,13 +24,13 @@ const articles = [
 ];
 
 const linkTargets = new Map([
-  ["../README.md", "https://github.com/ccancellieri/tellurion-italy-demo#readme"],
+  ["../README.md", "https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/README.md"],
   ["../README.md#reproduce-in-two-commands", "../../#reproduce"],
   ["../README.md#download-and-run-tellurion-on-premise", "../../#reproduce"],
-  ["../RESULTS.md", "https://github.com/ccancellieri/tellurion-italy-demo/blob/main/RESULTS.md"],
-  ["../analyze.py", "https://github.com/ccancellieri/tellurion-italy-demo/blob/main/reproduce/analyze.py"],
-  ["../benchmark/REPORT.md", "https://github.com/ccancellieri/tellurion-italy-demo/blob/main/evidence/BENCHMARK-REPORT.md"],
-  ["../benchmark/BENCHMARK-DESIGN.md", "https://github.com/ccancellieri/tellurion-italy-demo/blob/main/evidence/BENCHMARK-DESIGN.md"],
+  ["../RESULTS.md", "https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/RESULTS.md"],
+  ["../analyze.py", "https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/reproduce/analyze.py"],
+  ["../benchmark/REPORT.md", "https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/evidence/BENCHMARK-REPORT.md"],
+  ["../benchmark/BENCHMARK-DESIGN.md", "https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/evidence/BENCHMARK-DESIGN.md"],
   ["../output/metrics.json", `${releaseBase}/metrics.json`],
   ["../output/italy-osm-copernicus-analysis.png", `${releaseBase}/italy-osm-copernicus-analysis.png`],
   ["../output/rome-roads.geojson", bundleUrl],
@@ -94,7 +94,7 @@ function articleTemplate({ title, description, body, slug, image, index }) {
     : `<a href="../../"><span class="article-number">Project home</span><br>Tellurion Italy</a>`;
   const nextLink = next
     ? `<a href="../${next[1]}/"><span class="article-number">Next</span><br>${next[1].replaceAll("-", " ")}</a>`
-    : `<a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new"><span class="article-number">Your turn</span><br>Propose the next test</a>`;
+    : `<a href="https://github.com/ccancellieri/tellurion/issues/new"><span class="article-number">Your turn</span><br>Propose the next test</a>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -138,7 +138,7 @@ function articleTemplate({ title, description, body, slug, image, index }) {
       <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
     </figure>
     <article class="article-body">${body}</article>
-    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="${bundleUrl}">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="${bundleUrl}">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion/issues/new">report your environment and metrics</a>.</div>
     <div class="source-list" style="margin-top: 1.5rem">
       <a href="../../#sources">Sources &amp; licences</a>
       <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
@@ -148,7 +148,7 @@ function articleTemplate({ title, description, body, slug, image, index }) {
     <nav class="article-nav" aria-label="Article sequence">${previousLink}${nextLink}</nav>
   </main>
   <footer class="site-footer">
-    <div class="container footer-grid"><span>Tellurion Italy · field note ${index + 1}</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+    <div class="container footer-grid"><span>Tellurion Italy · field note ${index + 1}</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion/tree/main/demo/gallery/italy">Source</a></span></div>
   </footer>
 </body>
 </html>`;

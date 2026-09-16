@@ -80,7 +80,7 @@ done
 
 require_text index.html 'https://tellurion-vector-rome.onrender.com/public/features/catalogs/default/collections/rome_roads'
 require_text index.html 'Technical API'
-require_text README.md 'https://ccancellieri.github.io/tellurion-italy-demo/'
+require_text README.md 'https://ccancellieri.github.io/tellurion/italy/'
 require_text README.md 'Technical API'
 
 if grep -Eq '^Live service: <https://tellurion-vector-rome\.onrender\.com/>$' "$ROOT/README.md"; then

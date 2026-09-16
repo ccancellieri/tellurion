@@ -6,18 +6,18 @@
   <title>A benchmark is a contract, not a number-shaped claim — Tellurion Italy</title>
   <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <meta name="description" content="The Rome benchmark has two lanes and one rule: do not manufacture comparability. In the analysis lane, Python/Rasterio and QGIS Processing produced byte-identical masks on the same 1,200×900 WorldCover grid. Repeat media">
-  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/articles/benchmarking-without-inventing-results/">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion/italy/articles/benchmarking-without-inventing-results/">
   <meta property="og:type" content="article">
   <meta property="og:title" content="A benchmark is a contract, not a number-shaped claim">
   <meta property="og:description" content="The Rome benchmark has two lanes and one rule: do not manufacture comparability. In the analysis lane, Python/Rasterio and QGIS Processing produced byte-identical masks on the same 1,200×900 WorldCover grid. Repeat media">
-  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/articles/benchmarking-without-inventing-results/">
-  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/08-tellurion-italy.png">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion/italy/articles/benchmarking-without-inventing-results/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/08-tellurion-italy.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="627">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="A benchmark is a contract, not a number-shaped claim">
   <meta name="twitter:description" content="The Rome benchmark has two lanes and one rule: do not manufacture comparability. In the analysis lane, Python/Rasterio and QGIS Processing produced byte-identical masks on the same 1,200×900 WorldCover grid. Repeat media">
-  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/08-tellurion-italy.png">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/08-tellurion-italy.png">
   <link rel="stylesheet" href="../../styles.css">
 </head>
 <body>
@@ -28,7 +28,7 @@
       <div class="nav-links">
         <a href="../../#evidence">Evidence</a>
         <a href="../../#comparison">Comparison</a>
-        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
       </div>
     </nav>
   </header>
@@ -36,16 +36,16 @@
     <p class="eyebrow">Field note 08 of 10</p>
     <h1>A benchmark is a contract, not a number-shaped claim</h1>
     <figure class="article-lead-image">
-      <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/08-tellurion-italy.png" alt="Article card for A benchmark is a contract, not a number-shaped claim">
+      <img src="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/08-tellurion-italy.png" alt="Article card for A benchmark is a contract, not a number-shaped claim">
       <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
     </figure>
     <article class="article-body"><p>The Rome benchmark has two lanes and one rule: do not manufacture comparability. In the analysis lane, Python/Rasterio and QGIS Processing produced byte-identical masks on the same 1,200×900 WorldCover grid. Repeat medians were 0.59 s and 4.38 s respectively. That is end-to-end CLI workflow cost, including QGIS startup—not a claim that QGIS or GDAL is universally slower.</p>
 <p>In the serving lane, Tellurion and GeoServer ran sequentially on the same host against the same 5,603-feature GeoPackage. Their <code>limit=100</code> responses contained the same 100 geometries and properties. In the 10-second warm run at concurrency 32, Tellurion measured 2,714.74 successful requests/s with 34.18 ms p95 latency; GeoServer measured 856.35 requests/s with 107.19 ms p95. All requests succeeded.</p>
 <p>Those figures need their limits. GeoServer's payload was 14.3% larger, so the test includes product-specific serialization. There was one window per concurrency, no OS-cache clearing, and a fixed run order. GeoServer ran with a 512 MiB minimum JVM heap; its observed process memory is therefore not a universal minimum. MVT throughput was excluded because the bounded comparison used only the equivalent OGC API Features page.</p>
-<p>The raw files, c1/c8/c32 results, first-response measurements, and environment are in <a href="https://github.com/ccancellieri/tellurion-italy-demo/blob/main/evidence/BENCHMARK-REPORT.md">the benchmark report</a>. Esri has no performance result because no licensed runtime was available. Rome is a smoke-scale workload, not an Italy-capacity claim.</p>
+<p>The raw files, c1/c8/c32 results, first-response measurements, and environment are in <a href="https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/evidence/BENCHMARK-REPORT.md">the benchmark report</a>. Esri has no performance result because no licensed runtime was available. Rome is a smoke-scale workload, not an Italy-capacity claim.</p>
 <p>What evidence would you require before trusting a public GIS server comparison?</p>
 <p class="eyebrow">#Benchmarking #PerformanceEngineering #GeoServer #QGIS #Tellurion</p></article>
-    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion/issues/new">report your environment and metrics</a>.</div>
     <div class="source-list" style="margin-top: 1.5rem">
       <a href="../../#sources">Sources &amp; licences</a>
       <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
@@ -55,7 +55,7 @@
     <nav class="article-nav" aria-label="Article sequence"><a href="../tools-have-different-jobs/"><span class="article-number">Previous</span><br>tools have different jobs</a><a href="../standards-with-local-control/"><span class="article-number">Next</span><br>standards with local control</a></nav>
   </main>
   <footer class="site-footer">
-    <div class="container footer-grid"><span>Tellurion Italy · field note 8</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+    <div class="container footer-grid"><span>Tellurion Italy · field note 8</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion/tree/main/demo/gallery/italy">Source</a></span></div>
   </footer>
 </body>
 </html>

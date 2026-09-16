@@ -2,10 +2,11 @@
 
 The authoritative public source is now `demo/gallery` in
 [Tellurion](https://github.com/ccancellieri/tellurion/tree/main/demo/gallery).
-The `tellurion-demos` repository remains the publication destination and retains
-its existing GitHub Pages and Render addresses during migration. The Italy
-case-study source now lives in `italy/`; its legacy deployment and downloads
-remain active until the replacement is verified. See
+The canonical Pages gallery is live at <https://ccancellieri.github.io/tellurion/>,
+with the Italy case study at <https://ccancellieri.github.io/tellurion/italy/>.
+The Render services have not yet been switched to this monorepo configuration.
+Historical downloads use byte-identical assets under canonical archive tags;
+verify copied checksums before retiring the old repositories. See
 [Italy migration provenance](../italy/MIGRATION.md) and
 [repository retirement](https://github.com/ccancellieri/tellurion/issues/37).
 No private repository history or Enterprise code is imported.
@@ -55,19 +56,19 @@ publishing the complete gallery with its historical downloadable archives.
 5. Run `bash scripts/check-gallery.sh` from the Tellurion repository root.
    Validate the selected live maps and their attribution separately. Retained
    pages and passing static tests are not proof of running backend identity.
-6. Commit, review and merge in Tellurion. From a clean source checkout, export
-   to a separate clean checkout of the existing publishing repository:
+6. Commit, review and merge in Tellurion. Export from the clean source checkout
+   to a separate clean checkout of Tellurion's `gh-pages` branch:
 
    ```sh
-   python3 demo/gallery/scripts/publish_gallery.py /absolute/path/to/publishing-checkout
-   python3 demo/gallery/scripts/publish_gallery.py /absolute/path/to/publishing-checkout --apply
+   python3 demo/gallery/scripts/publish_gallery.py /absolute/path/to/pages-checkout
+   python3 demo/gallery/scripts/publish_gallery.py /absolute/path/to/pages-checkout --apply
    ```
 
-   The first command previews the file count. Export refuses changes to an
-   existing version/snapshot, preserves older files, and never deletes, commits
-   or pushes. Review the destination diff, run its checks and publish normally.
-   `publication.json` records the source commit. Repository hosting configuration
-   and credentials are never exported.
+   Review, commit and push that publication branch. The exporter preserves
+   frozen snapshots and records the source commit in `publication.json`; it
+   never deletes files or pushes. Verify canonical Pages serves the intended
+   gallery and Italy paths. Review Render dashboard state separately: publishing
+   the site does not switch a live backend.
 
 ## Wake-up, not redeploy
 

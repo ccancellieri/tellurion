@@ -6,18 +6,18 @@
   <title>On-prem geospatial is still a choice worth preserving — Tellurion Italy</title>
   <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <meta name="description" content="Some geospatial work has a perfectly good cloud home. Some does not: data-residency obligations, disconnected operations, cost predictability, or simply the need to inspect every layer of the stack can make local deploym">
-  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/articles/on-prem-is-a-choice/">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion/italy/articles/on-prem-is-a-choice/">
   <meta property="og:type" content="article">
   <meta property="og:title" content="On-prem geospatial is still a choice worth preserving">
   <meta property="og:description" content="Some geospatial work has a perfectly good cloud home. Some does not: data-residency obligations, disconnected operations, cost predictability, or simply the need to inspect every layer of the stack can make local deploym">
-  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/articles/on-prem-is-a-choice/">
-  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/01-tellurion-italy.png">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion/italy/articles/on-prem-is-a-choice/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/01-tellurion-italy.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="627">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="On-prem geospatial is still a choice worth preserving">
   <meta name="twitter:description" content="Some geospatial work has a perfectly good cloud home. Some does not: data-residency obligations, disconnected operations, cost predictability, or simply the need to inspect every layer of the stack can make local deploym">
-  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/01-tellurion-italy.png">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/01-tellurion-italy.png">
   <link rel="stylesheet" href="../../styles.css">
 </head>
 <body>
@@ -28,7 +28,7 @@
       <div class="nav-links">
         <a href="../../#evidence">Evidence</a>
         <a href="../../#comparison">Comparison</a>
-        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
       </div>
     </nav>
   </header>
@@ -36,16 +36,16 @@
     <p class="eyebrow">Field note 01 of 10</p>
     <h1>On-prem geospatial is still a choice worth preserving</h1>
     <figure class="article-lead-image">
-      <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/01-tellurion-italy.png" alt="Article card for On-prem geospatial is still a choice worth preserving">
+      <img src="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/01-tellurion-italy.png" alt="Article card for On-prem geospatial is still a choice worth preserving">
       <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
     </figure>
     <article class="article-body"><p>Some geospatial work has a perfectly good cloud home. Some does not: data-residency obligations, disconnected operations, cost predictability, or simply the need to inspect every layer of the stack can make local deployment the practical choice.</p>
 <p>This series starts with a deliberately small, reproducible Rome workload. It uses a snapshot of 5,603 OpenStreetMap road and rail ways and a bundled window from ESA WorldCover 2021. The vector/raster calculation runs locally. Tellurion is used separately as the local vector-serving demonstration; it is not the raster-analysis engine.</p>
-<p>Measured facts and limits are kept together: the sample covers only a central-Rome bounding box, not a city boundary or Italy-scale workload. The published land-cover percentages describe pixels touched by selected linework; they do not establish a policy, causal, or network-wide conclusion. The complete evidence is in <a href="https://github.com/ccancellieri/tellurion-italy-demo/blob/main/RESULTS.md">the result summary</a>, <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/metrics.json">metrics JSON</a>, and <a href="https://github.com/ccancellieri/tellurion-italy-demo#readme">reproduction instructions</a>.</p>
+<p>Measured facts and limits are kept together: the sample covers only a central-Rome bounding box, not a city boundary or Italy-scale workload. The published land-cover percentages describe pixels touched by selected linework; they do not establish a policy, causal, or network-wide conclusion. The complete evidence is in <a href="https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/RESULTS.md">the result summary</a>, <a href="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/metrics.json">metrics JSON</a>, and <a href="https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/README.md">reproduction instructions</a>.</p>
 <p>I am not arguing that one deployment model or product is universal. QGIS is a capable desktop and Processing environment; GeoServer is a mature service platform; Esri provides broad commercial desktop and enterprise capabilities; Tellurion is the open, local serving component being exercised here. The useful question is which fit is best for a defined workload and operating context.</p>
 <p>If you run geospatial infrastructure on-prem, where does it create real value—and where does it add avoidable friction? I would welcome concrete counterexamples.</p>
 <p class="eyebrow">#geospatial #onprem #opensource #Rome #reproducibility</p></article>
-    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion/issues/new">report your environment and metrics</a>.</div>
     <div class="source-list" style="margin-top: 1.5rem">
       <a href="../../#sources">Sources &amp; licences</a>
       <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
@@ -55,7 +55,7 @@
     <nav class="article-nav" aria-label="Article sequence"><a href="../../"><span class="article-number">Project home</span><br>Tellurion Italy</a><a href="../two-open-layers-in-rome/"><span class="article-number">Next</span><br>two open layers in rome</a></nav>
   </main>
   <footer class="site-footer">
-    <div class="container footer-grid"><span>Tellurion Italy · field note 1</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+    <div class="container footer-grid"><span>Tellurion Italy · field note 1</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion/tree/main/demo/gallery/italy">Source</a></span></div>
   </footer>
 </body>
 </html>

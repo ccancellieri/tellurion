@@ -7,7 +7,7 @@ OSM_JSON="${ROOT}/data/rome-osm-overpass.json"
 WORLD_COVER="${ROOT}/data/rome-worldcover.tif"
 WORLD_COVER_URL="https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39E012_Map.tif"
 TELLURION_VERSION="v0.3.0"
-RELEASE_BASE="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/tellurion-${TELLURION_VERSION}"
+RELEASE_BASE="https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-${TELLURION_VERSION}"
 CHECKSUM_NAME="SHA256SUMS"
 
 case "$(uname -s)" in
@@ -72,7 +72,7 @@ install_tellurion() {
     *)
       printf 'unsupported Tellurion binary target: %s %s\n' "${system}" "${machine}" >&2
       printf '%s\n' "Use the source archive or open a platform request:" >&2
-      printf '%s\n' "  https://github.com/ccancellieri/tellurion-italy-demo/issues/new" >&2
+      printf '%s\n' "  https://github.com/ccancellieri/tellurion/issues/new" >&2
       exit 1
       ;;
   esac

@@ -27,7 +27,7 @@ require_file proof/index.html
 require_file proof/proof.css
 
 require_text index.html 'href="proof/"'
-require_text README.md 'actions/workflows/daily.yml'
+require_text README.md 'blob/main/scripts/check-gallery.sh'
 reject_text README.md 'actions/workflows/smoke.yml'
 
 require_text proof/index.html 'For recruiters'
@@ -37,7 +37,7 @@ require_text proof/index.html 'Five read-only service definitions'
 require_text proof/index.html 'Five active backends'
 require_text proof/index.html 'Public Tellurion v0.5.0-rc.1 release-candidate source'
 require_text proof/index.html 'Italy explorer verified at deployment time'
-require_text proof/index.html 'https://github.com/ccancellieri/tellurion-demos/releases/tag/tellurion-v0.3.0'
+require_text proof/index.html 'https://github.com/ccancellieri/tellurion/releases/tag/archive-tellurion-v0.3.0'
 require_text proof/index.html 'https://github.com/ccancellieri/tellurion'
 require_text proof/index.html 'https://github.com/ccancellieri/tellurion#quickstart'
 require_text proof/index.html 'https://github.com/ccancellieri/tellurion/blob/main/docs/quickstart/install.md'
@@ -46,7 +46,7 @@ require_text proof/index.html 'https://github.com/ccancellieri'
 require_text proof/index.html 'https://www.linkedin.com/in/ccancellieri/'
 require_text proof/index.html 'data-contact="github"'
 require_text proof/index.html 'data-contact="linkedin"'
-require_text proof/index.html 'free on standard public runners, but usage is not unlimited'
+require_text proof/index.html 'live endpoints require separate verification'
 
 reject_text proof/index.html 'mailto:'
 reject_text proof/index.html 'tel:'
