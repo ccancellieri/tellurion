@@ -14,6 +14,14 @@ feature-resolved union of Cargo registry license, copyright, and NOTICE text
 for the exact binaries it ships. The existing JSON inventory is useful review
 evidence, but it is not that union.
 
+The native workflow currently selects the server's default features plus `ui`
+and the ingestion executable's default features. This embeds the operator
+interface, not the `public-demo` interface. The verified UI text is packaged as
+`UI_THIRD_PARTY_NOTICES.txt` and compared with the server's served notice. It is
+not a substitute for the still-missing Rust and bundled native dependency text.
+Any feature-profile change must be reflected in that dependency review before
+native archives are unblocked.
+
 To unblock native binaries, the maintainer must define the archive feature
 sets, generate and review the corresponding Rust notice text, package it in
 each archive, and replace the native gate with a currentness and byte-identity

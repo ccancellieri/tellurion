@@ -8,6 +8,11 @@ fitting — that path is out of scope here.
 
 ## Version 0.5.0-rc.1 release archives
 
+**Current status:** native archives are blocked until the Rust and bundled
+native dependency notices have been generated and reviewed for the shipped
+feature set. See the [native release gates](../release/rust-third-party-notices.md).
+The table below is a packaging target, not a list of verified available downloads.
+
 Archives are available only after an approved v0.5.0-rc.1 public release. They describe the
 intended release assets; no archive or binary is added to this Git repository. Until
 an approved release provides the matching asset, build from source using the
@@ -43,6 +48,39 @@ or `tellurion-ingest.exe`.
 
 These assets are intended for Tellurion 0.5.0-rc.1 under `AGPL-3.0-only`. Review the
 [licensing guide](../licensing.md) before deployment or redistribution.
+
+### First run from an extracted archive
+
+Keep the two executables together: the demo command locates the server next to
+the ingestion executable. From the extracted package directory, run:
+
+```sh
+./tellurion-ingest demo --path ./demo.gpkg --port 8080
+```
+
+On Windows, use PowerShell:
+
+```powershell
+.\tellurion-ingest.exe demo --path .\demo.gpkg --port 8080
+```
+
+This provisions a local GeoPackage with synthetic sample features. It does not
+require Rust, Docker, an external database, or GDAL. Open
+`http://localhost:8080/ui/` for the embedded operator interface and
+`http://localhost:8080/public/features/catalogs/default/collections/demo/items?limit=10`
+for the sample Features response. The native evaluation package includes the
+operator UI, not the anonymous remote-source public-demo feature.
+
+**Administrative access is separate from this data demo.** The sample command
+does not provision an identity provider or grant administrative permissions.
+The current control interface is read-only; tenant creation and configuration
+editing through it remain launch prerequisites. An interface being present at
+`/ui/control` is not evidence that authenticated administration is configured.
+
+Before a native package is promoted for general evaluation, each advertised
+platform must pass extraction and startup checks outside the source checkout,
+including the embedded UI and matching notices. The administration launch gate
+also requires authenticated scope isolation and persisted settings after restart.
 
 ## Install the release candidate with Cargo
 

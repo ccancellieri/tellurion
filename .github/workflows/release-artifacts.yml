@@ -231,10 +231,30 @@ jobs:
       - name: Gate prebuilt native binary release
         run: ./scripts/check-native-binary-release-readiness.sh
 
-      - name: Build default-feature binaries
+      - name: Build operator UI for native binary
+        shell: pwsh
+        run: |
+          Push-Location ui
+          try {
+            npm ci
+            if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
+            npm run build
+            if ($LASTEXITCODE -ne 0) { throw "operator UI build failed" }
+          } finally {
+            Pop-Location
+          }
+          $notice = "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.txt"
+          $noticeHash = (Get-FileHash -Algorithm SHA256 $notice).Hash
+          foreach ($copy in @("crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt", "crates/tellurion-server/ui/dist/THIRD_PARTY_NOTICES.txt")) {
+            if ((Get-FileHash -Algorithm SHA256 $copy).Hash -ne $noticeHash) {
+              throw "operator UI notice differs from verified source evidence: $copy"
+            }
+          }
+
+      - name: Build native binaries with operator UI
         env:
           CC_x86_64_unknown_linux_musl: musl-gcc
-        run: cargo +1.97.1 build --release --locked --target ${{ matrix.target }} -p tellurion -p tellurion-ingest
+        run: cargo +1.97.1 build --release --locked --target ${{ matrix.target }} -p tellurion -p tellurion-ingest --features tellurion/ui
 
       - name: Package native artifact
         shell: pwsh
@@ -254,6 +274,7 @@ jobs:
           Copy-Item LICENSE, COPYRIGHT.md, README.md -Destination "$package_dir"
           Copy-Item COMMERCIAL-LICENSE.md -Destination "$package_dir"
           Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.json" -Destination "$package_dir"
+          Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.txt" -Destination (Join-Path $package_dir "UI_THIRD_PARTY_NOTICES.txt")
           Copy-Item config/example-geopackage.yaml -Destination "$package_dir/config"
           Copy-Item docs/licensing.md -Destination "$package_dir/docs"
           Set-Content -Path (Join-Path $package_dir 'BUILD-INFO') -Value @(
@@ -261,6 +282,9 @@ jobs:
             "ref=$env:GITHUB_REF_NAME"
             "revision=$env:GITHUB_SHA"
             "target=$target"
+            "server-features=default,ui"
+            "ingest-features=default"
+            "ui-bundle=operator"
             "rustc:"
             (& rustc +1.97.1 --version --verbose)
           )
@@ -314,6 +338,43 @@ jobs:
             $items = Invoke-WebRequest -Uri "$base_url/public/features/catalogs/default/collections/demo/items?limit=1" -UseBasicParsing
             if ($items.StatusCode -ne 200) {
               throw "demo items endpoint returned HTTP $($items.StatusCode)"
+            }
+            $uiIndex = Join-Path $smoke_dir "operator-index.html"
+            $ui = Invoke-WebRequest -Uri "$base_url/ui/" -UseBasicParsing -OutFile $uiIndex -PassThru
+            if ($ui.StatusCode -ne 200 -or
+                (Get-FileHash -Algorithm SHA256 $uiIndex).Hash -ne
+                (Get-FileHash -Algorithm SHA256 "crates/tellurion-server/ui/dist/index.html").Hash) {
+              throw "packaged server did not serve the built operator UI"
+            }
+            $controlIndex = Join-Path $smoke_dir "control-index.html"
+            $control = Invoke-WebRequest -Uri "$base_url/ui/control" -UseBasicParsing -OutFile $controlIndex -PassThru
+            if ($control.StatusCode -ne 200 -or
+                (Get-FileHash -Algorithm SHA256 $controlIndex).Hash -ne
+                (Get-FileHash -Algorithm SHA256 $uiIndex).Hash) {
+              throw "packaged server did not serve the control interface"
+            }
+            $assetPaths = @([regex]::Matches((Get-Content -Raw $uiIndex), '(?:src|href)="(?<path>\./assets/[^"/]+\.(?:js|css))"') |
+              ForEach-Object { $_.Groups['path'].Value } | Sort-Object -Unique)
+            if (-not ($assetPaths | Where-Object { $_ -match '\.js$' }) -or
+                -not ($assetPaths | Where-Object { $_ -match '\.css$' })) {
+              throw "operator index must reference JavaScript and CSS assets"
+            }
+            foreach ($assetPath in $assetPaths) {
+              $assetFile = Join-Path $smoke_dir ([System.IO.Path]::GetFileName($assetPath))
+              $assetUrl = "$base_url/ui/" + $assetPath.Substring(2)
+              $assetResponse = Invoke-WebRequest -Uri $assetUrl -UseBasicParsing -OutFile $assetFile -PassThru
+              if ($assetResponse.StatusCode -ne 200 -or
+                  (Get-FileHash -Algorithm SHA256 $assetFile).Hash -ne
+                  (Get-FileHash -Algorithm SHA256 (Join-Path "crates/tellurion-server/ui/dist" $assetPath)).Hash) {
+                throw "packaged server operator asset differs from the build: $assetPath"
+              }
+            }
+            $uiNotice = Join-Path $smoke_dir "ui-notice.txt"
+            $noticeResponse = Invoke-WebRequest -Uri "$base_url/ui/THIRD_PARTY_NOTICES.txt" -UseBasicParsing -OutFile $uiNotice -PassThru
+            if ($noticeResponse.StatusCode -ne 200 -or
+                (Get-FileHash -Algorithm SHA256 $uiNotice).Hash -ne
+                (Get-FileHash -Algorithm SHA256 (Join-Path (Join-Path $smoke_dir $package_name) "UI_THIRD_PARTY_NOTICES.txt")).Hash) {
+              throw "packaged server UI notice differs from the archive copy"
             }
           } finally {
             $process.Refresh()
