@@ -1496,8 +1496,12 @@ mod tests {
             })
         }
 
-        async fn authorize_platform_admin(&self, _: &Credential) -> Option<String> {
-            None
+        async fn admit_workspace(
+            &self,
+            _: &AuthenticatedSubject,
+            _: &crate::control_workspace::ControlWorkspace<'_>,
+        ) -> Result<(), crate::control_browser_auth::WorkspaceAdmissionError> {
+            Err(crate::control_browser_auth::WorkspaceAdmissionError::Denied)
         }
     }
 
