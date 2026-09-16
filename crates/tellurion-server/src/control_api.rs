@@ -2013,12 +2013,12 @@ auth:
         )
     }
 
-    fn replace_platform_settings() -> ControlChangeSet {
+    fn platform_settings_change() -> ControlChangeSet {
         ControlChangeSet {
             idempotency_key: None,
             operations: vec![VersionedControlOperation {
-                expected_entity_version: None,
-                operation: ControlOperation::ReplacePlatformSettings(fixture_config()),
+                expected_entity_version: Some("0".to_string()),
+                operation: ControlOperation::SetPlatformSettings(fixture_config().settings),
             }],
         }
     }
@@ -2105,8 +2105,14 @@ auth:
         let changes = ControlChangeSet {
             idempotency_key: idempotency_key.map(str::to_string),
             operations: vec![VersionedControlOperation {
-                expected_entity_version: None,
-                operation: ControlOperation::ReplacePlatformSettings(current.snapshot.config),
+                expected_entity_version: Some(
+                    current
+                        .entity_versions
+                        .get("platform")
+                        .cloned()
+                        .unwrap_or_else(|| "0".to_string()),
+                ),
+                operation: ControlOperation::SetPlatformSettings(current.snapshot.config.settings),
             }],
         };
         let response = super::router(ctx)
@@ -2920,7 +2926,7 @@ auth:
             .header("authorization", "Bearer verified")
             .header("x-request-id", "control-http-1")
             .body(Body::from(
-                serde_json::to_vec(&replace_platform_settings()).unwrap(),
+                serde_json::to_vec(&platform_settings_change()).unwrap(),
             ))
             .unwrap();
 
@@ -3083,7 +3089,7 @@ auth:
                     .uri("/_control/v1/platform/settings")
                     .header("content-type", "application/json")
                     .body(Body::from(
-                        serde_json::to_vec(&replace_platform_settings()).unwrap(),
+                        serde_json::to_vec(&platform_settings_change()).unwrap(),
                     ))
                     .unwrap(),
             )
@@ -3105,7 +3111,7 @@ auth:
                     .header("authorization", "Bearer unverifiable")
                     .header("content-type", "application/json")
                     .body(Body::from(
-                        serde_json::to_vec(&replace_platform_settings()).unwrap(),
+                        serde_json::to_vec(&platform_settings_change()).unwrap(),
                     ))
                     .unwrap(),
             )
@@ -3287,6 +3293,42 @@ auth:
     }
 
     #[tokio::test]
+    async fn platform_settings_route_rejects_whole_config_operations_with_or_without_version() {
+        let (ctx, store) = fixture_context(true).await;
+        let before = store.load_snapshot().await.unwrap();
+        for method in ["PUT", "PATCH"] {
+            for version in [None, Some("0".to_string())] {
+                let changes = ControlChangeSet {
+                    idempotency_key: None,
+                    operations: vec![VersionedControlOperation {
+                        expected_entity_version: version.clone(),
+                        operation: ControlOperation::ReplacePlatformSettings(fixture_config()),
+                    }],
+                };
+                let response = super::router(&ctx)
+                    .with_state(Arc::clone(&ctx))
+                    .oneshot(
+                        Request::builder()
+                            .method(method)
+                            .uri("/_control/v1/platform/settings")
+                            .header("authorization", "Bearer verified")
+                            .header("content-type", "application/json")
+                            .body(Body::from(serde_json::to_vec(&changes).unwrap()))
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    response.status(),
+                    StatusCode::BAD_REQUEST,
+                    "{method} {version:?}"
+                );
+                assert_eq!(store.load_snapshot().await.unwrap(), before);
+            }
+        }
+    }
+
+    #[tokio::test]
     async fn dry_run_previews_the_change_without_mutating_durable_state() {
         let (ctx, store) = fixture_context(true).await;
         let before_snapshot = store.load_snapshot().await.unwrap();
@@ -3297,8 +3339,8 @@ auth:
         let changes = ControlChangeSet {
             idempotency_key: Some("preview-only".to_string()),
             operations: vec![VersionedControlOperation {
-                expected_entity_version: None,
-                operation: ControlOperation::ReplacePlatformSettings(candidate),
+                expected_entity_version: Some("0".to_string()),
+                operation: ControlOperation::SetPlatformSettings(candidate.settings),
             }],
         };
 
@@ -4021,7 +4063,7 @@ auth:
                     .header("authorization", "Bearer verified")
                     .header("content-type", "application/json")
                     .body(Body::from(
-                        serde_json::to_vec(&replace_platform_settings()).unwrap(),
+                        serde_json::to_vec(&platform_settings_change()).unwrap(),
                     ))
                     .unwrap(),
             )
@@ -4047,7 +4089,7 @@ auth:
                     .header("authorization", "Bearer verified")
                     .header("content-type", "application/json")
                     .body(Body::from(
-                        serde_json::to_vec(&replace_platform_settings()).unwrap(),
+                        serde_json::to_vec(&platform_settings_change()).unwrap(),
                     ))
                     .unwrap(),
             )
@@ -4067,7 +4109,7 @@ auth:
     async fn dry_run_reports_entity_version_conflicts_without_writing() {
         let (ctx, store) = fixture_context(true).await;
         let before = store.load_snapshot().await.unwrap();
-        let mut changes = replace_platform_settings();
+        let mut changes = platform_settings_change();
         changes.operations[0].expected_entity_version = Some("stale".to_string());
 
         let response = super::router(&ctx)
@@ -4208,7 +4250,7 @@ auth:
     #[tokio::test]
     async fn same_idempotent_request_replays_the_original_commit() {
         let (ctx, store) = fixture_context(true).await;
-        let mut changes = replace_platform_settings();
+        let mut changes = platform_settings_change();
         changes.idempotency_key = Some("repeat-control-http".to_string());
         let request = || {
             Request::builder()
@@ -4248,7 +4290,7 @@ auth:
     #[tokio::test]
     async fn changed_body_reusing_an_idempotency_key_is_a_named_conflict() {
         let (ctx, store) = fixture_context(true).await;
-        let mut first = replace_platform_settings();
+        let mut first = platform_settings_change();
         first.idempotency_key = Some("conflicting-control-http".to_string());
         let first_response = super::router(&ctx)
             .with_state(Arc::clone(&ctx))
@@ -4270,8 +4312,8 @@ auth:
         let changed = ControlChangeSet {
             idempotency_key: first.idempotency_key.clone(),
             operations: vec![VersionedControlOperation {
-                expected_entity_version: None,
-                operation: ControlOperation::ReplacePlatformSettings(changed_config),
+                expected_entity_version: Some("0".to_string()),
+                operation: ControlOperation::SetPlatformSettings(changed_config.settings),
             }],
         };
         let revision = store.current_revision().await.unwrap();
@@ -4309,7 +4351,7 @@ auth:
                     .header("authorization", "Bearer verified")
                     .header("content-type", "application/json")
                     .body(Body::from(
-                        serde_json::to_vec(&replace_platform_settings()).unwrap(),
+                        serde_json::to_vec(&platform_settings_change()).unwrap(),
                     ))
                     .unwrap(),
             )

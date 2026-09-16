@@ -277,8 +277,8 @@ fn mutation_checkpoint_rejects_route_operation_substitution_and_generic_batches(
     let replace = ControlChangeSet {
         idempotency_key: None,
         operations: vec![VersionedControlOperation {
-            expected_entity_version: None,
-            operation: ControlOperation::ReplacePlatformSettings(authoritative.config.clone()),
+            expected_entity_version: Some("0".to_string()),
+            operation: ControlOperation::SetPlatformSettings(authoritative.config.settings.clone()),
         }],
     };
     assert!(checkpoint_authorization(
@@ -347,13 +347,13 @@ fn mutation_checkpoint_rejects_route_operation_substitution_and_generic_batches(
 fn settings_and_metadata_descriptors_reject_field_substitution() {
     let authoritative = hierarchy_snapshot("sysadmin", ControlScope::Platform);
 
-    let mut platform_settings = authoritative.config.clone();
-    platform_settings.settings.cache_ttl_s = Some(30);
+    let mut platform_settings = authoritative.config.settings.clone();
+    platform_settings.cache_ttl_s = Some(30);
     let platform_patch = ControlChangeSet {
         idempotency_key: None,
         operations: vec![VersionedControlOperation {
-            expected_entity_version: None,
-            operation: ControlOperation::ReplacePlatformSettings(platform_settings),
+            expected_entity_version: Some("0".to_string()),
+            operation: ControlOperation::SetPlatformSettings(platform_settings),
         }],
     };
     assert!(checkpoint_with_descriptor(
@@ -903,8 +903,8 @@ fn idempotency_request_fingerprint_is_stable_and_binds_route_principal_and_inten
     let changes = ControlChangeSet {
         idempotency_key: Some("stable-request".to_string()),
         operations: vec![VersionedControlOperation {
-            expected_entity_version: None,
-            operation: ControlOperation::ReplacePlatformSettings(authoritative.config.clone()),
+            expected_entity_version: Some("0".to_string()),
+            operation: ControlOperation::SetPlatformSettings(authoritative.config.settings.clone()),
         }],
     };
     let authorize = |principal: PrincipalIdentity,
@@ -2002,9 +2002,19 @@ fn mutation_token_binds_the_private_entity_version_state() {
 #[test]
 fn mutation_token_rejects_modified_and_destructive_changesets() {
     let authoritative = hierarchy_snapshot("sysadmin", ControlScope::Platform);
-    let mut intended_tenant = authoritative.config.tenants[0].clone();
-    intended_tenant.settings.cache_ttl_s = Some(30);
-    let intended = put_tenant(intended_tenant);
+    let intended = ControlChangeSet {
+        idempotency_key: None,
+        operations: vec![VersionedControlOperation {
+            expected_entity_version: Some("0".to_string()),
+            operation: ControlOperation::SetTenantSettings {
+                tenant: "tenant-a".to_string(),
+                settings: SettingsDecl {
+                    cache_ttl_s: Some(30),
+                    ..SettingsDecl::default()
+                },
+            },
+        }],
+    };
     let authorization = mutation_authorization_for_descriptor(
         &authoritative,
         ControlRouteDescriptor::TenantSettings,
@@ -2013,14 +2023,18 @@ fn mutation_token_rejects_modified_and_destructive_changesets() {
         &intended,
     );
 
-    let mut modified_tenant = authoritative.config.tenants[0].clone();
-    modified_tenant.settings.cache_ttl_s = Some(60);
+    let mut modified = intended.clone();
+    if let ControlOperation::SetTenantSettings { settings, .. } =
+        &mut modified.operations[0].operation
+    {
+        settings.cache_ttl_s = Some(60);
+    }
     assert!(apply_control_changes(
         authoritative.clone(),
         BTreeMap::new(),
         2,
         &authorization,
-        &put_tenant(modified_tenant),
+        &modified,
     )
     .is_err());
 
@@ -2120,9 +2134,19 @@ fn policy_replacement_requires_authority_over_existing_and_candidate_scopes() {
 #[test]
 fn delegated_administrators_can_update_tenant_and_catalog_settings() {
     let tenant_snapshot = hierarchy_snapshot("tenant_admin", tenant());
-    let mut tenant_update = tenant_snapshot.config.tenants[0].clone();
-    tenant_update.settings.cache_ttl_s = Some(30);
-    let tenant_changes = put_tenant(tenant_update);
+    let tenant_changes = ControlChangeSet {
+        idempotency_key: None,
+        operations: vec![VersionedControlOperation {
+            expected_entity_version: Some("0".to_string()),
+            operation: ControlOperation::SetTenantSettings {
+                tenant: "tenant-a".to_string(),
+                settings: SettingsDecl {
+                    cache_ttl_s: Some(30),
+                    ..SettingsDecl::default()
+                },
+            },
+        }],
+    };
     let tenant_authorization = mutation_authorization_for_descriptor(
         &tenant_snapshot,
         ControlRouteDescriptor::TenantSettings,
@@ -2140,9 +2164,20 @@ fn delegated_administrators_can_update_tenant_and_catalog_settings() {
     .expect("tenant administrator updates its tenant settings");
 
     let catalog_snapshot = hierarchy_snapshot("catalog_admin", catalog());
-    let mut catalog_update = catalog_snapshot.config.catalogs[0].clone();
-    catalog_update.settings.cache_ttl_s = Some(45);
-    let catalog_changes = put_catalog(catalog_update);
+    let catalog_changes = ControlChangeSet {
+        idempotency_key: None,
+        operations: vec![VersionedControlOperation {
+            expected_entity_version: Some("0".to_string()),
+            operation: ControlOperation::SetCatalogSettings {
+                tenant: "tenant-a".to_string(),
+                catalog: "catalog-a".to_string(),
+                settings: SettingsDecl {
+                    cache_ttl_s: Some(45),
+                    ..SettingsDecl::default()
+                },
+            },
+        }],
+    };
     let catalog_authorization = mutation_authorization_for_descriptor(
         &catalog_snapshot,
         ControlRouteDescriptor::CatalogSettings,
@@ -2158,6 +2193,59 @@ fn delegated_administrators_can_update_tenant_and_catalog_settings() {
         &catalog_changes,
     )
     .expect("catalog administrator updates its catalog settings");
+}
+
+#[test]
+fn settings_routes_reject_whole_entity_operations_even_with_a_version() {
+    let authoritative = hierarchy_snapshot("sysadmin", ControlScope::Platform);
+    let mut tenant_update = authoritative.config.tenants[0].clone();
+    tenant_update.settings.cache_ttl_s = Some(30);
+    let mut catalog_update = authoritative.config.catalogs[0].clone();
+    catalog_update.settings.cache_ttl_s = Some(45);
+
+    for method in ["PUT", "PATCH"] {
+        for version in [None, Some("0".to_string())] {
+            for (descriptor, path, operation) in [
+                (
+                    ControlRouteDescriptor::PlatformSettings,
+                    "/_control/v1/platform/settings",
+                    ControlOperation::ReplacePlatformSettings(authoritative.config.clone()),
+                ),
+                (
+                    ControlRouteDescriptor::TenantSettings,
+                    "/_control/v1/tenants/tenant-a/settings",
+                    ControlOperation::PutTenant(tenant_update.clone()),
+                ),
+                (
+                    ControlRouteDescriptor::CatalogSettings,
+                    "/_control/v1/tenants/tenant-a/catalogs/catalog-a/settings",
+                    ControlOperation::PutCatalog(catalog_update.clone()),
+                ),
+            ] {
+                let changes = ControlChangeSet {
+                    idempotency_key: None,
+                    operations: vec![VersionedControlOperation {
+                        expected_entity_version: version.clone(),
+                        operation,
+                    }],
+                };
+                assert!(
+                    matches!(
+                        checkpoint_with_descriptor(
+                            &authoritative,
+                            BTreeMap::new(),
+                            descriptor,
+                            method,
+                            path,
+                            &changes,
+                        ),
+                        Err(tellurion_core::ControlMiddlewareError::MutationIntentMismatch)
+                    ),
+                    "{method} {path} version {version:?}"
+                );
+            }
+        }
+    }
 }
 
 #[test]

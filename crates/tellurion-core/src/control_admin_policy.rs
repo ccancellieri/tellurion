@@ -646,158 +646,129 @@ fn validate_mutation_intent(
         }
         _ => {}
     }
-    let matches = match (descriptor, method, &operation.operation) {
-        (
-            ControlRouteDescriptor::PlatformSettings,
-            "PUT" | "PATCH",
-            ControlOperation::ReplacePlatformSettings(candidate),
-        ) => replaces_only_platform_settings(candidate, &snapshot.config),
-        (
-            ControlRouteDescriptor::PlatformSettings,
-            "PUT" | "PATCH",
-            ControlOperation::SetPlatformSettings(_),
-        ) => operation.expected_entity_version.is_some(),
-        (
-            ControlRouteDescriptor::TenantSettings,
-            "PUT" | "PATCH",
-            ControlOperation::SetTenantSettings { tenant, .. },
-        ) => {
-            operation.expected_entity_version.is_some()
-                && matches!(resolved_scope, ControlScope::Tenant { .. })
-                && canonical.segments().nth(3) == Some(tenant.as_str())
-        }
-        (
-            ControlRouteDescriptor::CatalogSettings,
-            "PUT" | "PATCH",
-            ControlOperation::SetCatalogSettings { tenant, catalog, .. },
-        ) => {
-            operation.expected_entity_version.is_some()
-                && matches!(resolved_scope, ControlScope::Catalog { .. })
-                && canonical.segments().nth(3) == Some(tenant.as_str())
-                && canonical.segments().nth(5) == Some(catalog.as_str())
-        }
-        (ControlRouteDescriptor::Tenant, "PUT", ControlOperation::PutTenant(tenant)) => {
-            matches!(
-                resolved_scope,
-                ControlScope::Tenant { tenant_id } if tenant.id == *tenant_id
-            )
-        }
-        (
-            ControlRouteDescriptor::TenantSettings,
-            "PUT" | "PATCH",
-            ControlOperation::PutTenant(tenant),
-        ) => snapshot
-            .config
-            .tenants
-            .iter()
-            .find(|current| {
-                matches!(resolved_scope, ControlScope::Tenant { tenant_id } if current.id == *tenant_id)
-            })
-            .is_some_and(|current| replaces_only_tenant_settings(tenant, current)),
-        (ControlRouteDescriptor::Catalog, "PUT", ControlOperation::PutCatalog(catalog)) => {
-            matches!(
-                resolved_scope,
-                ControlScope::Catalog {
-                    tenant_id,
-                    catalog_id,
-                } if catalog.id == *catalog_id && catalog.tenant == *tenant_id
-            )
-        }
-        (
-            ControlRouteDescriptor::CatalogSettings,
-            "PUT" | "PATCH",
-            ControlOperation::PutCatalog(catalog),
-        ) => snapshot
-            .config
-            .catalogs
-            .iter()
-            .find(|current| {
+    let matches =
+        match (descriptor, method, &operation.operation) {
+            (
+                ControlRouteDescriptor::PlatformSettings,
+                "PUT" | "PATCH",
+                ControlOperation::SetPlatformSettings(_),
+            ) => operation.expected_entity_version.is_some(),
+            (
+                ControlRouteDescriptor::TenantSettings,
+                "PUT" | "PATCH",
+                ControlOperation::SetTenantSettings { tenant, .. },
+            ) => {
+                operation.expected_entity_version.is_some()
+                    && matches!(resolved_scope, ControlScope::Tenant { .. })
+                    && canonical.segments().nth(3) == Some(tenant.as_str())
+            }
+            (
+                ControlRouteDescriptor::CatalogSettings,
+                "PUT" | "PATCH",
+                ControlOperation::SetCatalogSettings {
+                    tenant, catalog, ..
+                },
+            ) => {
+                operation.expected_entity_version.is_some()
+                    && matches!(resolved_scope, ControlScope::Catalog { .. })
+                    && canonical.segments().nth(3) == Some(tenant.as_str())
+                    && canonical.segments().nth(5) == Some(catalog.as_str())
+            }
+            (ControlRouteDescriptor::Tenant, "PUT", ControlOperation::PutTenant(tenant)) => {
                 matches!(
                     resolved_scope,
-                    ControlScope::Catalog { tenant_id, catalog_id }
-                        if current.id == *catalog_id && current.tenant == *tenant_id
+                    ControlScope::Tenant { tenant_id } if tenant.id == *tenant_id
                 )
-            })
-            .is_some_and(|current| replaces_only_catalog_settings(catalog, current)),
-        (
-            ControlRouteDescriptor::Collection,
-            "PUT",
-            ControlOperation::PutCollection(collection),
-        ) => {
-            matches!(
-                resolved_scope,
-                ControlScope::Collection {
-                    catalog_id,
-                    collection_id,
-                    ..
-                } if collection.id == *collection_id && collection.catalog == *catalog_id
-            )
-        }
-        (
-            ControlRouteDescriptor::Tenant
-            | ControlRouteDescriptor::Catalog
-            | ControlRouteDescriptor::Collection,
-            "DELETE",
-            ControlOperation::TombstoneResource { scope },
-        ) => scope == resolved_scope,
-        (
-            ControlRouteDescriptor::TenantPermanentDelete
-            | ControlRouteDescriptor::CatalogPermanentDelete
-            | ControlRouteDescriptor::CollectionPermanentDelete,
-            "DELETE",
-            ControlOperation::PermanentlyDeleteResource { scope },
-        ) => {
-            scope == resolved_scope
-                && operation.expected_entity_version.is_some()
-                && snapshot.source_snapshot.tombstoned_resources.contains(scope)
-        }
-        (
-            ControlRouteDescriptor::PlatformPathPolicy
-            | ControlRouteDescriptor::CollectionPathPolicy,
-            "PUT",
-            ControlOperation::PutPathPolicy(policy),
-        ) => {
-            let target = canonical.segments().last();
-            policy.scope.as_ref() == Some(resolved_scope) && target == Some(policy.id.as_str())
-        }
-        (
-            ControlRouteDescriptor::PlatformPathPolicy
-            | ControlRouteDescriptor::CollectionPathPolicy,
-            "DELETE",
-            ControlOperation::DeletePathPolicy { id },
-        ) => {
-            let target = canonical.segments().last();
-            target == Some(id.as_str())
-                && snapshot
-                    .source_snapshot
-                    .path_policies
-                    .iter()
-                    .any(|policy| policy.id == *id && policy.scope.as_ref() == Some(resolved_scope))
-        }
-        (
-            ControlRouteDescriptor::PlatformRoleBindings,
-            "POST",
-            ControlOperation::PutRoleBinding(binding),
-        ) => binding.scope == *resolved_scope,
-        (
-            ControlRouteDescriptor::PlatformRoleBinding,
-            "DELETE",
-            ControlOperation::DeleteRoleBinding {
-                principal,
-                scope,
-                role,
-            },
-        ) => {
-            let binding = RoleBinding {
-                principal: principal.clone(),
-                role: role.clone(),
-                scope: scope.clone(),
-            };
-            let target = role_binding_target_id(&binding);
-            scope == resolved_scope && canonical.segments().last() == Some(target.as_str())
-        }
-        _ => false,
-    };
+            }
+            (ControlRouteDescriptor::Catalog, "PUT", ControlOperation::PutCatalog(catalog)) => {
+                matches!(
+                    resolved_scope,
+                    ControlScope::Catalog {
+                        tenant_id,
+                        catalog_id,
+                    } if catalog.id == *catalog_id && catalog.tenant == *tenant_id
+                )
+            }
+            (
+                ControlRouteDescriptor::Collection,
+                "PUT",
+                ControlOperation::PutCollection(collection),
+            ) => {
+                matches!(
+                    resolved_scope,
+                    ControlScope::Collection {
+                        catalog_id,
+                        collection_id,
+                        ..
+                    } if collection.id == *collection_id && collection.catalog == *catalog_id
+                )
+            }
+            (
+                ControlRouteDescriptor::Tenant
+                | ControlRouteDescriptor::Catalog
+                | ControlRouteDescriptor::Collection,
+                "DELETE",
+                ControlOperation::TombstoneResource { scope },
+            ) => scope == resolved_scope,
+            (
+                ControlRouteDescriptor::TenantPermanentDelete
+                | ControlRouteDescriptor::CatalogPermanentDelete
+                | ControlRouteDescriptor::CollectionPermanentDelete,
+                "DELETE",
+                ControlOperation::PermanentlyDeleteResource { scope },
+            ) => {
+                scope == resolved_scope
+                    && operation.expected_entity_version.is_some()
+                    && snapshot
+                        .source_snapshot
+                        .tombstoned_resources
+                        .contains(scope)
+            }
+            (
+                ControlRouteDescriptor::PlatformPathPolicy
+                | ControlRouteDescriptor::CollectionPathPolicy,
+                "PUT",
+                ControlOperation::PutPathPolicy(policy),
+            ) => {
+                let target = canonical.segments().last();
+                policy.scope.as_ref() == Some(resolved_scope) && target == Some(policy.id.as_str())
+            }
+            (
+                ControlRouteDescriptor::PlatformPathPolicy
+                | ControlRouteDescriptor::CollectionPathPolicy,
+                "DELETE",
+                ControlOperation::DeletePathPolicy { id },
+            ) => {
+                let target = canonical.segments().last();
+                target == Some(id.as_str())
+                    && snapshot.source_snapshot.path_policies.iter().any(|policy| {
+                        policy.id == *id && policy.scope.as_ref() == Some(resolved_scope)
+                    })
+            }
+            (
+                ControlRouteDescriptor::PlatformRoleBindings,
+                "POST",
+                ControlOperation::PutRoleBinding(binding),
+            ) => binding.scope == *resolved_scope,
+            (
+                ControlRouteDescriptor::PlatformRoleBinding,
+                "DELETE",
+                ControlOperation::DeleteRoleBinding {
+                    principal,
+                    scope,
+                    role,
+                },
+            ) => {
+                let binding = RoleBinding {
+                    principal: principal.clone(),
+                    role: role.clone(),
+                    scope: scope.clone(),
+                };
+                let target = role_binding_target_id(&binding);
+                scope == resolved_scope && canonical.segments().last() == Some(target.as_str())
+            }
+            _ => false,
+        };
     matches
         .then_some(false)
         .ok_or(ControlMiddlewareError::MutationIntentMismatch)
@@ -902,30 +873,6 @@ fn write_canonical_json(value: &serde_json::Value, output: &mut Vec<u8>) -> Opti
         }
     }
     Some(())
-}
-
-fn replaces_only_platform_settings(candidate: &AppConfig, current: &AppConfig) -> bool {
-    let mut expected = current.clone();
-    expected.settings = candidate.settings.clone();
-    *candidate == expected
-}
-
-fn replaces_only_tenant_settings(
-    candidate: &crate::config::TenantDecl,
-    current: &crate::config::TenantDecl,
-) -> bool {
-    let mut expected = current.clone();
-    expected.settings = candidate.settings.clone();
-    *candidate == expected
-}
-
-fn replaces_only_catalog_settings(
-    candidate: &crate::config::CatalogDecl,
-    current: &crate::config::CatalogDecl,
-) -> bool {
-    let mut expected = current.clone();
-    expected.settings = candidate.settings.clone();
-    *candidate == expected
 }
 
 fn tenant_collection_move_or_replay(
