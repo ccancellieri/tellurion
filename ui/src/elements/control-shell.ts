@@ -18,6 +18,7 @@ import {
   simulateFixturePlatformSetting,
   type FixtureSettingSimulation,
 } from '../lib/control-fixtures';
+import { TellurionPlatformSettingsEditor } from './platform-settings-editor';
 
 export type ControlMode = 'production' | 'fixture';
 
@@ -60,7 +61,7 @@ export function workspaceModeFor(pathname: string, buildMode: string): ControlMo
   return control ? 'production' : undefined;
 }
 
-/** A cookie-authenticated, read-only platform control workspace. */
+/** A cookie-authenticated platform control workspace. */
 export class TellurionControlShell extends HTMLElement {
   client!: ControlReadClient;
   mode: ControlMode = 'production';
@@ -79,6 +80,7 @@ export class TellurionControlShell extends HTMLElement {
   #fixtureSimulation?: FixtureSettingSimulation;
   #fixtureValidationError?: string;
   #fixtureStatus?: string;
+  #editor?: TellurionPlatformSettingsEditor;
   #generation = 0;
 
   connectedCallback(): void {
@@ -116,6 +118,7 @@ export class TellurionControlShell extends HTMLElement {
   }
 
   #clearState(): void {
+    this.#editor = undefined;
     this.#overview = undefined;
     this.#tenants = [];
     this.#tenantAfter = undefined;
@@ -163,6 +166,21 @@ export class TellurionControlShell extends HTMLElement {
     this.#acceptSettings(settings);
     this.#acceptAudit(audit);
     this.#renderWorkspace();
+    if (this.mode === 'production' && client instanceof ProductionControlReadClient) {
+      this.#mountEditor(client, generation);
+    }
+  }
+
+  #mountEditor(client: ProductionControlReadClient, generation: number): void {
+    const slot = this.querySelector<HTMLElement>('[data-field="platform-editor-slot"]');
+    if (!slot || this.#editor) return;
+    const editor = document.createElement('tellurion-platform-settings-editor') as TellurionPlatformSettingsEditor;
+    editor.client = client;
+    this.#editor = editor;
+    editor.addEventListener('platform-settings-applied', () => {
+      if (this.#isCurrent(generation, client)) void this.#loadPanels(generation, client);
+    });
+    slot.append(editor);
   }
 
   #acceptTenants(result: PromiseSettledResult<ControlPage<TenantView>>): void {
@@ -248,7 +266,7 @@ export class TellurionControlShell extends HTMLElement {
     const audit = this.#auditError
       ? `<p class="control-note control-note--error">${escape(this.#auditError)}</p>`
       : this.#renderAudit();
-    this.innerHTML = `
+    const markup = `
       <section class="control-workspace" data-mode="${this.mode}">
         ${this.mode === 'fixture' ? '<p class="control-demo-boundary">Demonstration data · fixture-only workspace</p>' : ''}
         <nav class="control-nav" aria-label="Workspace navigation">
@@ -273,6 +291,7 @@ export class TellurionControlShell extends HTMLElement {
               <div class="control-sheet__section-heading"><p class="control-label">Resolved state</p><h2 id="effective-settings-heading">Effective settings</h2></div>
               ${effective}
             </section>
+            ${this.mode === 'production' ? '<div data-field="platform-editor-slot"></div>' : ''}
             ${this.mode === 'fixture' ? this.#renderFixtureSimulator() : ''}
           </main>
           <aside class="control-audit-rail" aria-labelledby="control-audit-heading">
@@ -282,6 +301,23 @@ export class TellurionControlShell extends HTMLElement {
           </aside>
         </div>
       </section>`;
+    if (this.#editor?.isConnected) {
+      const template = document.createElement('template');
+      template.innerHTML = markup;
+      for (const selector of [
+        '.control-scope-rail', '.control-audit-rail', '.control-coordinate',
+        '.control-sheet__ledger', '[aria-labelledby="effective-settings-heading"]',
+      ]) {
+        const current = this.querySelector(selector);
+        const next = template.content.querySelector(selector);
+        if (current && next) current.replaceWith(next);
+      }
+      this.querySelector<HTMLButtonElement>('[data-action="more-tenants"]')?.addEventListener('click', () => void this.#moreTenants());
+      this.querySelector<HTMLButtonElement>('[data-action="more-audit"]')?.addEventListener('click', () => void this.#moreAudit());
+      this.querySelector<HTMLButtonElement>('[data-scope="platform"]')?.addEventListener('click', () => this.#focusHeading());
+      return;
+    }
+    this.innerHTML = markup;
     this.querySelector<HTMLButtonElement>('[data-scope="platform"]')?.addEventListener('click', () => this.#focusHeading());
     this.querySelector<HTMLButtonElement>('[data-action="more-tenants"]')?.addEventListener('click', () => void this.#moreTenants());
     this.querySelector<HTMLButtonElement>('[data-action="more-audit"]')?.addEventListener('click', () => void this.#moreAudit());
