@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "$REAL_PYTHON" -S "$@"

@@ -5,6 +5,8 @@ This gallery is exported to the existing `tellurion-demos` repository to retain
 published URLs. Edit the source there, not a publication copy.
 See [versioned demos and publication](docs/demo-versioning.md) and the
 [retained demo versions](releases/).
+The [Italy field case](italy/) is now included in the same source tree;
+[hosting and download migration](italy/MIGRATION.md) is still in progress.
 
 A human-first, reproducible gallery for Tellurion's vector, raster,
 multidimensional, 3D, filtering, catalog and server-rendering paths.

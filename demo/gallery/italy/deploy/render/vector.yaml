@@ -1,0 +1,35 @@
+server:
+  port: 10000
+  request_timeout_s: 30
+  log_json: true
+
+cache:
+  memory_percent: 10.0
+
+storages:
+  - id: rome
+    driver: geopackage
+    url_env: TELLURION_GEOPACKAGE_PATH
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: rome_roads
+    catalog: default
+    storage: rome
+    tiles:
+      minzoom: 0
+      maxzoom: 14
+      caps: {}
+    schema:
+      properties:
+        - { name: highway, type: string }
+        - { name: name, type: string }
+        - { name: railway, type: string }
+    settings:
+      tile_properties: [highway, name, railway]

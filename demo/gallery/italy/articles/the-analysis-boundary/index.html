@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The analysis boundary: Python/Rasterio, not a server claim — Tellurion Italy</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <meta name="description" content="It is easy to turn a simple diagram into an overbroad product claim. This demo has two deliberately separate lanes.">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/articles/the-analysis-boundary/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="The analysis boundary: Python/Rasterio, not a server claim">
+  <meta property="og:description" content="It is easy to turn a simple diagram into an overbroad product claim. This demo has two deliberately separate lanes.">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/articles/the-analysis-boundary/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/04-tellurion-italy.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="627">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="The analysis boundary: Python/Rasterio, not a server claim">
+  <meta name="twitter:description" content="It is easy to turn a simple diagram into an overbroad product claim. This demo has two deliberately separate lanes.">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/04-tellurion-italy.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#article">Skip to article</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="../../"><span class="brand-mark" aria-hidden="true"></span>Tellurion Italy</a>
+      <div class="nav-links">
+        <a href="../../#evidence">Evidence</a>
+        <a href="../../#comparison">Comparison</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
+      </div>
+    </nav>
+  </header>
+  <main class="article-main" id="article">
+    <p class="eyebrow">Field note 04 of 10</p>
+    <h1>The analysis boundary: Python/Rasterio, not a server claim</h1>
+    <figure class="article-lead-image">
+      <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/04-tellurion-italy.png" alt="Article card for The analysis boundary: Python/Rasterio, not a server claim">
+      <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
+    </figure>
+    <article class="article-body"><p>It is easy to turn a simple diagram into an overbroad product claim. This demo has two deliberately separate lanes.</p>
+<p>The first is analysis. Python reads <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">the generated Rome GeoJSON</a>, uses Rasterio to create a 1,200×900 byte mask with all touched line pixels, and intersects that grid with ESA WorldCover classes. The implementation is visible in <a href="https://github.com/ccancellieri/tellurion-italy-demo/blob/main/reproduce/analyze.py">analyze.py</a>. This is Python/Rasterio analysis, not a Tellurion raster-analysis engine.</p>
+<p>The second is serving. The same Rome vectors can be loaded into a GeoPackage and exposed locally via Tellurion’s feature and tile endpoints. The commands, configuration, and example requests are in <a href="../../#reproduce">the installation and serving section</a>. Serving an API and performing a raster classification are different jobs, and the series keeps them separate.</p>
+<p>That distinction also makes comparison fairer. QGIS Processing is relevant to the raster-mask workflow. GeoServer is relevant to the serving lane. Esri has desktop and enterprise products that cover broader workflows, but no licensed Esri runtime was run for this demo. A capability discussion is not a performance result.</p>
+<p>The project’s <a href="https://github.com/ccancellieri/tellurion-italy-demo/blob/main/evidence/BENCHMARK-DESIGN.md">benchmark design</a> makes these boundaries testable: identical masks before analysis timings; identical GeoPackage, request shapes, and sequential runs before server comparison.</p>
+<p>Which boundary do you want a reproducible geospatial demonstration to state more clearly: computation, storage, serving, or client visualization?</p>
+<p class="eyebrow">#SpatialAnalysis #Rasterio #QGIS #GeoServer #OGCAPI</p></article>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="source-list" style="margin-top: 1.5rem">
+      <a href="../../#sources">Sources &amp; licences</a>
+      <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
+      <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover / CC BY 4.0</a>
+      <a href="https://doi.org/10.5281/zenodo.7254221">WorldCover 2021 DOI</a>
+    </div>
+    <nav class="article-nav" aria-label="Article sequence"><a href="../remote-cog-local-computation/"><span class="article-number">Previous</span><br>remote cog local computation</a><a href="../what-the-number-means/"><span class="article-number">Next</span><br>what the number means</a></nav>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-grid"><span>Tellurion Italy · field note 4</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+  </footer>
+</body>
+</html>

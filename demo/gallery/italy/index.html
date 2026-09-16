@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tellurion Italy — an inspectable on-prem geospatial field test</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta name="description" content="Reproduce a Rome OSM and ESA WorldCover analysis, inspect the evidence, and compare Tellurion fairly with QGIS, GeoServer and Esri.">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Tellurion Italy — from source pixels to OGC API">
+  <meta property="og:description" content="An open, reproducible on-prem geospatial field test using Rome OSM vectors and ESA WorldCover.">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/01-tellurion-italy.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="627">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Tellurion Italy — from source pixels to OGC API">
+  <meta name="twitter:description" content="Reproduce the Rome OSM + ESA WorldCover field test and challenge the results.">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/01-tellurion-italy.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"></span>Tellurion Italy</a>
+      <div class="nav-links">
+        <a href="#evidence">Evidence</a>
+        <a href="#comparison">Comparison</a>
+        <a href="#downloads">Downloads</a>
+        <a href="#articles">Articles</a>
+        <a class="button" href="#reproduce">Reproduce</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="container hero" aria-labelledby="hero-title">
+      <div>
+        <p class="eyebrow">Open geospatial field test · Rome · 41.90°N / 12.49°E</p>
+        <h1 id="hero-title">From source pixels to OGC API, without hiding the stack.</h1>
+        <p class="hero-copy">A small, inspectable on-prem experiment combining 5,603 OpenStreetMap road and rail ways with ESA WorldCover 2021. Run it locally, inspect every assumption, and tell us where the evidence fails.</p>
+        <div class="hero-actions">
+          <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download the test kit</a>
+          <a class="button secondary" href="#comparison">Read the comparison</a>
+        </div>
+      </div>
+      <figure class="map-window">
+        <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/italy-osm-copernicus-analysis.png" alt="Central Rome analysis showing selected OpenStreetMap roads over ESA WorldCover land-cover classes">
+        <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
+      </figure>
+    </section>
+
+    <section class="fact-strip" aria-label="Field test summary">
+      <div class="container facts">
+        <div class="fact"><strong>5,603</strong><span>OSM road and rail ways</span></div>
+        <div class="fact"><strong>155,417</strong><span>WorldCover pixels touched</span></div>
+        <div class="fact"><strong>763.7 km</strong><span>Approximate linework</span></div>
+        <div class="fact"><strong>100%</strong><span>Local default run</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="evidence">
+      <div class="container">
+        <p class="eyebrow">Two workloads, two honest boundaries</p>
+        <h2>Do not turn one diagram into one oversized claim.</h2>
+        <p class="section-intro">The raster result is computed with Python and Rasterio. Tellurion serves the vector data through OGC API interfaces. Use the selector to see what was actually measured in each lane.</p>
+
+        <div class="workload">
+          <div class="workload-tabs" role="tablist" aria-label="Measured workload">
+            <button class="workload-tab" type="button" role="tab" aria-selected="true" data-workload-tab="raster">Raster analysis</button>
+            <button class="workload-tab" type="button" role="tab" aria-selected="false" data-workload-tab="vector">Vector serving</button>
+          </div>
+
+          <section class="workload-panel" role="tabpanel" data-workload-panel="raster">
+            <p class="eyebrow">Python/Rasterio ↔ QGIS Processing</p>
+            <div class="metric-grid">
+              <div class="metric built"><strong>80.10%</strong><span>Pixels classified built-up inside the selected line mask</span></div>
+              <div class="metric"><strong>19.10%</strong><span>Pixels in vegetated WorldCover classes</span></div>
+              <div class="metric water"><strong>identical</strong><span>1,200×900 output masks, byte for byte</span></div>
+            </div>
+            <div class="caveat"><strong>Boundary:</strong> “Road corridor” means raster pixels touched by linework at this analysis grid. It is not a legal buffer, accessibility measure or causal result.</div>
+          </section>
+
+          <section class="workload-panel" role="tabpanel" data-workload-panel="vector" hidden>
+            <p class="eyebrow">Tellurion ↔ GeoServer</p>
+            <div class="metric-grid">
+              <div class="metric"><strong>2,714.74</strong><span>Tellurion requests/s at concurrency 32</span></div>
+              <div class="metric water"><strong>856.35</strong><span>GeoServer requests/s at concurrency 32</span></div>
+              <div class="metric built"><strong>100</strong><span>Matching features and properties in both responses</span></div>
+            </div>
+            <div class="caveat"><strong>Boundary:</strong> one 10-second warm localhost window, fixed order, no OS-cache clearing. GeoServer ran with a 512 MiB minimum JVM heap and returned a 14.3% larger payload. This is a smoke test, not an Italy-capacity result.</div>
+            <p><a class="button secondary" href="https://tellurion-vector-rome.onrender.com/public/features/catalogs/default/collections/rome_roads">Technical API: live Rome collection (JSON)</a></p>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="comparison">
+      <div class="container">
+        <p class="eyebrow">Critical comparison</p>
+        <h2>Different tools have different jobs.</h2>
+        <p class="section-intro">A fair comparison starts by naming the workload, runtime and missing evidence. Esri remains deliberately unmeasured because no licensed ArcGIS runtime was available.</p>
+        <div class="comparison">
+          <table>
+            <thead>
+              <tr><th>Tool</th><th>Role in this test</th><th>Measured result</th><th>What the result cannot prove</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Tellurion</strong></td><td>Embedded-first vector service</td><td>2,714.74 req/s; 34.18 ms p95</td><td>Production, distributed or Italy-scale capacity</td></tr>
+              <tr><td><strong>GeoServer</strong></td><td>Mature Java service platform</td><td>856.35 req/s; 107.19 ms p95</td><td>A broad product verdict from one endpoint</td></tr>
+              <tr><td><strong>QGIS</strong></td><td>Desktop and Processing reference</td><td>4.38 s median complete CLI workflow</td><td>QGIS Server performance; startup dominates this small run</td></tr>
+              <tr><td><strong>Rasterio</strong></td><td>Local analysis implementation</td><td>0.59 s median; byte-identical mask</td><td>Equivalent user experience or full GIS capability</td></tr>
+              <tr><td><strong>Esri</strong></td><td>Commercial comparison boundary</td><td>Not timed</td><td>Any performance claim without a licensed runtime</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="action-row">
+          <a class="button secondary" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/benchmark-comparison.png">Open comparison graphic</a>
+          <a class="button secondary" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/metrics.json">Inspect metrics JSON</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="downloads">
+      <div class="container">
+        <p class="eyebrow">Tellurion 0.3.0 · public binaries</p>
+        <h2>Download once. Run on your own machine.</h2>
+        <p class="section-intro">Large binaries stay out of Git history and are published as versioned GitHub Release assets. Every archive includes the BUSL 1.1 licence, commercial-licensing notice, build metadata and example configuration.</p>
+        <div class="metric-grid">
+          <div class="metric"><strong>macOS</strong><span>Apple Silicon · aarch64</span><a class="button secondary" href="https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/tellurion-v0.3.0-aarch64-apple-darwin.tar.gz">Download</a></div>
+          <div class="metric water"><strong>Linux</strong><span>x86_64 · static musl</span><a class="button secondary" href="https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/tellurion-v0.3.0-x86_64-unknown-linux-musl.tar.gz">Download</a></div>
+          <div class="metric built"><strong>Windows</strong><span>x86_64 · GNU</span><a class="button secondary" href="https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/tellurion-v0.3.0-x86_64-pc-windows-gnu.zip">Download</a></div>
+        </div>
+        <div class="action-row">
+          <a class="button" href="https://ccancellieri.github.io/tellurion-demos/demos/stac/">Open the STAC-to-map demo</a>
+          <a class="button secondary" href="https://ccancellieri.github.io/tellurion-demos/">Explore all live demos</a>
+          <a class="button secondary" href="https://github.com/ccancellieri/tellurion-demos/releases/tag/tellurion-v0.3.0">Release notes and source</a>
+          <a class="button secondary" href="https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/SHA256SUMS">Verify SHA-256</a>
+          <a class="button secondary" href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">Request a platform or report a problem</a>
+        </div>
+        <p class="caveat"><strong>Licence:</strong> evaluation, development, testing and training are free. Personal non-commercial production use is allowed. Organisational production use requires a commercial licence before 2030-07-23. The benchmark numbers on this page remain the recorded Tellurion 0.2.0 run; publish new 0.3.0 measurements separately.</p>
+      </div>
+    </section>
+
+    <section class="section" id="reproduce">
+      <div class="container reproduce-grid">
+        <div>
+          <p class="eyebrow">Reproduce before believing</p>
+          <h2>Two commands. Local by default.</h2>
+          <ol class="steps">
+            <li>Download and unzip the versioned kit.</li>
+            <li>Run the bundled snapshot without network access.</li>
+            <li>Optionally refresh OSM and the WorldCover COG window.</li>
+            <li>Share the exact command, environment and metrics when disagreeing.</li>
+          </ol>
+          <p class="caveat"><strong>SHA-256:</strong><br><code>28d84f5d9d1ebbc6333f8054f8ec37d15e061ff2b3eeb79f1d7d70d5b952d98c</code></p>
+        </div>
+        <div class="code-card">
+          <div class="code-label"><span>shell · local snapshot</span><button class="copy-button" type="button" data-copy="reproduce-code">Copy</button></div>
+          <pre><code id="reproduce-code" tabindex="0">unzip tellurion-italy-demo-v0.2.0.zip
+cd tellurion-italy-demo
+chmod +x reproduce.sh
+./reproduce.sh
+
+# Refresh both internet sources
+./reproduce.sh --refresh
+
+# Install the current public macOS/Linux binary
+./reproduce.sh --install
+./reproduce.sh --load-rome
+./reproduce.sh --serve-rome</code></pre>
+          <p class="caveat"><strong>Availability:</strong> Tellurion 0.3.0 binaries are public for macOS Apple Silicon, Linux x86_64 and Windows x86_64. The shell installer supports macOS/Linux directly and verifies the selected archive against the release SHA-256 manifest.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="articles">
+      <div class="container">
+        <p class="eyebrow">Ten field notes</p>
+        <h2>The evidence, one claim at a time.</h2>
+        <p class="section-intro">Each article exposes one boundary, one measurement or one reproducibility decision. The sequence is an invitation to challenge the work—not a launch campaign built around invented certainty.</p>
+        <div class="article-grid">
+          <article class="article-card"><a href="articles/on-prem-is-a-choice/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/01-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 01</span><h3>On-prem is still a choice worth preserving</h3></div></a></article>
+          <article class="article-card"><a href="articles/two-open-layers-in-rome/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/02-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 02</span><h3>Two open layers, one inspectable Rome question</h3></div></a></article>
+          <article class="article-card"><a href="articles/remote-cog-local-computation/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/03-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 03</span><h3>Remote COG, local computation</h3></div></a></article>
+          <article class="article-card"><a href="articles/the-analysis-boundary/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/04-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 04</span><h3>The analysis boundary</h3></div></a></article>
+          <article class="article-card"><a href="articles/what-the-number-means/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/05-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 05</span><h3>What the 80.10% result means</h3></div></a></article>
+          <article class="article-card"><a href="articles/reproduce-before-you-believe/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/06-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 06</span><h3>Reproduce before you believe</h3></div></a></article>
+          <article class="article-card"><a href="articles/tools-have-different-jobs/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/07-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 07</span><h3>Tools have different jobs</h3></div></a></article>
+          <article class="article-card"><a href="articles/benchmarking-without-inventing-results/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/08-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 08</span><h3>Benchmarking without inventing results</h3></div></a></article>
+          <article class="article-card"><a href="articles/standards-with-local-control/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/09-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 09</span><h3>Standards with local control</h3></div></a></article>
+          <article class="article-card"><a href="articles/a-better-next-test/"><img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/10-tellurion-italy.png" alt=""><div class="article-card-copy"><span class="article-number">FIELD NOTE 10</span><h3>A better next test</h3></div></a></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="sources">
+      <div class="container">
+        <p class="eyebrow">Sources, licences and attribution</p>
+        <h2>Open data is not attribution-free data.</h2>
+        <p class="section-intro">The repository code is AGPL-3.0. OpenStreetMap data is ODbL 1.0 and must credit OpenStreetMap contributors. ESA WorldCover 2021 v200 is CC BY 4.0 and requires the WorldCover/Copernicus acknowledgement shown on this site and its map images. See <a href="NOTICE.md">NOTICE.md</a> for the full record.</p>
+        <div class="source-list">
+          <a href="https://www.openstreetmap.org/copyright">OpenStreetMap copyright &amp; ODbL</a>
+          <a href="https://overpass-api.de/">Overpass API</a>
+          <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover data, licence &amp; citation</a>
+          <a href="https://doi.org/10.5281/zenodo.7254221">WorldCover 2021 v200 DOI</a>
+          <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>
+          <a href="LICENSE">Project AGPL-3.0 licence</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container cta">
+        <div>
+          <p class="eyebrow">Community review</p>
+          <h2>Find the first weak assumption.</h2>
+          <p>Run the kit, attach your metrics and describe the environment. A reproducible disagreement is more useful than agreement with the headline.</p>
+        </div>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">Open a test report</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <span>Tellurion Italy field test · version 0.2.0</span>
+      <span><a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a> · <a href="NOTICE.md">Sources &amp; licences</a> · <a href="https://ccancellieri.github.io">Portfolio</a></span>
+    </div>
+  </footer>
+</body>
+</html>

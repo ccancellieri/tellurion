@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tellurion, QGIS, GeoServer, and Esri: different jobs, fair questions — Tellurion Italy</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <meta name="description" content="Product comparisons become less useful when they erase the job being compared. In this project, the raster-mask lane is a Python/Rasterio workflow with an equivalent QGIS Processing comparison. QGIS is a strong fit when ">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/articles/tools-have-different-jobs/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Tellurion, QGIS, GeoServer, and Esri: different jobs, fair questions">
+  <meta property="og:description" content="Product comparisons become less useful when they erase the job being compared. In this project, the raster-mask lane is a Python/Rasterio workflow with an equivalent QGIS Processing comparison. QGIS is a strong fit when ">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/articles/tools-have-different-jobs/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/07-tellurion-italy.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="627">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Tellurion, QGIS, GeoServer, and Esri: different jobs, fair questions">
+  <meta name="twitter:description" content="Product comparisons become less useful when they erase the job being compared. In this project, the raster-mask lane is a Python/Rasterio workflow with an equivalent QGIS Processing comparison. QGIS is a strong fit when ">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/07-tellurion-italy.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#article">Skip to article</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="../../"><span class="brand-mark" aria-hidden="true"></span>Tellurion Italy</a>
+      <div class="nav-links">
+        <a href="../../#evidence">Evidence</a>
+        <a href="../../#comparison">Comparison</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
+      </div>
+    </nav>
+  </header>
+  <main class="article-main" id="article">
+    <p class="eyebrow">Field note 07 of 10</p>
+    <h1>Tellurion, QGIS, GeoServer, and Esri: different jobs, fair questions</h1>
+    <figure class="article-lead-image">
+      <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/07-tellurion-italy.png" alt="Article card for Tellurion, QGIS, GeoServer, and Esri: different jobs, fair questions">
+      <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
+    </figure>
+    <article class="article-body"><p>Product comparisons become less useful when they erase the job being compared. In this project, the raster-mask lane is a Python/Rasterio workflow with an equivalent QGIS Processing comparison. QGIS is a strong fit when desktop inspection, interactive editing, and an established processing toolbox matter.</p>
+<p>The serving lane is intentionally separate: Tellurion and GeoServer served the same read-only Rome GeoPackage and returned the same set of 100 geometries and properties. GeoServer is a mature, widely deployed server with a broad standards and extension ecosystem. Tellurion is the smaller local-serving implementation being evaluated for its own interfaces and operational shape. The measured contract and limitations are in <a href="https://github.com/ccancellieri/tellurion-italy-demo/blob/main/evidence/BENCHMARK-REPORT.md">the benchmark report</a>.</p>
+<p>Esri belongs in an honest conversation too. ArcGIS Pro and ArcGIS Enterprise/Image Server offer broad commercial desktop and enterprise workflows, support, and licensing choices. No licensed ArcGIS runtime was available for this host, so this project has no Esri performance row. It would be misleading to infer one from product architecture or from another tool’s numbers.</p>
+<p>The decision should follow the workload: who authors data, where analysis runs, which protocols clients need, what support model applies, and which constraints are non-negotiable. A small Rome workload can reveal integration friction; it cannot crown a universal winner.</p>
+<p>What selection criteria do you wish more GIS comparisons disclosed before giving a verdict? I am especially interested in constraints that do not appear in a throughput chart.</p>
+<p class="eyebrow">#QGIS #GeoServer #Esri #Tellurion #GeospatialArchitecture</p></article>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="source-list" style="margin-top: 1.5rem">
+      <a href="../../#sources">Sources &amp; licences</a>
+      <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
+      <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover / CC BY 4.0</a>
+      <a href="https://doi.org/10.5281/zenodo.7254221">WorldCover 2021 DOI</a>
+    </div>
+    <nav class="article-nav" aria-label="Article sequence"><a href="../reproduce-before-you-believe/"><span class="article-number">Previous</span><br>reproduce before you believe</a><a href="../benchmarking-without-inventing-results/"><span class="article-number">Next</span><br>benchmarking without inventing results</a></nav>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-grid"><span>Tellurion Italy · field note 7</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+  </footer>
+</body>
+</html>

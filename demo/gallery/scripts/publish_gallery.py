@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 
 
-ROOTS = ('index.html', 'styles.css', 'favicon.svg', 'LICENSE', 'NOTICE.md',
+ROOTS = ('.nojekyll', 'italy', 'index.html', 'styles.css', 'favicon.svg', 'LICENSE', 'NOTICE.md',
          'README.md', 'assets', 'demos', 'docs', 'proof', 'data', 'evidence',
          'releases', 'snapshots', 'scripts', 'tests', 'deploy', 'dist',
          'Dockerfile', 'Dockerfile-3d', 'Dockerfile-zarr', 'Dockerfile.raster',
@@ -30,7 +30,8 @@ def plan_export(source, target):
         paths = item.rglob('*') if item.is_dir() else [item]
         for path in paths:
             relative = path.relative_to(source)
-            if any(part.startswith('.') or part == '__pycache__' for part in relative.parts):
+            if relative.as_posix() != '.nojekyll' and any(
+                    part.startswith('.') or part == '__pycache__' for part in relative.parts):
                 continue
             if path.is_symlink():
                 raise ValueError(f'source symlink: {relative}')

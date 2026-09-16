@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What the 80.10% built-up result does—and does not—mean — Tellurion Italy</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <meta name="description" content="The Rome output reports that 80.10% of WorldCover pixels touched by the selected OSM line mask are classified as built-up; tree cover is 18.68%. These values are measured from the included inputs and are reproducible thr">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/articles/what-the-number-means/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="What the 80.10% built-up result does—and does not—mean">
+  <meta property="og:description" content="The Rome output reports that 80.10% of WorldCover pixels touched by the selected OSM line mask are classified as built-up; tree cover is 18.68%. These values are measured from the included inputs and are reproducible thr">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/articles/what-the-number-means/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/05-tellurion-italy.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="627">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="What the 80.10% built-up result does—and does not—mean">
+  <meta name="twitter:description" content="The Rome output reports that 80.10% of WorldCover pixels touched by the selected OSM line mask are classified as built-up; tree cover is 18.68%. These values are measured from the included inputs and are reproducible thr">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/05-tellurion-italy.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#article">Skip to article</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="../../"><span class="brand-mark" aria-hidden="true"></span>Tellurion Italy</a>
+      <div class="nav-links">
+        <a href="../../#evidence">Evidence</a>
+        <a href="../../#comparison">Comparison</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
+      </div>
+    </nav>
+  </header>
+  <main class="article-main" id="article">
+    <p class="eyebrow">Field note 05 of 10</p>
+    <h1>What the 80.10% built-up result does—and does not—mean</h1>
+    <figure class="article-lead-image">
+      <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/05-tellurion-italy.png" alt="Article card for What the 80.10% built-up result does—and does not—mean">
+      <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
+    </figure>
+    <article class="article-body"><p>The Rome output reports that 80.10% of WorldCover pixels touched by the selected OSM line mask are classified as built-up; tree cover is 18.68%. These values are measured from the included inputs and are reproducible through <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/metrics.json">the metrics file</a> and <a href="https://github.com/ccancellieri/tellurion-italy-demo#readme">runner instructions</a>.</p>
+<p>They are not a statement that 80.10% of Rome’s roads, transport corridors, or land area is built-up. In this demo, “road corridor” means a pixel touched by a selected vector line at the analysis grid. It does not add a physical buffer, infer a right-of-way, or correct for directional duplicates in OSM. The sample is a central-Rome bounding box, not an administrative boundary.</p>
+<p>There are ordinary data-quality reasons to be cautious too. WorldCover is a 2021 categorical product; an OSM refresh can reflect a different moment; and pixel resolution changes how a line interacts with classes. A plausible output still needs a definition, lineage, and a way to inspect it.</p>
+<p>That is why the kit keeps the inputs and intermediate vector output close to the result: <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Overpass JSON</a>, <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Rome vectors</a>, <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">raster window</a>, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/italy-osm-copernicus-analysis.png">the analysis screenshot</a>.</p>
+<p>If this were used as an operational signal, what validation would you add first: a buffer sensitivity test, independent network data, an updated land-cover product, or a different AOI? Please challenge the interpretation.</p>
+<p class="eyebrow">#DataQuality #GIScience #LandCover #OpenData #Rome</p></article>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="source-list" style="margin-top: 1.5rem">
+      <a href="../../#sources">Sources &amp; licences</a>
+      <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
+      <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover / CC BY 4.0</a>
+      <a href="https://doi.org/10.5281/zenodo.7254221">WorldCover 2021 DOI</a>
+    </div>
+    <nav class="article-nav" aria-label="Article sequence"><a href="../the-analysis-boundary/"><span class="article-number">Previous</span><br>the analysis boundary</a><a href="../reproduce-before-you-believe/"><span class="article-number">Next</span><br>reproduce before you believe</a></nav>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-grid"><span>Tellurion Italy · field note 5</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+  </footer>
+</body>
+</html>
