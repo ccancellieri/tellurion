@@ -6,18 +6,18 @@
   <title>Standards interfaces, locally controlled deployment — Tellurion Italy</title>
   <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <meta name="description" content="Interoperability should describe what a client can ask for, not force where an operator runs the service. The Rome demo loads generated OSM vectors into a local GeoPackage and documents Tellurion requests for OGC API Fea">
-  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/articles/standards-with-local-control/">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion/italy/articles/standards-with-local-control/">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Standards interfaces, locally controlled deployment">
   <meta property="og:description" content="Interoperability should describe what a client can ask for, not force where an operator runs the service. The Rome demo loads generated OSM vectors into a local GeoPackage and documents Tellurion requests for OGC API Fea">
-  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/articles/standards-with-local-control/">
-  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/09-tellurion-italy.png">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion/italy/articles/standards-with-local-control/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/09-tellurion-italy.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="627">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Standards interfaces, locally controlled deployment">
   <meta name="twitter:description" content="Interoperability should describe what a client can ask for, not force where an operator runs the service. The Rome demo loads generated OSM vectors into a local GeoPackage and documents Tellurion requests for OGC API Fea">
-  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/09-tellurion-italy.png">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/09-tellurion-italy.png">
   <link rel="stylesheet" href="../../styles.css">
 </head>
 <body>
@@ -28,7 +28,7 @@
       <div class="nav-links">
         <a href="../../#evidence">Evidence</a>
         <a href="../../#comparison">Comparison</a>
-        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
       </div>
     </nav>
   </header>
@@ -36,16 +36,16 @@
     <p class="eyebrow">Field note 09 of 10</p>
     <h1>Standards interfaces, locally controlled deployment</h1>
     <figure class="article-lead-image">
-      <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/09-tellurion-italy.png" alt="Article card for Standards interfaces, locally controlled deployment">
+      <img src="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/09-tellurion-italy.png" alt="Article card for Standards interfaces, locally controlled deployment">
       <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
     </figure>
     <article class="article-body"><p>Interoperability should describe what a client can ask for, not force where an operator runs the service. The Rome demo loads generated OSM vectors into a local GeoPackage and documents Tellurion requests for OGC API Features-style items and a Mapbox Vector Tile response.</p>
-<p>The measured demonstration facts are deliberately modest: the packaged Tellurion v0.2.0 binary returned GeoJSON from the local feature endpoint, and the documented Rome tile request returned an 85,996-byte MVT. These facts are recorded in <a href="https://github.com/ccancellieri/tellurion-italy-demo/blob/main/RESULTS.md">RESULTS.md</a>. They do not prove a full conformance class, broad client compatibility, or a performance characteristic.</p>
+<p>The measured demonstration facts are deliberately modest: the packaged Tellurion v0.2.0 binary returned GeoJSON from the local feature endpoint, and the documented Rome tile request returned an 85,996-byte MVT. These facts are recorded in <a href="https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/italy/RESULTS.md">RESULTS.md</a>. They do not prove a full conformance class, broad client compatibility, or a performance characteristic.</p>
 <p>Readers can repeat the local serving path from <a href="../../#reproduce">the reproducibility guide</a>: install a public Tellurion 0.3.0 binary, load the Rome data, start the server, and issue the listed requests. Binaries are available for macOS Apple Silicon, Linux x86_64 and Windows x86_64. Keep the product boundary clear: this is vector serving; the land-cover analysis remains Python/Rasterio, and the published performance table remains the historical 0.2.0 run until 0.3.0 is measured separately.</p>
 <p>GeoServer is also built around interoperable geospatial services and has a long-established ecosystem. QGIS can consume and author data through many GIS formats and services. Esri offers extensive standards-facing and proprietary integration options depending on product and deployment. Which is appropriate is an operational decision, not a badge that a single endpoint can award.</p>
 <p>If you try the endpoints, please report the client, request, media type, response, and any incompatibility. Negative interoperability results, when reproducible, are often the most actionable.</p>
 <p class="eyebrow">#OGCAPI #Interoperability #VectorTiles #OnPrem #GIS</p></article>
-    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion/issues/new">report your environment and metrics</a>.</div>
     <div class="source-list" style="margin-top: 1.5rem">
       <a href="../../#sources">Sources &amp; licences</a>
       <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
@@ -55,7 +55,7 @@
     <nav class="article-nav" aria-label="Article sequence"><a href="../benchmarking-without-inventing-results/"><span class="article-number">Previous</span><br>benchmarking without inventing results</a><a href="../a-better-next-test/"><span class="article-number">Next</span><br>a better next test</a></nav>
   </main>
   <footer class="site-footer">
-    <div class="container footer-grid"><span>Tellurion Italy · field note 9</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+    <div class="container footer-grid"><span>Tellurion Italy · field note 9</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion/tree/main/demo/gallery/italy">Source</a></span></div>
   </footer>
 </body>
 </html>

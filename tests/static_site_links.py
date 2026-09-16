@@ -110,15 +110,11 @@ def main() -> None:
             failures.append("docs/index.html missing checked external links: " + ", ".join(missing))
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    workflow_refs = re.findall(
-        r"https://github\.com/ccancellieri/tellurion-demos/actions/workflows/([^/)]+\.yml)",
-        readme,
-    )
-    if not workflow_refs:
-        failures.append("README.md: missing public workflow link")
-    for workflow in workflow_refs:
-        if not (ROOT / ".github" / "workflows" / workflow).is_file():
-            failures.append(f"README.md: workflow link targets missing file {workflow}")
+    checker = "https://github.com/ccancellieri/tellurion/blob/main/scripts/check-gallery.sh"
+    if checker not in readme:
+        failures.append("README.md: missing canonical gallery checker link")
+    if not (ROOT.parents[1] / "scripts" / "check-gallery.sh").is_file():
+        failures.append("README.md: gallery checker link targets missing file")
 
     if failures:
         raise SystemExit("\n".join(failures))

@@ -23,11 +23,11 @@ The important boundary: the COG is an asset; the dynamic APIs are links. The
 harvest happens during release, not while serving requests, and unsupported
 remote style instructions are never executed.
 
-Live demo: https://ccancellieri.github.io/tellurion-demos/demos/stac/
+Live demo: https://ccancellieri.github.io/tellurion/demos/stac/
 
-Article: https://github.com/ccancellieri/tellurion-demos/blob/main/docs/articles/from-stac-discovery-to-a-live-map.md
+Article: https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/docs/articles/from-stac-discovery-to-a-live-map.md
 
-Source and reproducibility: https://github.com/ccancellieri/tellurion-demos
+Source and reproducibility: https://github.com/ccancellieri/tellurion/tree/main/demo/gallery
 
 #STAC #OGCAPI #CloudOptimizedGeoTIFF #Rust #Geospatial #OpenStandards
 
@@ -50,8 +50,8 @@ ESA WorldCover remains CC BY 4.0. The Italy boundary retains its GISCO and
 EuroGeographics terms. The public release was verified at deployment time; it
 is an evaluation path, not a throughput or availability claim.
 
-Viewer: https://ccancellieri.github.io/tellurion-demos/demos/stac/
-Article: https://github.com/ccancellieri/tellurion-demos/blob/main/docs/articles/from-one-cog-to-italy.md
-Source: https://github.com/ccancellieri/tellurion-demos
+Viewer: https://ccancellieri.github.io/tellurion/demos/stac/
+Article: https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/docs/articles/from-one-cog-to-italy.md
+Source: https://github.com/ccancellieri/tellurion/tree/main/demo/gallery
 
 #STAC #OGCAPI #CloudOptimizedGeoTIFF #Rust #Geospatial #OpenStandards

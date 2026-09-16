@@ -1,20 +1,21 @@
 # Tellurion demos
 
 Development lives in [`demo/gallery` in Tellurion](https://github.com/ccancellieri/tellurion/tree/main/demo/gallery).
-This gallery is exported to the existing `tellurion-demos` repository to retain
-published URLs. Edit the source there, not a publication copy.
+The canonical gallery is published at <https://ccancellieri.github.io/tellurion/>.
+Edit this source tree; historical snapshots and release entry points remain frozen.
 See [versioned demos and publication](docs/demo-versioning.md) and the
 [retained demo versions](releases/).
 The [Italy field case](italy/) is now included in the same source tree;
-[hosting and download migration](italy/MIGRATION.md) is still in progress.
+[hosting migration](italy/MIGRATION.md) is still in progress.
 
 A human-first, reproducible gallery for Tellurion's vector, raster,
 multidimensional, 3D, filtering, catalog and server-rendering paths.
 
-**Visual entry point:** <https://ccancellieri.github.io/tellurion-demos/>
+**Visual entry point:** <https://ccancellieri.github.io/tellurion/>
 
-The public gallery and each live backend are checked daily by the
-[`Daily verification and deployment gate`](https://github.com/ccancellieri/tellurion-demos/actions/workflows/daily.yml).
+The [gallery checker](https://github.com/ccancellieri/tellurion/blob/main/scripts/check-gallery.sh)
+validates source and static contracts locally. Live backend identity and health
+require separate endpoint checks; the Render repository switch is pending.
 
 This repository intentionally separates the public landing pages from the
 machine-readable OGC API endpoints. Start with the visual gallery; use the API
@@ -36,13 +37,13 @@ is offered.
 
 | Lane | Public viewer | Tellurion path | Evidence boundary |
 |---|---|---|---|
-| Vector | [Interactive road map](https://ccancellieri.github.io/tellurion-demos/demos/vector/) | GeoPackage → OGC API Features and MVT | 5,603-feature OpenStreetMap case sample |
-| Raster | [Interactive land-cover map](https://ccancellieri.github.io/tellurion-demos/demos/raster/) | COG → OGC API Tiles/Maps PNG | ESA WorldCover sample, correctly attributed |
-| Zarr | [Two-slice comparison](https://ccancellieri.github.io/tellurion-demos/demos/zarr/) | Zarr v2 shape `[time, y, x]` → PNG | Synthetic fixed slices; no on-wire dimension-selection claim |
-| 3D | [Interactive GLB scene](https://ccancellieri.github.io/tellurion-demos/demos/3d/) | polygons → MVT → extrusion → GLB/3D Tiles 1.1 | Synthetic footprints; no OGC API 3D GeoVolumes conformance claim |
-| CQL2 | [Live query workbench](https://ccancellieri.github.io/tellurion-demos/demos/query/) | CQL2 text → GeoPackage filter → GeoJSON | Bounded to 50 features and this driver's advertised filter classes |
-| STAC harvest | [Italy live explorer](https://ccancellieri.github.io/tellurion-demos/demos/stac/) | reviewed 17-source country-to-neighbourhood release → STAC/Features resources and dynamic PNG tiles | dynamic PNG tile composition, not a raster OGC API Maps conformance claim; ESA, Microsoft, and CC BY 4.0 attribution retained |
-| Maps + Styles | [Server-rendered Rome map](https://ccancellieri.github.io/tellurion-demos/demos/maps/) | MVT mosaic → PNG, optionally painted by MapLibre Style JSON | Maps 1.0 path; Styles surface is draft-aligned and read-only |
+| Vector | [Interactive road map](https://ccancellieri.github.io/tellurion/demos/vector/) | GeoPackage → OGC API Features and MVT | 5,603-feature OpenStreetMap case sample |
+| Raster | [Interactive land-cover map](https://ccancellieri.github.io/tellurion/demos/raster/) | COG → OGC API Tiles/Maps PNG | ESA WorldCover sample, correctly attributed |
+| Zarr | [Two-slice comparison](https://ccancellieri.github.io/tellurion/demos/zarr/) | Zarr v2 shape `[time, y, x]` → PNG | Synthetic fixed slices; no on-wire dimension-selection claim |
+| 3D | [Interactive GLB scene](https://ccancellieri.github.io/tellurion/demos/3d/) | polygons → MVT → extrusion → GLB/3D Tiles 1.1 | Synthetic footprints; no OGC API 3D GeoVolumes conformance claim |
+| CQL2 | [Live query workbench](https://ccancellieri.github.io/tellurion/demos/query/) | CQL2 text → GeoPackage filter → GeoJSON | Bounded to 50 features and this driver's advertised filter classes |
+| STAC harvest | [Italy live explorer](https://ccancellieri.github.io/tellurion/demos/stac/) | reviewed 17-source country-to-neighbourhood release → STAC/Features resources and dynamic PNG tiles | dynamic PNG tile composition, not a raster OGC API Maps conformance claim; ESA, Microsoft, and CC BY 4.0 attribution retained |
+| Maps + Styles | [Server-rendered Rome map](https://ccancellieri.github.io/tellurion/demos/maps/) | MVT mosaic → PNG, optionally painted by MapLibre Style JSON | Maps 1.0 path; Styles surface is draft-aligned and read-only |
 
 Read the STAC harvest field note,
 [From STAC discovery to a live map](docs/articles/from-stac-discovery-to-a-live-map.md),
@@ -109,7 +110,7 @@ sh tests/render_3d_contract.sh
 ## Related work
 
 - [Tellurion public proof brief](proof/) — public evidence, evaluation routes, and current deployment boundaries.
-- [Tellurion Italy field case](https://github.com/ccancellieri/tellurion-italy-demo) — reproducible OSM/WorldCover analysis and scoped benchmarks.
+- [Tellurion Italy field case](https://github.com/ccancellieri/tellurion/tree/main/demo/gallery/italy) — reproducible OSM/WorldCover analysis and scoped benchmarks.
 - [Carlo Cancellieri's portfolio](https://ccancellieri.github.io/) and [LinkedIn](https://www.linkedin.com/in/ccancellieri/).
 
 Built by Carlo Cancellieri, a geospatial platform engineer and former GeoServer

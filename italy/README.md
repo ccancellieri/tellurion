@@ -11,11 +11,11 @@ central Rome:
   Esri is discussed but not timed without a licensed runtime.
 
 Read the complete site at:
-<https://ccancellieri.github.io/tellurion-italy-demo/>
+<https://ccancellieri.github.io/tellurion/italy/>
 
 For the format-spanning capability gallery—vector, COG raster, Zarr and 3D
-GLB—use the generic [Tellurion demos hub](https://ccancellieri.github.io/tellurion-demos/).
-The gallery's [STAC-to-map field note](https://ccancellieri.github.io/tellurion-demos/demos/stac/)
+GLB—use the generic [Tellurion demos hub](https://ccancellieri.github.io/tellurion/).
+The gallery's [STAC-to-map field note](https://ccancellieri.github.io/tellurion/demos/stac/)
 traces ESA WorldCover discovery through source provenance, GeoPackage and COG
 storage, raster tile metadata and rendered maps.
 
@@ -27,7 +27,7 @@ sample used by the field test. The image downloads the versioned demo kit and
 Tellurion 0.3.0 Linux binary, verifies both published SHA-256 checksums, builds
 the GeoPackage during the image build, and runs as an unprivileged user.
 
-Live demo site (recommended): <https://ccancellieri.github.io/tellurion-italy-demo/>
+Live demo site (recommended): <https://ccancellieri.github.io/tellurion/italy/>
 
 Technical API (JSON): [Rome collection metadata](https://tellurion-vector-rome.onrender.com/public/features/catalogs/default/collections/rome_roads)
 
@@ -59,7 +59,7 @@ Deployment files:
 ## Download and reproduce
 
 Download the versioned kit from the
-[demo-v0.2.0 release](https://github.com/ccancellieri/tellurion-italy-demo/releases/tag/demo-v0.2.0),
+[demo-v0.2.0 release](https://github.com/ccancellieri/tellurion/releases/tag/archive-italy-demo-v0.2.0),
 then:
 
 ```sh
@@ -79,7 +79,7 @@ access. To refresh both public sources:
 The public cross-platform path reproduces the Python/Rasterio analysis.
 Tellurion 0.3.0 binaries are now public for macOS Apple Silicon, Linux x86_64
 and Windows x86_64 in the
-[public product release](https://github.com/ccancellieri/tellurion-demos/releases/tag/tellurion-v0.3.0).
+[public product release](https://github.com/ccancellieri/tellurion/releases/tag/archive-tellurion-v0.3.0).
 The serving commands below select the matching macOS or Linux archive
 automatically; Windows users can run the installer from Git Bash.
 
@@ -94,11 +94,11 @@ site.
 
 The binaries live in GitHub Releases rather than Git history:
 
-- [macOS Apple Silicon](https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/tellurion-v0.3.0-aarch64-apple-darwin.tar.gz)
-- [Linux x86_64 (static musl)](https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/tellurion-v0.3.0-x86_64-unknown-linux-musl.tar.gz)
-- [Windows x86_64 (GNU)](https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/tellurion-v0.3.0-x86_64-pc-windows-gnu.zip)
-- [corresponding source](https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/tellurion-v0.3.0-source-b6eb4a5.zip)
-- [SHA-256 manifest](https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0/SHA256SUMS)
+- [macOS Apple Silicon](https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-v0.3.0/tellurion-v0.3.0-aarch64-apple-darwin.tar.gz)
+- [Linux x86_64 (static musl)](https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-v0.3.0/tellurion-v0.3.0-x86_64-unknown-linux-musl.tar.gz)
+- [Windows x86_64 (GNU)](https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-v0.3.0/tellurion-v0.3.0-x86_64-pc-windows-gnu.zip)
+- [corresponding source](https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-v0.3.0/tellurion-v0.3.0-source-b6eb4a5.zip)
+- [SHA-256 manifest](https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-v0.3.0/SHA256SUMS)
 
 From the extracted demo kit:
 
@@ -173,4 +173,4 @@ legal links. The software licence does not replace the source-data licences.
 
 Open an issue with your operating system, architecture, command, timing,
 `metrics.json` and the first unclear or failing step:
-<https://github.com/ccancellieri/tellurion-italy-demo/issues/new>.
+<https://github.com/ccancellieri/tellurion/issues/new>.

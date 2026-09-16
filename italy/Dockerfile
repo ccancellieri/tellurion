@@ -9,9 +9,9 @@ ARG TELLURION_TARGET=x86_64-unknown-linux-musl
 ARG DEMO_VERSION=v0.2.0
 
 ENV TELLURION_ARCHIVE=tellurion-${TELLURION_VERSION}-${TELLURION_TARGET}.tar.gz
-ENV TELLURION_RELEASE=https://github.com/ccancellieri/tellurion-italy-demo/releases/download/tellurion-${TELLURION_VERSION}
+ENV TELLURION_RELEASE=https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-${TELLURION_VERSION}
 ENV DEMO_ARCHIVE=tellurion-italy-demo-${DEMO_VERSION}.zip
-ENV DEMO_RELEASE=https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-${DEMO_VERSION}
+ENV DEMO_RELEASE=https://github.com/ccancellieri/tellurion/releases/download/archive-italy-demo-${DEMO_VERSION}
 
 RUN curl --fail --location --retry 3 \
       --output "${TELLURION_ARCHIVE}" "${TELLURION_RELEASE}/${TELLURION_ARCHIVE}" \

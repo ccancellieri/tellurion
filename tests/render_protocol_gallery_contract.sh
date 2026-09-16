@@ -34,9 +34,9 @@ require_file demos/maps/index.html
 require_text index.html 'https://tellurion-public-demo.onrender.com/ui/'
 require_text index.html 'Try your own public file'
 require_text index.html 'COG and GeoParquet use bounded range reads'
-require_text index.html 'property="og:image" content="https://ccancellieri.github.io/tellurion-demos/assets/social/tellurion-try-your-file-1200x627.png"'
+require_text index.html 'property="og:image" content="https://ccancellieri.github.io/tellurion/assets/social/tellurion-try-your-file-1200x627.png"'
 require_text index.html 'name="twitter:card" content="summary_large_image"'
-require_text index.html 'rel="canonical" href="https://ccancellieri.github.io/tellurion-demos/"'
+require_text index.html 'rel="canonical" href="https://ccancellieri.github.io/tellurion/"'
 require_text assets/social/tellurion-try-your-file-1200x627.svg 'Try Tellurion with your own geospatial data'
 
 python3 - <<'PY'

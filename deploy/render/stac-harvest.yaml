@@ -60,12 +60,12 @@ collections:
             title: ESA WorldCover v200 2021 COG — byte-identical official mirror
             roles: [data]
           source_snapshot:
-            href: https://raw.githubusercontent.com/ccancellieri/tellurion-demos/main/data/stac/esa-worldcover/item.json
+            href: https://raw.githubusercontent.com/ccancellieri/tellurion/main/demo/gallery/data/stac/esa-worldcover/item.json
             type: application/geo+json
             title: Harvested upstream STAC Item snapshot
             roles: [metadata]
           provenance_manifest:
-            href: https://raw.githubusercontent.com/ccancellieri/tellurion-demos/main/data/stac/esa-worldcover/manifest.json
+            href: https://raw.githubusercontent.com/ccancellieri/tellurion/main/demo/gallery/data/stac/esa-worldcover/manifest.json
             type: application/json
             title: Harvest provenance manifest
             roles: [metadata, provenance]
@@ -99,12 +99,12 @@ collections:
           - { name: Microsoft, roles: [host], url: "https://planetarycomputer.microsoft.com" }
         assets:
           source_snapshot:
-            href: https://raw.githubusercontent.com/ccancellieri/tellurion-demos/main/data/stac/esa-worldcover-italy/manifest.json
+            href: https://raw.githubusercontent.com/ccancellieri/tellurion/main/demo/gallery/data/stac/esa-worldcover-italy/manifest.json
             type: application/json
             title: Harvested source-set and provenance snapshot
             roles: [metadata, provenance]
           boundary_snapshot:
-            href: https://raw.githubusercontent.com/ccancellieri/tellurion-demos/main/data/stac/esa-worldcover-italy/boundary.geojson
+            href: https://raw.githubusercontent.com/ccancellieri/tellurion/main/demo/gallery/data/stac/esa-worldcover-italy/boundary.geojson
             type: application/geo+json
             title: Pinned GISCO Italy selection boundary
             roles: [metadata]

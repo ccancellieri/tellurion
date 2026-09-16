@@ -37,7 +37,7 @@ require_text Dockerfile-3d 'USER 10001:10001'
 require_text Dockerfile-3d 'ENTRYPOINT ["/app/tellurion"]'
 
 require_text render.yaml 'name: tellurion-3d-demo'
-require_text render.yaml 'dockerfilePath: ./Dockerfile-3d'
+require_text render.yaml 'dockerfilePath: ./demo/gallery/Dockerfile-3d'
 require_text render.yaml 'region: frankfurt'
 require_text render.yaml 'plan: free'
 require_text render.yaml 'deploy/render/three-d.yaml'

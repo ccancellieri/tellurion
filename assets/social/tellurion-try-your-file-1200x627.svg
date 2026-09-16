@@ -74,5 +74,5 @@
 
   <line x1="68" y1="550" x2="1132" y2="550" stroke="#75e6c4" stroke-opacity="0.22"/>
   <text x="69" y="585" fill="#eaf7f2" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">No account. No upload. No persistent catalog.</text>
-  <text x="1131" y="585" text-anchor="end" fill="#75e6c4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">ccancellieri.github.io/tellurion-demos</text>
+  <text x="1131" y="585" text-anchor="end" fill="#75e6c4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">ccancellieri.github.io/tellurion</text>
 </svg>
