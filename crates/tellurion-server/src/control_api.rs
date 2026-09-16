@@ -1376,7 +1376,8 @@ mod tests {
         ControlCommit, ControlEvent, ControlEventCursor, ControlOperation, ControlRevision,
         ControlScope, ControlSnapshot, ControlStore, Error, FileStyleStore, InMemoryControlStore,
         MokaTileCache, PathPolicy, PolicyEffect, PrincipalIdentity, Resolver, RoleBinding,
-        StaticResolver, StyleStore, TileCache, VersionedControlOperation, VersionedControlSnapshot,
+        SettingsDecl, StaticResolver, StyleStore, TileCache, VersionedControlOperation,
+        VersionedControlSnapshot,
     };
     use tokio::sync::Notify;
     use tower::ServiceExt;
