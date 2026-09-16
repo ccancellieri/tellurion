@@ -12,7 +12,7 @@ __pycache__/
 .env.*
 *.pem
 
-# local agent/editor context — never committed
+# Personal agent/editor context — private by default
 CLAUDE.md
 .claude/
 AGENTS.md
@@ -42,3 +42,12 @@ demo-data/
 *.sqlite-shm
 .worktrees/
 .superpowers/
+
+# Reviewed, portable development guidance is intentionally versioned.
+!/AGENTS.md
+!/.agents/
+/.agents/*
+!/.agents/skills/
+/.agents/skills/*
+!/.agents/skills/tellurion-development/
+!/.agents/skills/tellurion-development/**

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Tellurion Development"
+  short_description: "Rust geospatial contracts and bounded performance"
+  default_prompt: "Use $tellurion-development to implement or review this Tellurion change against its development guidelines."
+policy:
+  allow_implicit_invocation: true
