@@ -269,6 +269,47 @@ tellurion-control-shell {
   padding: 0.6rem 0.75rem;
 }
 
+.control-editor {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.control-editor label {
+  display: block;
+  margin-top: 1rem;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.control-editor input {
+  display: block;
+  box-sizing: border-box;
+  width: min(100%, 18rem);
+  min-height: 44px;
+  margin-top: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+
+.control-editor input:focus-visible,
+.control-editor button:focus-visible {
+  outline: 3px solid var(--revision-amber);
+  outline-offset: 3px;
+}
+
+.control-editor input[aria-invalid='true'] {
+  border-color: var(--propagation-red);
+}
+
+.control-editor__actions .control-more {
+  width: auto;
+  min-width: 11rem;
+}
+
 .control-audit-rail {
   border-left: 1px solid var(--border);
 }

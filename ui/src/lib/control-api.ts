@@ -76,6 +76,25 @@ export interface ControlAuditPage {
   nextAfter?: string;
 }
 
+export interface PlatformSettingsEnvelope {
+  controlRevision: number;
+  entityVersion: string;
+  resource: Record<string, unknown>;
+}
+
+export interface PlatformSettingsPreview {
+  baseRevision: number;
+  prospectiveRevision: number;
+  changedResources: string[];
+  entityVersions: Record<string, string>;
+}
+
+export interface PlatformSettingsCommit {
+  revision: number;
+  changedResources: string[];
+  replayed: boolean;
+}
+
 export interface ControlReadClient {
   session(): Promise<ControlSessionView>;
   overview(): Promise<ControlOverview>;
@@ -122,6 +141,20 @@ export class ControlConflictError extends ControlApiError {
   }
 }
 
+export class ControlEntityConflictError extends ControlApiError {
+  constructor() {
+    super(409, 'Platform settings changed. Refresh and preview the draft again.');
+    this.name = 'ControlEntityConflictError';
+  }
+}
+
+export class ControlUncertainWriteError extends ControlApiError {
+  constructor() {
+    super(0, 'The settings apply outcome is uncertain. Retry the same request before editing again.');
+    this.name = 'ControlUncertainWriteError';
+  }
+}
+
 type UnknownRecord = Record<string, unknown>;
 const MAX_CURSOR_LENGTH = 512;
 const MAX_PROBLEM_FIELD_LENGTH = 256;
@@ -148,6 +181,31 @@ function boundedText(value: unknown, limit: number): string | undefined {
 
 function nonEmptyText(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function hasUnsafeIntegralJsonNumber(raw: string): boolean {
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+    if (char !== '-' && (char < '0' || char > '9')) continue;
+    let end = index + 1;
+    while (end < raw.length && /[0-9eE+.-]/.test(raw[end])) end += 1;
+    const token = raw.slice(index, end);
+    if (/^-?(0|[1-9][0-9]*)$/.test(token) && !Number.isSafeInteger(Number(token))) return true;
+    index = end - 1;
+  }
+  return false;
 }
 
 function nodeIdentifier(source: UnknownRecord, key: 'tenant' | 'catalog' | 'collection'): string | null | undefined {
@@ -353,6 +411,42 @@ function readAudit(value: unknown): ControlAuditPage | null {
   };
 }
 
+function readPlatformSettings(value: unknown): PlatformSettingsEnvelope | null {
+  const source = record(value);
+  if (!source) return null;
+  const controlRevision = unsignedSafeInteger(source.control_revision);
+  const entityVersion = nonEmptyText(source.entity_version);
+  const resource = record(source.resource);
+  return controlRevision === undefined || !entityVersion || !resource
+    ? null
+    : { controlRevision, entityVersion, resource };
+}
+
+function readPlatformPreview(value: unknown): PlatformSettingsPreview | null {
+  const source = record(value);
+  if (!source) return null;
+  const baseRevision = unsignedSafeInteger(source.base_revision);
+  const prospectiveRevision = unsignedSafeInteger(source.prospective_revision);
+  const changedResources = source.changed_resources;
+  const entityVersions = record(source.entity_versions);
+  if (baseRevision === undefined || prospectiveRevision === undefined ||
+    !Array.isArray(changedResources) || !changedResources.every((entry) => typeof entry === 'string') ||
+    !entityVersions || !Object.values(entityVersions).every((entry) => typeof entry === 'string')) return null;
+  return {
+    baseRevision, prospectiveRevision, changedResources, entityVersions: entityVersions as Record<string, string>,
+  };
+}
+
+function readPlatformCommit(value: unknown): PlatformSettingsCommit | null {
+  const source = record(value);
+  if (!source) return null;
+  const revision = unsignedSafeInteger(source.revision);
+  const changedResources = source.changed_resources;
+  if (revision === undefined || !Array.isArray(changedResources) ||
+    !changedResources.every((entry) => typeof entry === 'string') || typeof source.replayed !== 'boolean') return null;
+  return { revision, changedResources, replayed: source.replayed };
+}
+
 export class ProductionControlReadClient implements ControlReadClient {
   async session(signal?: AbortSignal): Promise<ControlSessionView> {
     return this.read('/_auth/control/session', 'Control session', readSession, signal);
@@ -368,6 +462,18 @@ export class ProductionControlReadClient implements ControlReadClient {
 
   effectiveSettings(signal?: AbortSignal): Promise<EffectiveSettingsView> {
     return this.read('/_control/v1/platform/effective-settings', 'Effective settings', readEffectiveSettings, signal);
+  }
+
+  platformSettings(signal?: AbortSignal): Promise<PlatformSettingsEnvelope> {
+    return this.read('/_control/v1/platform/settings', 'Platform settings', readPlatformSettings, signal, true);
+  }
+
+  previewPlatformSettings(body: string, csrfToken: string): Promise<PlatformSettingsPreview> {
+    return this.write('/_control/v1/platform/settings?dry_run=true', body, csrfToken, readPlatformPreview, false);
+  }
+
+  applyPlatformSettings(body: string, csrfToken: string): Promise<PlatformSettingsCommit> {
+    return this.write('/_control/v1/platform/settings', body, csrfToken, readPlatformCommit, true);
   }
 
   async audit(after?: string, signal?: AbortSignal): Promise<ControlAuditPage> {
@@ -394,6 +500,7 @@ export class ProductionControlReadClient implements ControlReadClient {
     label: string,
     parse: (value: unknown) => T | null,
     signal?: AbortSignal,
+    preserveIntegralPrecision = false,
   ): Promise<T> {
     let response: Response;
     try {
@@ -412,12 +519,59 @@ export class ProductionControlReadClient implements ControlReadClient {
     }
     let payload: unknown;
     try {
-      payload = await response.json();
+      if (preserveIntegralPrecision) {
+        const raw = await response.text();
+        if (hasUnsafeIntegralJsonNumber(raw)) throw new Error('unsafe integer');
+        payload = JSON.parse(raw);
+      } else {
+        payload = await response.json();
+      }
     } catch {
       throw new ControlApiError(response.status, `${label} is unavailable.`);
     }
     const result = parse(payload);
     if (!result) throw new ControlApiError(response.status, `${label} is unavailable.`);
+    return result;
+  }
+
+  private async write<T>(
+    path: string,
+    body: string,
+    csrfToken: string,
+    parse: (value: unknown) => T | null,
+    mayHaveCommitted: boolean,
+  ): Promise<T> {
+    let response: Response;
+    try {
+      response = await fetch(path, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'x-tellurion-csrf': csrfToken,
+        },
+        body,
+      });
+    } catch {
+      throw mayHaveCommitted ? new ControlUncertainWriteError() : new ControlApiError(0, 'Platform settings preview is unavailable.');
+    }
+    if (!response.ok) {
+      const code = await readProblemCode(response);
+      if (response.status === 409 && code === 'ControlEntityVersionConflict') throw new ControlEntityConflictError();
+      if (response.status === 409 && code === 'ControlRevisionConflict') throw new ControlConflictError();
+      if (mayHaveCommitted && response.status >= 500) throw new ControlUncertainWriteError();
+      throw readError(response.status, 'Platform settings', code);
+    }
+    let result: T | null;
+    try {
+      result = parse(await response.json());
+    } catch {
+      result = null;
+    }
+    if (!result) {
+      throw mayHaveCommitted ? new ControlUncertainWriteError() : new ControlApiError(response.status, 'Platform settings preview is unavailable.');
+    }
     return result;
   }
 }

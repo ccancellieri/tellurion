@@ -18,6 +18,7 @@ import {
   simulateFixturePlatformSetting,
   type FixtureSettingSimulation,
 } from '../lib/control-fixtures';
+import { TellurionPlatformSettingsEditor } from './platform-settings-editor';
 
 export type ControlMode = 'production' | 'fixture';
 
@@ -60,11 +61,12 @@ export function workspaceModeFor(pathname: string, buildMode: string): ControlMo
   return control ? 'production' : undefined;
 }
 
-/** A cookie-authenticated, read-only platform control workspace. */
+/** A cookie-authenticated platform control workspace. */
 export class TellurionControlShell extends HTMLElement {
   client!: ControlReadClient;
   mode: ControlMode = 'production';
   #overview?: ControlOverview;
+  #overviewRefreshError?: string;
   #tenants: TenantView[] = [];
   #tenantAfter?: string;
   #tenantError?: string;
@@ -79,6 +81,7 @@ export class TellurionControlShell extends HTMLElement {
   #fixtureSimulation?: FixtureSettingSimulation;
   #fixtureValidationError?: string;
   #fixtureStatus?: string;
+  #editor?: TellurionPlatformSettingsEditor;
   #generation = 0;
 
   connectedCallback(): void {
@@ -116,7 +119,9 @@ export class TellurionControlShell extends HTMLElement {
   }
 
   #clearState(): void {
+    this.#editor = undefined;
     this.#overview = undefined;
+    this.#overviewRefreshError = undefined;
     this.#tenants = [];
     this.#tenantAfter = undefined;
     this.#tenantError = undefined;
@@ -147,6 +152,28 @@ export class TellurionControlShell extends HTMLElement {
     if (!this.#isCurrent(generation, client)) return;
     const [overview, tenants, settings, audit] = results;
     if (overview.status === 'rejected') {
+      if (this.#editor?.isConnected && this.#editor.hasUnresolvedWrite()) {
+        const denied = overview.reason instanceof ControlForbiddenError;
+        const expired = overview.reason instanceof ControlSignInRequiredError;
+        this.#overviewRefreshError = denied
+          ? 'Platform access is unavailable. The pending settings request remains in this tab.'
+          : expired
+            ? 'Sign in is required to refresh platform status. The pending settings request remains in this tab.'
+            : 'Platform overview refresh failed. Current values may be stale; the pending settings request remains in this tab.';
+        if (denied || expired) {
+          this.#overview = undefined;
+          this.#tenants = [];
+          this.#tenantAfter = undefined;
+          this.#tenantError = 'Tenant inventory is unavailable pending authorization.';
+          this.#settings = undefined;
+          this.#settingsError = 'Effective settings are unavailable pending authorization.';
+          this.#audit = [];
+          this.#auditAfter = undefined;
+          this.#auditError = 'Audit log is unavailable pending authorization.';
+        }
+        this.#renderWorkspace();
+        return;
+      }
       if (overview.reason instanceof ControlForbiddenError) {
         this.#renderForbidden();
         return;
@@ -159,10 +186,26 @@ export class TellurionControlShell extends HTMLElement {
       return;
     }
     this.#overview = overview.value;
+    this.#overviewRefreshError = undefined;
     this.#acceptTenants(tenants);
     this.#acceptSettings(settings);
     this.#acceptAudit(audit);
     this.#renderWorkspace();
+    if (this.mode === 'production' && client instanceof ProductionControlReadClient) {
+      this.#mountEditor(client, generation);
+    }
+  }
+
+  #mountEditor(client: ProductionControlReadClient, generation: number): void {
+    const slot = this.querySelector<HTMLElement>('[data-field="platform-editor-slot"]');
+    if (!slot || this.#editor) return;
+    const editor = document.createElement('tellurion-platform-settings-editor') as TellurionPlatformSettingsEditor;
+    editor.client = client;
+    this.#editor = editor;
+    editor.addEventListener('platform-settings-applied', () => {
+      if (this.#isCurrent(generation, client)) void this.#loadPanels(generation, client);
+    });
+    slot.append(editor);
   }
 
   #acceptTenants(result: PromiseSettledResult<ControlPage<TenantView>>): void {
@@ -248,7 +291,7 @@ export class TellurionControlShell extends HTMLElement {
     const audit = this.#auditError
       ? `<p class="control-note control-note--error">${escape(this.#auditError)}</p>`
       : this.#renderAudit();
-    this.innerHTML = `
+    const markup = `
       <section class="control-workspace" data-mode="${this.mode}">
         ${this.mode === 'fixture' ? '<p class="control-demo-boundary">Demonstration data · fixture-only workspace</p>' : ''}
         <nav class="control-nav" aria-label="Workspace navigation">
@@ -268,11 +311,15 @@ export class TellurionControlShell extends HTMLElement {
             <p class="control-breadcrumb">Control / platform</p>
             <h1 id="control-workspace-heading" tabindex="-1">Platform control ledger</h1>
             <p class="control-coordinate">/platform · revision ${revision} · applied ${applied} · <span class="control-coordinate__${propagation}">${propagation}</span></p>
-            ${overview ? this.#renderLedger(overview) : '<p class="control-note" role="status">Loading platform overview…</p>'}
+            <div data-field="control-refresh-status" role="alert" ${this.#overviewRefreshError ? '' : 'hidden'} class="control-note control-note--error">${this.#overviewRefreshError ? escape(this.#overviewRefreshError) : ''}</div>
+            <div data-field="control-ledger">${overview ? this.#renderLedger(overview) : this.#overviewRefreshError
+              ? '<p class="control-note">The current platform ledger is unavailable.</p>'
+              : '<p class="control-note" role="status">Loading platform overview…</p>'}</div>
             <section class="control-sheet__section" aria-labelledby="effective-settings-heading">
               <div class="control-sheet__section-heading"><p class="control-label">Resolved state</p><h2 id="effective-settings-heading">Effective settings</h2></div>
               ${effective}
             </section>
+            ${this.mode === 'production' ? '<div data-field="platform-editor-slot"></div>' : ''}
             ${this.mode === 'fixture' ? this.#renderFixtureSimulator() : ''}
           </main>
           <aside class="control-audit-rail" aria-labelledby="control-audit-heading">
@@ -282,6 +329,24 @@ export class TellurionControlShell extends HTMLElement {
           </aside>
         </div>
       </section>`;
+    if (this.#editor?.isConnected) {
+      const template = document.createElement('template');
+      template.innerHTML = markup;
+      for (const selector of [
+        '.control-scope-rail', '.control-audit-rail', '.control-coordinate',
+        '[data-field="control-refresh-status"]', '[data-field="control-ledger"]',
+        '[aria-labelledby="effective-settings-heading"]',
+      ]) {
+        const current = this.querySelector(selector);
+        const next = template.content.querySelector(selector);
+        if (current && next) current.replaceWith(next);
+      }
+      this.querySelector<HTMLButtonElement>('[data-action="more-tenants"]')?.addEventListener('click', () => void this.#moreTenants());
+      this.querySelector<HTMLButtonElement>('[data-action="more-audit"]')?.addEventListener('click', () => void this.#moreAudit());
+      this.querySelector<HTMLButtonElement>('[data-scope="platform"]')?.addEventListener('click', () => this.#focusHeading());
+      return;
+    }
+    this.innerHTML = markup;
     this.querySelector<HTMLButtonElement>('[data-scope="platform"]')?.addEventListener('click', () => this.#focusHeading());
     this.querySelector<HTMLButtonElement>('[data-action="more-tenants"]')?.addEventListener('click', () => void this.#moreTenants());
     this.querySelector<HTMLButtonElement>('[data-action="more-audit"]')?.addEventListener('click', () => void this.#moreAudit());
