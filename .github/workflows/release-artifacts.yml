@@ -626,15 +626,15 @@ jobs:
           unzip -Z1 "${source_archives[0]}" | grep -Fx THIRD_PARTY_NOTICES.json >/dev/null
           unzip -Z1 "${source_archives[0]}" | grep -Fx THIRD_PARTY_NOTICES.txt >/dev/null
           for archive in dist/tellurion-v*.tar.gz; do
-            tar -tzf "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
-            tar -tzf "$archive" | grep -Eq '/RUST_THIRD_PARTY_NOTICES\.json$'
-            tar -tzf "$archive" | grep -Eq '/RUST_THIRD_PARTY_NOTICES\.txt$'
-            tar -tzf "$archive" | grep -Eq '/licenses/musl/musl-1\.2\.5\.tar\.gz$'
+            tar -tzf "$archive" | grep -E '/THIRD_PARTY_NOTICES\.json$' >/dev/null
+            tar -tzf "$archive" | grep -E '/RUST_THIRD_PARTY_NOTICES\.json$' >/dev/null
+            tar -tzf "$archive" | grep -E '/RUST_THIRD_PARTY_NOTICES\.txt$' >/dev/null
+            tar -tzf "$archive" | grep -E '/licenses/musl/musl-1\.2\.5\.tar\.gz$' >/dev/null
           done
           for archive in dist/tellurion-v*-pc-windows-msvc.zip; do
-            unzip -Z1 "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
-            unzip -Z1 "$archive" | grep -Eq '/RUST_THIRD_PARTY_NOTICES\.json$'
-            unzip -Z1 "$archive" | grep -Eq '/RUST_THIRD_PARTY_NOTICES\.txt$'
+            unzip -Z1 "$archive" | grep -E '/THIRD_PARTY_NOTICES\.json$' >/dev/null
+            unzip -Z1 "$archive" | grep -E '/RUST_THIRD_PARTY_NOTICES\.json$' >/dev/null
+            unzip -Z1 "$archive" | grep -E '/RUST_THIRD_PARTY_NOTICES\.txt$' >/dev/null
           done
           (
             cd dist

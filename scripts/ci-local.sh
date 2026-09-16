@@ -253,6 +253,7 @@ phase_artifact_audit() { # ci.yml job: artifact-audit
     rm -f "$dependency_summary"
     [ "$dependency_status" -eq 0 ] &&
         python3 -m unittest discover -s scripts/tests -p 'test_native_release_evidence.py' &&
+        python3 -m unittest discover -s scripts/tests -p 'test_release_archive_aggregation.py' &&
         ./scripts/check-ci-workflows.sh &&
         ./scripts/test-ci-workflows.sh &&
         ./scripts/audit-artifacts.sh &&

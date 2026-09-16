@@ -33,6 +33,13 @@ directory as the candidate files, then run:
 shasum -a 256 -c SHA256SUMS
 ```
 
+On Windows without `shasum`, calculate the downloaded ZIP's hash in PowerShell
+and compare it with that file's entry in `SHA256SUMS`:
+
+```powershell
+Get-FileHash .\tellurion-v0.5.0-x86_64-pc-windows-msvc.zip -Algorithm SHA256
+```
+
 For a public release, also verify the GitHub artifact attestation against this
 repository. For example, the Linux archive is verified with:
 
