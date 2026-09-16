@@ -62,7 +62,7 @@ jobs:
     steps:
       - name: Verify release manifest is public and complete
         run: |
-          release=https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-v0.3.0
+          release=https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-v0.3.0
           curl --fail --location --retry 3 --output SHA256SUMS "$release/SHA256SUMS"
           grep -Fq 'tellurion-v0.3.0-aarch64-apple-darwin.tar.gz' SHA256SUMS
           grep -Fq 'tellurion-v0.3.0-source-b6eb4a5.zip' SHA256SUMS
@@ -78,7 +78,7 @@ jobs:
       matrix:
         include:
           - demo: human-facing gallery
-            url: https://ccancellieri.github.io/tellurion-demos/
+            url: https://ccancellieri.github.io/tellurion/
             content_type: text/html
             minimum_bytes: 1000
           - demo: vector landing links

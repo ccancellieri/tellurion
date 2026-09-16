@@ -60,7 +60,7 @@
             <span class="station">02 / SERVICES</span>
             <h3>Read-only deployments</h3>
             <p>Five separately defined services expose bounded vector, raster, multidimensional, 3D and harvest demonstrations.</p>
-            <a href="https://github.com/ccancellieri/tellurion-demos/blob/main/render.yaml">Inspect the service definitions →</a>
+            <a href="https://github.com/ccancellieri/tellurion/blob/main/demo/gallery/render.yaml">Inspect the service definitions →</a>
           </li>
           <li>
             <span class="station">03 / OUTPUTS</span>
@@ -70,9 +70,9 @@
           </li>
           <li>
             <span class="station">04 / CHECKS</span>
-            <h3>Daily verification</h3>
-            <p>The public workflow checks repository contracts, release manifests, pages and active endpoints. GitHub Actions are free on standard public runners, but usage is not unlimited.</p>
-            <a href="https://github.com/ccancellieri/tellurion-demos/actions/workflows/daily.yml">Review verification history →</a>
+            <h3>Verification boundary</h3>
+            <p>The gallery checker validates source and static contracts. Release manifests and live endpoints require separate verification after the Render switch.</p>
+            <a href="https://github.com/ccancellieri/tellurion/blob/main/scripts/check-gallery.sh">Inspect the gallery checker →</a>
           </li>
         </ol>
       </div>
@@ -86,7 +86,7 @@
         </div>
         <ul>
           <li><strong>Italy explorer verified at deployment time.</strong> The national release has a live demonstrator, not a durability, uptime, throughput, or support commitment.</li>
-          <li><strong>No v0.5 binary release yet.</strong> Build the public v0.5.0-rc.1 release-candidate source; the <a href="https://github.com/ccancellieri/tellurion-demos/releases/tag/tellurion-v0.3.0">checksummed 0.3.0 archives</a> remain historical evidence, not the primary route.</li>
+          <li><strong>No v0.5 binary release yet.</strong> Build the public v0.5.0-rc.1 release-candidate source; the <a href="https://github.com/ccancellieri/tellurion/releases/tag/archive-tellurion-v0.3.0">checksummed 0.3.0 archives</a> remain historical evidence, not the primary route.</li>
           <li><strong>No Tellurion Cloud, SLA or support service.</strong> Evaluation and operation are self-hosted.</li>
           <li><strong>No production assurance.</strong> A working demo does not replace security, capacity, licensing or operational review.</li>
           <li><strong>No hosted timing claim.</strong> Shared-service response times are not benchmark evidence.</li>

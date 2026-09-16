@@ -8,7 +8,7 @@ ARG TELLURION_VERSION=v0.3.0
 ARG TELLURION_TARGET=x86_64-unknown-linux-musl
 
 ENV TELLURION_ARCHIVE=tellurion-${TELLURION_VERSION}-${TELLURION_TARGET}.tar.gz
-ENV TELLURION_RELEASE=https://github.com/ccancellieri/tellurion-demos/releases/download/tellurion-${TELLURION_VERSION}
+ENV TELLURION_RELEASE=https://github.com/ccancellieri/tellurion/releases/download/archive-tellurion-${TELLURION_VERSION}
 
 RUN curl --fail --location --retry 3 \
       --output "${TELLURION_ARCHIVE}" "${TELLURION_RELEASE}/${TELLURION_ARCHIVE}" \

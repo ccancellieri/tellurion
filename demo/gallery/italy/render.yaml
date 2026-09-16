@@ -2,10 +2,14 @@ services:
   - type: web
     name: tellurion-vector-rome
     runtime: docker
-    repo: https://github.com/ccancellieri/tellurion-italy-demo
+    repo: https://github.com/ccancellieri/tellurion
     branch: main
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./demo/gallery/italy/Dockerfile
+    dockerContext: ./demo/gallery/italy
+    buildFilter:
+      paths:
+        - demo/gallery/italy/Dockerfile
+        - demo/gallery/italy/deploy/render/vector.yaml
     region: frankfurt
     plan: free
     healthCheckPath: /readyz

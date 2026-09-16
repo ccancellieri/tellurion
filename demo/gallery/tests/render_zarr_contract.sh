@@ -36,7 +36,7 @@ require_text Dockerfile-zarr 'USER 10001:10001'
 require_text Dockerfile-zarr 'ENTRYPOINT ["/app/tellurion"]'
 
 require_text render.yaml 'name: tellurion-zarr-demo'
-require_text render.yaml 'dockerfilePath: ./Dockerfile-zarr'
+require_text render.yaml 'dockerfilePath: ./demo/gallery/Dockerfile-zarr'
 require_text render.yaml 'region: frankfurt'
 require_text render.yaml 'plan: free'
 require_text render.yaml 'deploy/render/zarr.yaml'

@@ -2,83 +2,83 @@ services:
   - type: web
     name: tellurion-vector-demo
     runtime: docker
-    repo: https://github.com/ccancellieri/tellurion-demos
+    repo: https://github.com/ccancellieri/tellurion
     branch: main
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./demo/gallery/Dockerfile
+    dockerContext: ./demo/gallery
     region: frankfurt
     plan: free
     healthCheckPath: /
     autoDeployTrigger: checksPass
     buildFilter:
       paths:
-        - Dockerfile
-        - deploy/render/vector.yaml
-        - deploy/render/roads-style.json
-        - dist/tellurion-v0.5.0-rc.1-source-02e855affea9.zip
+        - demo/gallery/Dockerfile
+        - demo/gallery/deploy/render/vector.yaml
+        - demo/gallery/deploy/render/roads-style.json
+        - demo/gallery/dist/tellurion-v0.5.0-rc.1-source-02e855affea9.zip
   - type: web
     name: tellurion-raster-demo
     runtime: docker
-    repo: https://github.com/ccancellieri/tellurion-demos
+    repo: https://github.com/ccancellieri/tellurion
     branch: main
-    dockerfilePath: ./Dockerfile.raster
-    dockerContext: .
+    dockerfilePath: ./demo/gallery/Dockerfile.raster
+    dockerContext: ./demo/gallery
     region: frankfurt
     plan: free
     healthCheckPath: /
     autoDeployTrigger: checksPass
     buildFilter:
       paths:
-        - Dockerfile.raster
-        - deploy/render/raster.yaml
+        - demo/gallery/Dockerfile.raster
+        - demo/gallery/deploy/render/raster.yaml
   - type: web
     name: tellurion-stac-harvest-demo
     runtime: docker
-    repo: https://github.com/ccancellieri/tellurion-demos
+    repo: https://github.com/ccancellieri/tellurion
     branch: main
-    dockerfilePath: ./Dockerfile.stac-harvest
-    dockerContext: .
+    dockerfilePath: ./demo/gallery/Dockerfile.stac-harvest
+    dockerContext: ./demo/gallery
     region: frankfurt
     plan: free
     healthCheckPath: /
     autoDeployTrigger: checksPass
     buildFilter:
       paths:
-        - Dockerfile.stac-harvest
-        - deploy/render/stac-harvest.yaml
-        - data/stac/esa-worldcover
-        - data/stac/esa-worldcover-italy
-        - deploy/render/build_stac_italy.py
-        - dist/tellurion-v0.5.0-rc.1-source-02e855affea9.zip
+        - demo/gallery/Dockerfile.stac-harvest
+        - demo/gallery/deploy/render/stac-harvest.yaml
+        - demo/gallery/data/stac/esa-worldcover
+        - demo/gallery/data/stac/esa-worldcover-italy
+        - demo/gallery/deploy/render/build_stac_italy.py
+        - demo/gallery/dist/tellurion-v0.5.0-rc.1-source-02e855affea9.zip
   - type: web
     name: tellurion-zarr-demo
     runtime: docker
-    repo: https://github.com/ccancellieri/tellurion-demos
+    repo: https://github.com/ccancellieri/tellurion
     branch: main
-    dockerfilePath: ./Dockerfile-zarr
-    dockerContext: .
+    dockerfilePath: ./demo/gallery/Dockerfile-zarr
+    dockerContext: ./demo/gallery
     region: frankfurt
     plan: free
     healthCheckPath: /
     autoDeployTrigger: checksPass
     buildFilter:
       paths:
-        - Dockerfile-zarr
-        - deploy/render/zarr.yaml
-        - deploy/render/build_zarr_demo.py
+        - demo/gallery/Dockerfile-zarr
+        - demo/gallery/deploy/render/zarr.yaml
+        - demo/gallery/deploy/render/build_zarr_demo.py
   - type: web
     name: tellurion-3d-demo
     runtime: docker
-    repo: https://github.com/ccancellieri/tellurion-demos
+    repo: https://github.com/ccancellieri/tellurion
     branch: main
-    dockerfilePath: ./Dockerfile-3d
-    dockerContext: .
+    dockerfilePath: ./demo/gallery/Dockerfile-3d
+    dockerContext: ./demo/gallery
     region: frankfurt
     plan: free
     healthCheckPath: /
     autoDeployTrigger: checksPass
     buildFilter:
       paths:
-        - Dockerfile-3d
-        - deploy/render/three-d.yaml
-        - deploy/render/build_3d_demo.py
+        - demo/gallery/Dockerfile-3d
+        - demo/gallery/deploy/render/three-d.yaml
+        - demo/gallery/deploy/render/build_3d_demo.py

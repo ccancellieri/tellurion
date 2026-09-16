@@ -15,12 +15,13 @@ checks, readiness health check and human-facing landing links. The public
 revision adds the STAC field-note links, which are included here. Its weaker
 health check and write-enabled reproduction configuration are not imported.
 
-## Hosting is not yet migrated
+## Publication status
 
-Historical release images, reproduction archives and binary/source downloads
-still refer to their existing repositories. Those assets and their checksums
-must be migrated and verified before either repository can be removed. Existing
-Render services must also be repointed and tested independently of this source
-import. A source import alone does not establish a working replacement site.
+Canonical Pages is live at <https://ccancellieri.github.io/tellurion/italy/>.
+Active download links target the byte-identical historical assets under the
+`archive-italy-demo-v0.2.0` and `archive-tellurion-v0.3.0` tags in Tellurion.
+Confirm their checksums before retiring either old repository. Existing Render
+services still need to be repointed to this monorepo and tested independently;
+the Pages move does not establish a working replacement backend.
 
 See [the migration tracker](https://github.com/ccancellieri/tellurion/issues/37).

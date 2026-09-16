@@ -107,9 +107,9 @@ general Tellurion contract rather than claimed by this demo.
 
 The repository contains the source snapshots, transformation script, generated
 artifacts, deployment configuration, contract tests and live endpoint evidence.
-Start with the [reproducible source](https://github.com/ccancellieri/tellurion-demos),
+Start with the [reproducible source](https://github.com/ccancellieri/tellurion/tree/main/demo/gallery),
 then compare the manifest to the live Rome resources above. The
-[Italy release page](https://ccancellieri.github.io/tellurion-demos/demos/stac/)
+[Italy release page](https://ccancellieri.github.io/tellurion/demos/stac/)
 adds a live Italy explorer while keeping the released provenance visible.
 
 Interoperability is not copying JSON; it is preserving meaning while each system adds only the capabilities it can prove.

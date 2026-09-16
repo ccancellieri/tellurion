@@ -20,7 +20,7 @@ preview features. Tellurion is self-hosted software—no Tellurion Cloud service
 currently offered. See the [maturity guide](docs/maturity.md) before an evaluation.
 
 Evaluate the product in two ways: run the self-contained GeoPackage quickstart below,
-or inspect the [public demonstration gallery](https://ccancellieri.github.io/tellurion-demos/).
+or inspect the [public demonstration gallery](https://ccancellieri.github.io/tellurion/).
 The gallery is evidence for its named, bounded journeys; it is not a hosted Tellurion
 service or an availability commitment. For evaluation feedback, use the
 [project author's GitHub profile](https://github.com/ccancellieri).
