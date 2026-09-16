@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Run Tellurion v0.5.0 locally</title>
+  <meta name="description" content="Download Tellurion v0.5.0 for Linux or Windows, verify it, and run a local geospatial map demo without Docker. macOS source instructions included.">
+  <link rel="stylesheet" href="../../styles.css"><link rel="icon" href="../../favicon.svg">
+  <style>main code { overflow-wrap: anywhere; }</style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header class="shell nav"><a class="brand" href="../../">Tellurion demos</a><nav aria-label="Navigation"><a href="../">Retained versions</a> · <a href="../../docs/">Documentation</a></nav></header>
+  <main id="main-content" class="shell section">
+    <h1>Your first map.<br>On your machine.</h1>
+    <p class="lede">Tellurion v0.5.0 is available under AGPL-3.0-only. Download, extract and start a synthetic GeoPackage demo with the embedded map interface. No Docker, external database or account required.</p>
+    <div class="actions">
+      <a class="button primary" href="https://github.com/ccancellieri/tellurion/releases/download/v0.5.0/tellurion-v0.5.0-x86_64-unknown-linux-musl.tar.gz">Download Linux x86_64</a>
+      <a class="button" href="https://github.com/ccancellieri/tellurion/releases/download/v0.5.0/tellurion-v0.5.0-x86_64-pc-windows-msvc.zip">Download Windows x86_64</a>
+      <a class="button" href="https://github.com/ccancellieri/tellurion/blob/v0.5.0/docs/quickstart/install.md">macOS: build from source</a>
+    </div>
+    <section class="section" aria-labelledby="first-run">
+      <h2 id="first-run">Download. Verify. Open the map.</h2>
+      <ol>
+        <li>Verify your archive against the release's <a href="https://github.com/ccancellieri/tellurion/releases/download/v0.5.0/SHA256SUMS">SHA256SUMS</a> and <a href="https://github.com/ccancellieri/tellurion/blob/v0.5.0/docs/quickstart/install.md">GitHub attestation instructions</a>.</li>
+        <li>Extract it, keep both executables together, and open a terminal in that directory.</li>
+        <li>Run <code>./tellurion-ingest demo --path ./demo.gpkg --port 8080</code> on Linux. In Windows PowerShell run <code>.\tellurion-ingest.exe demo --path .\demo.gpkg --port 8080</code>.</li>
+        <li>Open <code>http://localhost:8080/ui/</code> in your browser. The command creates synthetic sample features in a local GeoPackage.</li>
+      </ol>
+      <p>For the raw response, open <code>http://localhost:8080/public/features/catalogs/default/collections/demo/items?limit=10</code>. Stop the server with Ctrl+C when finished.</p>
+    </section>
+    <section aria-labelledby="next-step">
+      <h2 id="next-step">Then try your data</h2>
+      <p>Use the <a href="https://github.com/ccancellieri/tellurion/tree/v0.5.0/docs/quickstart">versioned guides</a> to choose a supported driver and configure your source. Reads, writes and optional build features vary by format; the native package does not include every optional driver.</p>
+      <p>The separate <a href="https://tellurion-public-demo.onrender.com/ui/">public-file preview</a> accepts supported public HTTPS sources such as COG, GeoParquet and ZIP Shapefile. It evolves independently and is not a version-pinned v0.5.0 hosted demo. Do not submit credentials or sensitive data.</p>
+      <p>Administration requires your own identity provider, durable control storage and permissions. This local demo grants no admin access. Read the <a href="https://github.com/ccancellieri/tellurion/blob/v0.5.0/docs/administration.md">tenant and catalog administration guide</a> for the scoped cache-lifetime editor and its limits.</p>
+    </section>
+    <section class="section" aria-labelledby="evidence">
+      <h2 id="evidence">A release you can inspect</h2>
+      <p>The published archives were built from commit <code>000f40adc5b35cec5a4bebdbf3e8d18c64fc01b8</code>. Linux and Windows passed extracted-package startup, feature and UI checks. <a href="https://github.com/ccancellieri/tellurion/actions/runs/35137643090">Build evidence</a> · <a href="https://github.com/ccancellieri/tellurion/releases/tag/v0.5.0">Source, dependency notices and release notes</a>.</p>
+      <p>The <a href="../">historical online demos</a> retain their existing versions and links. This page does not relabel those backends as v0.5.0. No Tellurion Cloud, SLA or support service is offered.</p>
+      <p>Tell me what worked, which format you tried, and what got in your way: <a href="https://github.com/ccancellieri/tellurion/issues">report reproducible feedback</a> or <a href="https://www.linkedin.com/in/ccancellieri/">contact Carlo Cancellieri on LinkedIn</a>. Keep private datasets and credentials out of reports.</p>
+    </section>
+  </main>
+  <footer class="shell section"><a href="../../">Demo gallery</a> · <a href="https://ccancellieri.github.io/">Carlo Cancellieri</a></footer>
+</body>
+</html>
