@@ -14,7 +14,8 @@ I/O-bound, not runtime-bound: the storage engine does the geometry work (with Po
 in C), Tellurion moves the bytes with zero-copy discipline, and everything in between —
 connection pooling, tile caching, rasterization — runs native with no interpreter and no GC.
 
-**Current status:** v0.5.0-rc.1 is a release candidate. The serving data plane is the
+**Version:** v0.5.0. Download availability is recorded on the
+[releases page](https://github.com/ccancellieri/tellurion/releases). The serving data plane is the
 stabilisation focus; the administrative control plane and remote-source browser are
 preview features. Tellurion is self-hosted software—no Tellurion Cloud service is
 currently offered. See the [maturity guide](docs/maturity.md) before an evaluation.
@@ -931,7 +932,7 @@ below the threshold do not emit it.
 
 ## Licensing
 
-Tellurion 0.5.0-rc.1 is open-source software under the GNU Affero General Public License
+Tellurion 0.5.0 is open-source software under the GNU Affero General Public License
 Version 3 (`AGPL-3.0-only`). Commercial use is allowed under that licence. If you
 modify Tellurion and let users interact with the modified version over a network,
 Section 13 requires a prominent offer of the corresponding source to those users.

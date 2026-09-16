@@ -16,6 +16,8 @@ repository.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-16
+
 ### Added
 
 - Tenant and catalog administration workspaces use the operator's existing

@@ -6,22 +6,21 @@ the top-level README's "Scaling up: PostGIS" section for the database-backed
 path once a single GeoPackage's one-writer-many-readers ceiling stops
 fitting — that path is out of scope here.
 
-## Version 0.5.0-rc.1 release archives
+## Version 0.5.0 release archives
 
-**Current status:** native archives are blocked until the Rust and bundled
-native dependency notices have been generated and reviewed for the shipped
-feature set. See the [native release gates](../release/rust-third-party-notices.md).
-The table below is a packaging target, not a list of verified available downloads.
-
-Archives are available only after an approved v0.5.0-rc.1 public release. They describe the
-intended release assets; no archive or binary is added to this Git repository. Until
-an approved release provides the matching asset, build from source using the
-instructions below.
+Archives are available only after an approved v0.5.0 public release.
+Download only assets attached to the public
+[v0.5.0 release](https://github.com/ccancellieri/tellurion/releases/tag/v0.5.0).
+Actions workflow artifacts are internal build candidates, not published releases.
+If the release or matching asset is not available, use the source-build instructions
+below. No archive or binary is committed to this Git repository. The
+[native release gates](../release/rust-third-party-notices.md) describe the evidence
+and installation checks required before publication.
 
 | Platform | Intended archive |
 |---|---|
-| Linux x86_64 musl | `tellurion-v0.5.0-rc.1-x86_64-unknown-linux-musl.tar.gz` |
-| Windows x86_64 MSVC | `tellurion-v0.5.0-rc.1-x86_64-pc-windows-msvc.zip` |
+| Linux x86_64 musl | `tellurion-v0.5.0-x86_64-unknown-linux-musl.tar.gz` |
+| Windows x86_64 MSVC | `tellurion-v0.5.0-x86_64-pc-windows-msvc.zip` |
 
 macOS Apple Silicon (`aarch64-apple-darwin`) is source-only for this release while its platform
 licensing evidence is reviewed.
@@ -38,7 +37,7 @@ For a public release, also verify the GitHub artifact attestation against this
 repository. For example, the Linux archive is verified with:
 
 ```sh
-gh attestation verify tellurion-v0.5.0-rc.1-x86_64-unknown-linux-musl.tar.gz \
+gh attestation verify tellurion-v0.5.0-x86_64-unknown-linux-musl.tar.gz \
   --repo ccancellieri/tellurion
 ```
 
@@ -48,15 +47,15 @@ extract them into a directory on your `PATH`. On Windows, extract the ZIP and
 add its directory to `PATH` before using `tellurion.exe`
 or `tellurion-ingest.exe`.
 
-These assets are intended for Tellurion 0.5.0-rc.1 under `AGPL-3.0-only`. Review the
+These assets are intended for Tellurion 0.5.0 under `AGPL-3.0-only`. Review the
 [licensing guide](../licensing.md) before deployment or redistribution.
 
 Each native archive also contains the target-specific Rust dependency evidence
 (`RUST_THIRD_PARTY_NOTICES.json` and `RUST_THIRD_PARTY_NOTICES.txt`),
 `runtime-provenance.json`, the Rust standard-library license directory, and—on
 Linux—the hash-verified `licenses/musl/musl-1.2.5.tar.gz` source archive plus
-`licenses/musl/COPYRIGHT.txt`. The release gate remains blocked until those
-materials and clean-machine execution are reviewed.
+`licenses/musl/COPYRIGHT.txt`. The packaging workflow checks these materials
+against the collected evidence before testing the extracted executables.
 
 ### First run from an extracted archive
 
@@ -95,27 +94,27 @@ platform must pass extraction and startup checks outside the source checkout,
 including the embedded UI and matching notices. The administration launch gate
 also requires authenticated scope isolation and persisted settings after restart.
 
-## Install the release candidate with Cargo
+## Install with Cargo after registry publication
 
 After the approved crates.io publication, install the server and ingestion CLI from
-the locked 0.5 release-candidate line with:
+the locked 0.5.0 release with:
 
 ```sh
-cargo +1.97.1 install tellurion --version '=0.5.0-rc.1' --locked
-cargo +1.97.1 install tellurion-ingest --version '=0.5.0-rc.1' --locked
+cargo +1.97.1 install tellurion --version '=0.5.0' --locked --features ui
+cargo +1.97.1 install tellurion-ingest --version '=0.5.0' --locked
 ```
 
 To embed the anonymous remote-source demo and its web interface in the server binary:
 
 ```sh
-cargo +1.97.1 install tellurion --version '=0.5.0-rc.1' --locked \
+cargo +1.97.1 install tellurion --version '=0.5.0' --locked \
   --features public-demo,ui
 ```
 
-Cargo does not select a pre-release implicitly, so evaluators must request
-`0.5.0-rc.1` explicitly. Ordinary installation can move to `0.5.0` after that stable
-version is approved and published. Each install above compiles from the published
-crate sources; use the signed platform archives when a prebuilt binary is preferred.
+Registry publication is separate from the GitHub release. If Cargo reports that
+this version is unavailable, use the release archives or build from the tagged
+source instead. Each install above compiles the published crate sources; use
+the attested platform archives when a prebuilt binary is preferred.
 
 ## Prerequisites
 
