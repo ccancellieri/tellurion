@@ -96,6 +96,74 @@ describe('production platform settings editor', () => {
     expect(editor.hasUnresolvedWrite()).toBe(true);
   });
 
+  it.each([500, 401, 403])('retains the exact retry when a late overview refresh fails with %i', async (status) => {
+    const lateOverview = deferred<Response>();
+    const secondApply = deferred<Response>();
+    let overviewCalls = 0;
+    let settingsReads = 0;
+    let applyCalls = 0;
+    const fetchMock = vi.fn((path: string, init: RequestInit) => {
+      if (path === '/_auth/control/session') return Promise.resolve(json(session));
+      if (path === '/_control/v1/platform/overview') {
+        overviewCalls += 1;
+        return overviewCalls === 2 ? lateOverview.promise : Promise.resolve(json({
+          scope: 'self', store_revision: 8, applied_revision: 7, lag: 1,
+          poll_failures: 0, activation_failures: 0, config_version: 'revision-8',
+        }));
+      }
+      if (path === '/_control/v1/tenants') return Promise.resolve(json({ control_revision: 8, items: [] }));
+      if (path === '/_control/v1/platform/effective-settings') return Promise.resolve(json({
+        applied_revision: 7, effective: { node: { level: 'platform' }, settings: {} },
+      }));
+      if (path === '/_control/v1/platform/audit') return Promise.resolve(json({ revision: 8, items: [] }));
+      if (path === '/_control/v1/platform/settings' && init.method === 'GET') {
+        settingsReads += 1;
+        return Promise.resolve(json(settingsReads === 1 ? settings : {
+          ...settings, control_revision: 8, entity_version: '8', resource: { ...settings.resource, cache_ttl_s: 60 },
+        }));
+      }
+      if (path === '/_control/v1/platform/settings?dry_run=true') return Promise.resolve(json(preview));
+      if (path === '/_control/v1/platform/settings' && init.method === 'PUT') {
+        applyCalls += 1;
+        if (applyCalls === 2) return secondApply.promise;
+        return Promise.resolve(json({ ...commit, revision: applyCalls === 1 ? 8 : 9, replayed: applyCalls === 3 }));
+      }
+      throw new Error('Unexpected path');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    mountControlWorkspace(document.body, 'production');
+    await vi.waitFor(() => expect(document.querySelector('[data-field="cache-ttl"]')).not.toBeNull());
+    const editor = document.querySelector('tellurion-platform-settings-editor') as TellurionPlatformSettingsEditor;
+    edit(editor, '60');
+    click(editor, 'preview');
+    await vi.waitFor(() => expect(editor.querySelector('[data-action="apply"]')).not.toBeNull());
+    click(editor, 'apply');
+    await vi.waitFor(() => expect(overviewCalls).toBe(2));
+    await vi.waitFor(() => expect(editor.querySelector<HTMLInputElement>('[data-field="cache-ttl"]')?.value).toBe('60'));
+
+    edit(editor, '70');
+    click(editor, 'preview');
+    await vi.waitFor(() => expect(editor.querySelector('[data-action="apply"]')).not.toBeNull());
+    click(editor, 'apply');
+    expect(editor.hasUnresolvedWrite()).toBe(true);
+    lateOverview.resolve(json({ detail: 'private refresh failure' }, status));
+    await vi.waitFor(() => expect(document.querySelector('[data-field="control-refresh-status"]')?.textContent).toBeTruthy());
+    expect(document.querySelector('tellurion-platform-settings-editor')).toBe(editor);
+    expect(editor.hasUnresolvedWrite()).toBe(true);
+    expect(document.body.textContent).not.toContain('private refresh failure');
+    if (status === 401 || status === 403) {
+      expect(document.querySelector('.control-sheet__ledger')).toBeNull();
+      expect(document.body.textContent).toContain('pending authorization');
+    }
+
+    secondApply.reject(new TypeError('network failure'));
+    await vi.waitFor(() => expect(editor.querySelector('[data-action="retry"]')).not.toBeNull());
+    click(editor, 'retry');
+    await vi.waitFor(() => expect(applyCalls).toBe(3));
+    const writes = fetchMock.mock.calls.filter(([path, init]) => path === '/_control/v1/platform/settings' && init.method === 'PUT');
+    expect(writes[1][1].body).toBe(writes[2][1].body);
+  });
+
   it('loads only raw cache lifetime and version, keeps opaque data hidden, and requires preview before apply', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(json(session)).mockResolvedValueOnce(json(settings))
       .mockResolvedValueOnce(json(preview));
