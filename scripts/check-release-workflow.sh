@@ -91,17 +91,19 @@ version_resolver_count="$(rg -c '^[[:space:]]*- name: Resolve workspace version$
     || fail "source and native jobs must each resolve the workspace version"
 
 for matrix_entry in \
-    'target: aarch64-apple-darwin[[:space:]]*$' \
-    'runner: macos-14[[:space:]]*$' \
     'target: x86_64-unknown-linux-musl[[:space:]]*$' \
     'runner: ubuntu-24.04[[:space:]]*$' \
     'target: x86_64-pc-windows-msvc[[:space:]]*$' \
     'runner: windows-2022[[:space:]]*$'; do
     require_match "$matrix_entry" "$workflow"
 done
+if rg -q 'aarch64-apple-darwin|macos-14' "$workflow"; then
+    fail "macOS native packaging is source-only until its licensing evidence is reviewed"
+fi
 
 require_match 'dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5' "$workflow"
 require_match 'targets:[[:space:]]*\$\{\{ matrix\.target \}\}' "$workflow"
+require_match 'components:[[:space:]]*rust-docs' "$workflow"
 require_match 'workflow_dispatch:' "$workflow"
 if rg -q 'legal_approval' "$workflow"; then
     fail "build-only workflow must not request a misleading legal approval input"
@@ -196,8 +198,61 @@ if printf '%s\n' "$native_job" | rg -q 'git archive'; then
 fi
 
 native_gate_step="$(step_block 'Gate prebuilt native binary release')"
-printf '%s\n' "$native_gate_step" | rg -q 'scripts/check-native-binary-release-readiness\.sh' \
-    || fail "native matrix must gate prebuilt binary release readiness"
+for native_gate_requirement in \
+    'shell:[[:space:]]*pwsh' \
+    'bash ./scripts/check-native-binary-release-readiness\.sh' \
+    'scripts/check-native-binary-release-readiness\.sh' \
+    '--evidence' \
+    'native-notice-evidence-\$\{\{ matrix\.target \}\}' \
+    '--target[[:space:]]+"\$\{\{ matrix\.target \}\}"' \
+    '--workspace \$PWD'; do
+    printf '%s\n' "$native_gate_step" | rg -q -- "$native_gate_requirement" \
+        || fail "native matrix gate is missing $native_gate_requirement"
+done
+
+native_evidence_step="$(step_block 'Collect native notice evidence')"
+for native_evidence_requirement in \
+    'shell:[[:space:]]*pwsh' \
+    'cargo \+1\.97\.1 metadata --locked --offline --format-version 1 --filter-platform \$target --features tellurion/ui' \
+    'generate-native-third-party-notices\.py' \
+    '--feature-profile '\''server=default,ui;ingest=default'\''' \
+    '--fallbacks distribution/native-notices/fallbacks\.json' \
+    'RUST_THIRD_PARTY_NOTICES\.json' \
+    'RUST_THIRD_PARTY_NOTICES\.txt' \
+    'rustc \+1\.97\.1 --print sysroot' \
+    'COPYRIGHT-library\.html' \
+    'COPYRIGHT\.html' \
+    'Copy-Item .*licenses.*-Recurse' \
+    'copyright_path' \
+    'COPYRIGHT\.txt' \
+    'runtime-provenance\.json' \
+    'copyright_sha256' \
+    'source_url' \
+    'source_sha256' \
+    'Invoke-WebRequest -Uri \$musl\.source_url -OutFile \$musl_archive' \
+    'musl-1\.2\.5\.tar\.gz' \
+    'ConvertFrom-Json' \
+    'cargo \+1\.97\.1 fetch --locked --target \$target' \
+    'status=collected'; do
+    printf '%s\n' "$native_evidence_step" | rg -q -- "$native_evidence_requirement" \
+        || fail "native notice evidence collection is missing $native_evidence_requirement"
+done
+native_diagnostic_step="$(step_block 'Upload native notice diagnostics')"
+for diagnostic_requirement in \
+    'if:[[:space:]]*always\(\)' \
+    'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' \
+    'native-notice-diagnostics-\$\{\{ matrix\.target \}\}' \
+    'if-no-files-found:[[:space:]]*warn'; do
+    printf '%s\n' "$native_diagnostic_step" | rg -q -- "$diagnostic_requirement" \
+        || fail "native notice diagnostics upload is missing $diagnostic_requirement"
+done
+static_crt_step="$(step_block 'Configure static Windows CRT')"
+for static_crt_requirement in \
+    'RUSTFLAGS=-C target-feature=\+crt-static' \
+    'GITHUB_ENV'; do
+    printf '%s\n' "$static_crt_step" | rg -q -- "$static_crt_requirement" \
+        || fail "Windows native packaging is missing $static_crt_requirement"
+done
 
 native_ui_step="$(step_block 'Build operator UI for native binary')"
 for native_ui_requirement in \
@@ -213,9 +268,13 @@ done
 ui_build_line="$(rg -n '^[[:space:]]*- name: Build operator UI for native binary$' "$workflow" | cut -d: -f1)"
 native_gate_line="$(rg -n '^[[:space:]]*- name: Gate prebuilt native binary release$' "$workflow" | cut -d: -f1)"
 native_build_line="$(rg -n '^[[:space:]]*- name: Build native binaries with operator UI$' "$workflow" | cut -d: -f1)"
+native_evidence_line="$(rg -n '^[[:space:]]*- name: Collect native notice evidence$' "$workflow" | cut -d: -f1)"
+native_diagnostic_line="$(rg -n '^[[:space:]]*- name: Upload native notice diagnostics$' "$workflow" | cut -d: -f1)"
 if [ -z "$ui_build_line" ] || [ -z "$native_gate_line" ] || [ -z "$native_build_line" ] ||
+   [ -z "$native_evidence_line" ] || [ -z "$native_diagnostic_line" ] ||
+   [ "$native_evidence_line" -ge "$native_diagnostic_line" ] || [ "$native_diagnostic_line" -ge "$native_gate_line" ] ||
    [ "$native_gate_line" -ge "$ui_build_line" ] || [ "$ui_build_line" -ge "$native_build_line" ]; then
-    fail "native readiness gate, operator UI build, and Rust build must run in that order"
+    fail "native evidence, diagnostics, readiness gate, operator UI build, and Rust build must run in that order"
 fi
 
 build_step="$(step_block 'Build native binaries with operator UI')"
@@ -236,8 +295,9 @@ package_step="$(step_block 'Package native artifact')"
 for package_requirement in \
     'Copy-Item LICENSE, COPYRIGHT\.md, README\.md' \
     'Copy-Item COMMERCIAL-LICENSE\.md' \
-    'Copy-Item .*THIRD_PARTY_NOTICES\.json' \
+    'Copy-Item "\$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES\.json"' \
     'Copy-Item .*release-source-evidence/THIRD_PARTY_NOTICES\.txt.*UI_THIRD_PARTY_NOTICES\.txt' \
+    'Copy-Item .*licenses.*-Recurse' \
     'example-geopackage\.yaml' \
     'Copy-Item docs/licensing\.md' \
     'Join-Path \$package_dir "docs"' \
@@ -247,9 +307,20 @@ for package_requirement in \
     printf '%s\n' "$package_step" | rg -q -- "$package_requirement" \
         || fail "native operator UI release package is missing $package_requirement"
 done
+for native_package_requirement in \
+    'Copy-Item .*RUST_THIRD_PARTY_NOTICES\.json' \
+    'Copy-Item .*RUST_THIRD_PARTY_NOTICES\.txt' \
+    'Copy-Item .*runtime-provenance\.json'; do
+    printf '%s\n' "$package_step" | rg -q -- "$native_package_requirement" \
+        || fail "native release package is missing $native_package_requirement"
+done
 for feature_requirement in 'server-features=default,ui' 'ingest-features=default' 'ui-bundle=operator'; do
     printf '%s\n' "$package_step" | rg -Fq "$feature_requirement" \
         || fail "native operator UI build identity is missing $feature_requirement"
+done
+for build_requirement in 'crt=\$crt' 'rust-stdlib-licenses=licenses/rust-stdlib' 'musl-license=\$musl_license' 'runtime-provenance=runtime-provenance\.json'; do
+    printf '%s\n' "$package_step" | rg -q -- "$build_requirement" \
+        || fail "native package BUILD-INFO is missing $build_requirement"
 done
 if printf '%s\n' "$package_step" | rg -q 'Copy-Item .*THIRD_PARTY_NOTICES\.txt" -Destination "\$package_dir"'; then
     fail "native release package must not mislabel the UI notice as native dependency evidence"
@@ -265,6 +336,25 @@ for native_ui_requirement in \
     'UI_THIRD_PARTY_NOTICES\.txt'; do
     printf '%s\n' "$smoke_step" | rg -q -- "$native_ui_requirement" \
         || fail "native operator UI smoke test is missing $native_ui_requirement"
+done
+for native_notice_requirement in \
+    'RUST_THIRD_PARTY_NOTICES\.txt' \
+    'RUST_THIRD_PARTY_NOTICES\.json' \
+    'ConvertFrom-Json' \
+    'text_sha256' \
+    'runtime-provenance\.json' \
+    'COPYRIGHT\.html' \
+    'COPYRIGHT-library\.html' \
+    'copyright_sha256' \
+    'Get-ChildItem -File -Recurse \$evidence_licenses' \
+    'GetRelativePath' \
+    'native archive license inventory differs from pre-archive evidence' \
+    'native archive license differs from pre-archive evidence' \
+    'native archive notice differs from pre-archive evidence' \
+    'musl-1\.2\.5\.tar\.gz' \
+    'musl/COPYRIGHT\.txt'; do
+    printf '%s\n' "$smoke_step" | rg -q -- "$native_notice_requirement" \
+        || fail "native notice smoke test is missing $native_notice_requirement"
 done
 printf '%s\n' "$package_step" | rg -q '\$package_name = "tellurion-v\$version-\$target"' \
     || fail "platform archive name must be derived from the workspace version"
@@ -326,7 +416,7 @@ done < <(
 )
 rg -q 'shasum -a 256 -c SHA256SUMS' "$install_guide" \
     || fail "$install_guide does not document aggregate checksum verification"
-rg -Fq "gh attestation verify tellurion-v$version-aarch64-apple-darwin.tar.gz" "$install_guide" \
+rg -Fq "gh attestation verify tellurion-v$version-x86_64-unknown-linux-musl.tar.gz" "$install_guide" \
     || fail "$install_guide does not document GitHub attestation verification"
 rg -q -- '--repo ccancellieri/tellurion' "$install_guide" \
     || fail "$install_guide does not bind attestation verification to this repository"
@@ -392,6 +482,7 @@ attestation_writes="$(rg -c 'attestations:[[:space:]]*write' "$workflow" || true
 for download_requirement in \
     'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c[[:space:]]+# v8\.0\.1' \
     'path:[[:space:]]*dist' \
+    'pattern:[[:space:]]*release-\*' \
     'merge-multiple:[[:space:]]*true'; do
     printf '%s\n' "$candidate_job" | rg -q -- "$download_requirement" \
         || fail "release candidate download is missing $download_requirement"
@@ -401,15 +492,20 @@ checksum_step="$(step_block 'Assemble aggregate checksums')"
 for checksum_requirement in \
     'source_archives=\(dist/tellurion-v\*-source-\*\.zip\)' \
     '\$\{#source_archives\[@\]\}.*-ne 1' \
-    '\$\{#native_archives\[@\]\}.*-ne 3' \
+    '\$\{#native_archives\[@\]\}.*-ne 2' \
     'test -f dist/tellurion\.spdx\.json' \
     'test -f dist/THIRD_PARTY_NOTICES\.json' \
     'test -f dist/THIRD_PARTY_NOTICES\.txt' \
     'unzip -Z1 .*source_archives.*THIRD_PARTY_NOTICES\.json' \
     'unzip -Z1 .*source_archives.*THIRD_PARTY_NOTICES\.txt' \
     'tar -tzf .*THIRD_PARTY_NOTICES\\\.json' \
+    'tar -tzf .*RUST_THIRD_PARTY_NOTICES\\\.json' \
+    'tar -tzf .*RUST_THIRD_PARTY_NOTICES\\\.txt' \
+    'tar -tzf .*licenses/musl/musl-1\\\.2\\\.5\\\.tar\\\.gz' \
     'for archive in dist/tellurion-v\*-pc-windows-msvc\.zip' \
     'unzip -Z1 "\$archive".*THIRD_PARTY_NOTICES\\\.json' \
+    'unzip -Z1 "\$archive".*RUST_THIRD_PARTY_NOTICES\\\.json' \
+    'unzip -Z1 "\$archive".*RUST_THIRD_PARTY_NOTICES\\\.txt' \
     'shasum -a 256 .*THIRD_PARTY_NOTICES\.json THIRD_PARTY_NOTICES\.txt.*SHA256SUMS' \
     'shasum -a 256 .*SHA256SUMS'; do
     printf '%s\n' "$checksum_step" | rg -q -- "$checksum_requirement" \

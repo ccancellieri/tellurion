@@ -103,6 +103,6 @@ showcase datasets are added.
 
 ## Follow-up tracking
 
-- [Raster zoom and range-read verification (#48)](https://github.com/ccancellieri/tellurion/issues/48).
-- [High-detail dataset qualification (#49)](https://github.com/ccancellieri/tellurion/issues/49).
-- [Release demo acceptance (#45)](https://github.com/ccancellieri/tellurion/issues/45).
+- [Raster zoom and range-read verification](https://github.com/ccancellieri/tellurion/issues/48).
+- [High-detail dataset qualification](https://github.com/ccancellieri/tellurion/issues/49).
+- [Release demo acceptance](https://github.com/ccancellieri/tellurion/issues/45).

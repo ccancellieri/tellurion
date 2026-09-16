@@ -20,9 +20,11 @@ instructions below.
 
 | Platform | Intended archive |
 |---|---|
-| macOS Apple Silicon | `tellurion-v0.5.0-rc.1-aarch64-apple-darwin.tar.gz` |
 | Linux x86_64 musl | `tellurion-v0.5.0-rc.1-x86_64-unknown-linux-musl.tar.gz` |
 | Windows x86_64 MSVC | `tellurion-v0.5.0-rc.1-x86_64-pc-windows-msvc.zip` |
+
+macOS Apple Silicon (`aarch64-apple-darwin`) is source-only for this release while its platform
+licensing evidence is reviewed.
 
 After downloading the archive for your platform from the approved release, verify its
 published SHA-256 checksum before extracting it. Download `SHA256SUMS` into the same
@@ -33,21 +35,28 @@ shasum -a 256 -c SHA256SUMS
 ```
 
 For a public release, also verify the GitHub artifact attestation against this
-repository. For example, the macOS archive is verified with:
+repository. For example, the Linux archive is verified with:
 
 ```sh
-gh attestation verify tellurion-v0.5.0-rc.1-aarch64-apple-darwin.tar.gz \
+gh attestation verify tellurion-v0.5.0-rc.1-x86_64-unknown-linux-musl.tar.gz \
   --repo ccancellieri/tellurion
 ```
 
 If no attestation exists, the artifact is an internal candidate, not an approved public binary.
-The macOS and Linux archives contain the `tellurion` and
-`tellurion-ingest` executables; extract them into a directory on your `PATH`. On
-Windows, extract the ZIP and add its directory to `PATH` before using `tellurion.exe`
+The Linux archive contains the `tellurion` and `tellurion-ingest` executables;
+extract them into a directory on your `PATH`. On Windows, extract the ZIP and
+add its directory to `PATH` before using `tellurion.exe`
 or `tellurion-ingest.exe`.
 
 These assets are intended for Tellurion 0.5.0-rc.1 under `AGPL-3.0-only`. Review the
 [licensing guide](../licensing.md) before deployment or redistribution.
+
+Each native archive also contains the target-specific Rust dependency evidence
+(`RUST_THIRD_PARTY_NOTICES.json` and `RUST_THIRD_PARTY_NOTICES.txt`),
+`runtime-provenance.json`, the Rust standard-library license directory, and—on
+Linux—the hash-verified `licenses/musl/musl-1.2.5.tar.gz` source archive plus
+`licenses/musl/COPYRIGHT.txt`. The release gate remains blocked until those
+materials and clean-machine execution are reviewed.
 
 ### First run from an extracted archive
 
@@ -73,9 +82,13 @@ operator UI, not the anonymous remote-source public-demo feature.
 
 **Administrative access is separate from this data demo.** The sample command
 does not provision an identity provider or grant administrative permissions.
-The current control interface is read-only; tenant creation and configuration
-editing through it remain launch prerequisites. An interface being present at
-`/ui/control` is not evidence that authenticated administration is configured.
+With browser OIDC, a durable control store, and an authorized role binding, the
+control interface provides read-only inventory plus a narrowly scoped editor
+for `cache_ttl_s` at the current platform, tenant, or catalog scope. It does
+not create tenants or catalogs, or edit other configuration; see the
+[browser administration guide](../administration.md). An interface being
+present at `/ui/control` is not evidence that authenticated administration is
+configured.
 
 Before a native package is promoted for general evaluation, each advertised
 platform must pass extraction and startup checks outside the source checkout,
@@ -139,7 +152,7 @@ brew install cmake pkg-config
 Then, from the repository root:
 
 ```sh
-cargo +1.97.1 build --release -p tellurion -p tellurion-ingest
+cargo +1.97.1 build --release -p tellurion -p tellurion-ingest --features tellurion/ui
 ```
 
 ### Linux
@@ -151,7 +164,7 @@ distribution's package manager):
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 sudo apt-get update && sudo apt-get install -y cmake pkg-config
-cargo +1.97.1 build --release -p tellurion -p tellurion-ingest
+cargo +1.97.1 build --release -p tellurion -p tellurion-ingest --features tellurion/ui
 ```
 
 ### Windows
@@ -166,7 +179,7 @@ a shell with Rust on `PATH` (PowerShell or `cmd.exe`), from the repository
 root:
 
 ```powershell
-cargo +1.97.1 build --release -p tellurion -p tellurion-ingest
+cargo +1.97.1 build --release -p tellurion -p tellurion-ingest --features tellurion/ui
 ```
 
 This path (native Windows build via the MSVC toolchain) has not been

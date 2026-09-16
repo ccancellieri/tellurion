@@ -172,8 +172,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: aarch64-apple-darwin
-            runner: macos-14
           - target: x86_64-unknown-linux-musl
             runner: ubuntu-24.04
           - target: x86_64-pc-windows-msvc
@@ -190,9 +188,130 @@ jobs:
       - uses: dtolnay/rust-toolchain@032958afbdc797a9164d3bc0b56325c1308924a5 # 1.97.1
         with:
           targets: ${{ matrix.target }}
+          components: rust-docs
 
       - name: Verify pinned Rust toolchain
         run: rustc +1.97.1 --version --verbose
+
+      - name: Configure static Windows CRT
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: pwsh
+        run: |
+          "RUSTFLAGS=-C target-feature=+crt-static" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Collect native notice evidence
+        shell: pwsh
+        run: |
+          $target = "${{ matrix.target }}"
+          $evidence_dir = Join-Path $env:RUNNER_TEMP "native-notice-evidence-$target"
+          New-Item -ItemType Directory -Force -Path $evidence_dir | Out-Null
+          $metadata = Join-Path $evidence_dir "cargo-metadata.json"
+          $metadata_error = Join-Path $evidence_dir "cargo-metadata.error.txt"
+          $notice_error = Join-Path $evidence_dir "native-notice.error.txt"
+          $status = Join-Path $evidence_dir "STATUS"
+          $provenance_path = Join-Path $evidence_dir "runtime-provenance.json"
+          $ok = $true
+
+          try {
+            & cargo +1.97.1 fetch --locked --target $target 2> $metadata_error
+            if ($LASTEXITCODE -ne 0) { $ok = $false }
+          } catch {
+            $_ | Out-String | Set-Content -Path $metadata_error
+            $ok = $false
+          }
+
+          if ($ok) {
+            try {
+            & cargo +1.97.1 metadata --locked --offline --format-version 1 --filter-platform $target --features tellurion/ui > $metadata 2> $metadata_error
+            if ($LASTEXITCODE -ne 0) { $ok = $false }
+            } catch {
+              $_ | Out-String | Set-Content -Path $metadata_error
+              $ok = $false
+            }
+          }
+
+          if ($ok) {
+            try {
+              & python3 scripts/generate-native-third-party-notices.py `
+                --metadata $metadata `
+                --target $target `
+                --feature-profile 'server=default,ui;ingest=default' `
+                --fallbacks distribution/native-notices/fallbacks.json `
+                --workspace $PWD `
+                --manifest (Join-Path $evidence_dir "RUST_THIRD_PARTY_NOTICES.json") `
+                --text (Join-Path $evidence_dir "RUST_THIRD_PARTY_NOTICES.txt") 2> $notice_error
+              if ($LASTEXITCODE -ne 0) { $ok = $false }
+            } catch {
+              $_ | Out-String | Set-Content -Path $notice_error
+              $ok = $false
+            }
+          }
+
+          try {
+            $sysroot = (& rustc +1.97.1 --print sysroot).Trim()
+            $rust_docs = Join-Path $sysroot "share/doc/rust"
+            $stdlib_dir = Join-Path $evidence_dir "licenses/rust-stdlib"
+            New-Item -ItemType Directory -Force -Path $stdlib_dir | Out-Null
+            Copy-Item (Join-Path $rust_docs "COPYRIGHT.html") -Destination $stdlib_dir
+            Copy-Item (Join-Path $rust_docs "COPYRIGHT-library.html") -Destination $stdlib_dir
+            Copy-Item (Join-Path $rust_docs "licenses") -Destination $stdlib_dir -Recurse
+          } catch {
+            $_ | Out-String | Add-Content -Path $notice_error
+            $ok = $false
+          }
+
+          try {
+            Copy-Item distribution/native-notices/runtime-provenance.json -Destination $provenance_path
+            $provenance = Get-Content -Raw -Path $provenance_path | ConvertFrom-Json
+            if ($provenance.schema_version -ne 1 -or $provenance.rust_version -ne "1.97.1") {
+              throw "runtime provenance does not identify schema 1 and Rust 1.97.1"
+            }
+            if ($target -eq "x86_64-unknown-linux-musl") {
+              $musl = $provenance.linux_musl
+              if ($musl.version -ne "1.2.5" -or
+                  [string]::IsNullOrWhiteSpace($musl.copyright_path) -or
+                  [string]::IsNullOrWhiteSpace($musl.copyright_sha256)) {
+                throw "musl runtime provenance is incomplete"
+              }
+              $musl_source = Join-Path distribution/native-notices $musl.copyright_path
+              $musl_dir = Join-Path $evidence_dir "licenses/musl"
+              New-Item -ItemType Directory -Force -Path $musl_dir | Out-Null
+              $musl_license = Join-Path $musl_dir "COPYRIGHT.txt"
+              Copy-Item $musl_source -Destination $musl_license
+              $actual_hash = (Get-FileHash -Algorithm SHA256 $musl_license).Hash.ToLowerInvariant()
+              if ($actual_hash -ne $musl.copyright_sha256.ToLowerInvariant()) {
+                throw "musl runtime license hash does not match checked-in provenance"
+              }
+              if ([string]::IsNullOrWhiteSpace($musl.source_url) -or
+                  [string]::IsNullOrWhiteSpace($musl.source_sha256)) {
+                throw "musl source archive provenance is incomplete"
+              }
+              $musl_archive = Join-Path $musl_dir "musl-1.2.5.tar.gz"
+              Invoke-WebRequest -Uri $musl.source_url -OutFile $musl_archive
+              $archive_hash = (Get-FileHash -Algorithm SHA256 $musl_archive).Hash.ToLowerInvariant()
+              if ($archive_hash -ne $musl.source_sha256.ToLowerInvariant()) {
+                throw "musl source archive hash does not match checked-in provenance"
+              }
+            }
+          } catch {
+            $_ | Out-String | Add-Content -Path $notice_error
+            $ok = $false
+          }
+
+          @(
+            "target=$target"
+            "feature-profile=server=default,ui;ingest=default"
+            if ($ok) { "status=collected" } else { "status=blocked" }
+          ) | Set-Content -Path $status
+
+      - name: Upload native notice diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-notice-diagnostics-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/native-notice-evidence-${{ matrix.target }}/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Resolve workspace version
         id: version
@@ -229,7 +348,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y musl-tools cmake pkg-config
 
       - name: Gate prebuilt native binary release
-        run: ./scripts/check-native-binary-release-readiness.sh
+        shell: pwsh
+        run: |
+          & bash ./scripts/check-native-binary-release-readiness.sh `
+            --evidence (Join-Path $env:RUNNER_TEMP "native-notice-evidence-${{ matrix.target }}") `
+            --target "${{ matrix.target }}" `
+            --workspace $PWD
 
       - name: Build operator UI for native binary
         shell: pwsh
@@ -275,8 +399,15 @@ jobs:
           Copy-Item COMMERCIAL-LICENSE.md -Destination "$package_dir"
           Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.json" -Destination "$package_dir"
           Copy-Item "$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES.txt" -Destination (Join-Path $package_dir "UI_THIRD_PARTY_NOTICES.txt")
+          $evidence_dir = Join-Path $env:RUNNER_TEMP "native-notice-evidence-$target"
+          Copy-Item (Join-Path $evidence_dir "RUST_THIRD_PARTY_NOTICES.json") -Destination "$package_dir"
+          Copy-Item (Join-Path $evidence_dir "RUST_THIRD_PARTY_NOTICES.txt") -Destination "$package_dir"
+          Copy-Item (Join-Path $evidence_dir "runtime-provenance.json") -Destination "$package_dir"
+          Copy-Item (Join-Path $evidence_dir "licenses") -Destination "$package_dir" -Recurse
           Copy-Item config/example-geopackage.yaml -Destination "$package_dir/config"
           Copy-Item docs/licensing.md -Destination "$package_dir/docs"
+          $crt = if ($target -eq "x86_64-pc-windows-msvc") { "static" } elseif ($target -eq "x86_64-unknown-linux-musl") { "static-musl" } else { "system" }
+          $musl_license = if ($target -eq "x86_64-unknown-linux-musl") { "licenses/musl/COPYRIGHT.txt" } else { "not-applicable" }
           Set-Content -Path (Join-Path $package_dir 'BUILD-INFO') -Value @(
             "version=$version"
             "ref=$env:GITHUB_REF_NAME"
@@ -285,6 +416,10 @@ jobs:
             "server-features=default,ui"
             "ingest-features=default"
             "ui-bundle=operator"
+            "crt=$crt"
+            "rust-stdlib-licenses=licenses/rust-stdlib"
+            "musl-license=$musl_license"
+            "runtime-provenance=runtime-provenance.json"
             "rustc:"
             (& rustc +1.97.1 --version --verbose)
           )
@@ -312,6 +447,67 @@ jobs:
             Expand-Archive -Path $archive -DestinationPath $smoke_dir -Force
           } else {
             & tar -xzf $archive -C $smoke_dir
+          }
+          $archive_dir = Join-Path $smoke_dir $package_name
+          $evidence_dir = Join-Path $env:RUNNER_TEMP "native-notice-evidence-$target"
+          $rust_notice = Join-Path $archive_dir "RUST_THIRD_PARTY_NOTICES.txt"
+          $rust_manifest = Join-Path $archive_dir "RUST_THIRD_PARTY_NOTICES.json"
+          foreach ($path in @($rust_notice, $rust_manifest, (Join-Path $archive_dir "runtime-provenance.json"),
+              (Join-Path $archive_dir "licenses/rust-stdlib/COPYRIGHT.html"),
+              (Join-Path $archive_dir "licenses/rust-stdlib/COPYRIGHT-library.html"))) {
+            if (-not (Test-Path $path -PathType Leaf)) { throw "native archive is missing $path" }
+          }
+          foreach ($name in @("RUST_THIRD_PARTY_NOTICES.txt", "RUST_THIRD_PARTY_NOTICES.json", "runtime-provenance.json")) {
+            $archive_hash = (Get-FileHash -Algorithm SHA256 (Join-Path $archive_dir $name)).Hash
+            $evidence_hash = (Get-FileHash -Algorithm SHA256 (Join-Path $evidence_dir $name)).Hash
+            if ($archive_hash -ne $evidence_hash) { throw "native archive notice differs from pre-archive evidence: $name" }
+          }
+          $manifest = Get-Content -Raw -Path $rust_manifest | ConvertFrom-Json
+          $provenance = Get-Content -Raw -Path (Join-Path $archive_dir "runtime-provenance.json") | ConvertFrom-Json
+          if ($provenance.schema_version -ne 1 -or $provenance.rust_version -ne "1.97.1") {
+            throw "native archive runtime provenance is invalid"
+          }
+          if ($manifest.declared_target -ne $target -or
+              $manifest.declared_feature_profile -ne "server=default,ui;ingest=default" -or
+              $manifest.text_sha256 -ne (Get-FileHash -Algorithm SHA256 $rust_notice).Hash.ToLowerInvariant()) {
+            throw "native archive notice manifest does not bind the target, feature profile, and text hash"
+          }
+          $evidence_licenses = Join-Path $evidence_dir "licenses"
+          $archive_licenses = Join-Path $archive_dir "licenses"
+          $evidence_license_files = @(Get-ChildItem -File -Recurse $evidence_licenses | ForEach-Object {
+            [System.IO.Path]::GetRelativePath($evidence_licenses, $_.FullName).Replace('\', '/')
+          } | Sort-Object)
+          $archive_license_files = @(Get-ChildItem -File -Recurse $archive_licenses | ForEach-Object {
+            [System.IO.Path]::GetRelativePath($archive_licenses, $_.FullName).Replace('\', '/')
+          } | Sort-Object)
+          if (($evidence_license_files -join "`n") -cne ($archive_license_files -join "`n")) {
+            throw "native archive license inventory differs from pre-archive evidence"
+          }
+          foreach ($relative in $evidence_license_files) {
+            $evidence_license = Join-Path $evidence_licenses $relative
+            $archive_license = Join-Path $archive_licenses $relative
+            if ((Get-FileHash -Algorithm SHA256 $evidence_license).Hash -ne
+                (Get-FileHash -Algorithm SHA256 $archive_license).Hash) {
+              throw "native archive license differs from pre-archive evidence: $relative"
+            }
+          }
+          if ($target -eq "x86_64-unknown-linux-musl" -and
+              -not (Test-Path (Join-Path $archive_dir "licenses/musl/COPYRIGHT.txt") -PathType Leaf)) {
+            throw "Linux musl archive is missing musl runtime license evidence"
+          }
+          if ($target -eq "x86_64-unknown-linux-musl") {
+            $musl_archive_hash = (Get-FileHash -Algorithm SHA256 (Join-Path $archive_dir "licenses/musl/COPYRIGHT.txt")).Hash.ToLowerInvariant()
+            if ($musl_archive_hash -ne $provenance.linux_musl.copyright_sha256.ToLowerInvariant()) {
+              throw "packaged musl runtime license differs from checked-in provenance"
+            }
+            $musl_source_archive = Join-Path $archive_dir "licenses/musl/musl-1.2.5.tar.gz"
+            if (-not (Test-Path $musl_source_archive -PathType Leaf)) {
+              throw "Linux musl archive is missing the complete source license archive"
+            }
+            $musl_source_hash = (Get-FileHash -Algorithm SHA256 $musl_source_archive).Hash.ToLowerInvariant()
+            if ($musl_source_hash -ne $provenance.linux_musl.source_sha256.ToLowerInvariant()) {
+              throw "packaged musl source archive differs from checked-in provenance"
+            }
           }
           $ingest = Join-Path (Join-Path $smoke_dir $package_name) "tellurion-ingest$extension"
           $process = Start-Process -FilePath $ingest -ArgumentList @("demo", "--path", $demo_path, "--port", $port) -PassThru
@@ -407,6 +603,7 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: dist
+          pattern: release-*
           merge-multiple: true
 
       - name: Assemble aggregate checksums
@@ -419,8 +616,8 @@ jobs:
             echo "expected exactly one source archive, found ${#source_archives[@]}" >&2
             exit 1
           fi
-          if [ "${#native_archives[@]}" -ne 3 ]; then
-            echo "expected exactly three native archives, found ${#native_archives[@]}" >&2
+          if [ "${#native_archives[@]}" -ne 2 ]; then
+            echo "expected exactly two native archives, found ${#native_archives[@]}" >&2
             exit 1
           fi
           test -f dist/tellurion.spdx.json
@@ -430,9 +627,14 @@ jobs:
           unzip -Z1 "${source_archives[0]}" | grep -Fx THIRD_PARTY_NOTICES.txt >/dev/null
           for archive in dist/tellurion-v*.tar.gz; do
             tar -tzf "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
+            tar -tzf "$archive" | grep -Eq '/RUST_THIRD_PARTY_NOTICES\.json$'
+            tar -tzf "$archive" | grep -Eq '/RUST_THIRD_PARTY_NOTICES\.txt$'
+            tar -tzf "$archive" | grep -Eq '/licenses/musl/musl-1\.2\.5\.tar\.gz$'
           done
           for archive in dist/tellurion-v*-pc-windows-msvc.zip; do
             unzip -Z1 "$archive" | grep -Eq '/THIRD_PARTY_NOTICES\.json$'
+            unzip -Z1 "$archive" | grep -Eq '/RUST_THIRD_PARTY_NOTICES\.json$'
+            unzip -Z1 "$archive" | grep -Eq '/RUST_THIRD_PARTY_NOTICES\.txt$'
           done
           (
             cd dist

@@ -107,7 +107,7 @@ expect_rejected() {
             perl -0pi -e 's#(- name: Build native binaries with operator UI\n)#$1        shell: pwsh\n        run: |\n          target=windows-target\n#' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-native-release-gate)
-            perl -0pi -e 's#\n      - name: Gate prebuilt native binary release\n        run: \./scripts/check-native-binary-release-readiness\.sh\n##' "$fixture/workflows/release-artifacts.yml"
+            perl -0pi -e 's#\n      - name: Gate prebuilt native binary release\n.*?(?=\n      - name:)##s' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-native-ui-feature)
             perl -0pi -e 's#(--target \$\{\{ matrix\.target \}\} -p tellurion -p tellurion-ingest) --features tellurion/ui#$1#' "$fixture/workflows/release-artifacts.yml"
@@ -358,7 +358,31 @@ expect_rejected() {
             perl -0pi -e 's#^[[:space:]]*dist/THIRD_PARTY_NOTICES\.json\n##m' "$fixture/workflows/release-artifacts.yml"
             ;;
         missing-native-notice)
-            perl -0pi -e 's#^[[:space:]]*Copy-Item .*THIRD_PARTY_NOTICES\.json.*\n##m' "$fixture/workflows/release-artifacts.yml"
+            perl -0pi -e 's#^[[:space:]]*Copy-Item "\$env:RUNNER_TEMP/release-source-evidence/THIRD_PARTY_NOTICES\.json".*\n##m' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-evidence-collection)
+            perl -0pi -e 's#\n      - name: Collect native notice evidence\n.*?(?=\n      - name:)##s' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-evidence-upload)
+            perl -0pi -e 's#\n      - name: Upload native notice diagnostics\n.*?(?=\n      - name:)##s' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-rust-stdlib-capture)
+            perl -0pi -e 's#^.*COPYRIGHT-library\.html.*\n##m; s#^.*Copy-Item .*licenses.*\n##m' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-rust-docs-component)
+            perl -0pi -e 's#^[[:space:]]+components: rust-docs\n##m' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-windows-static-crt)
+            perl -0pi -e 's#\n      - name: Configure static Windows CRT\n.*?(?=\n      - name:)##s' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-package-notices)
+            perl -0pi -e 's#^[[:space:]]*Copy-Item .*RUST_THIRD_PARTY_NOTICES\.(?:json|txt).*\n##mg' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-provenance)
+            perl -0pi -e 's#^[[:space:]]*Copy-Item \(Join-Path \$evidence_dir "runtime-provenance\.json"\).*\n##m' "$fixture/workflows/release-artifacts.yml"
+            ;;
+        missing-native-smoke-notices)
+            perl -0pi -e 's#\n          \$archive_dir = Join-Path.*?(?=\n          \$ingest =)#\n#s' "$fixture/workflows/release-artifacts.yml"
             ;;
         unexpected-native-ui-notice)
             perl -0pi -e 's#-Destination \(Join-Path \$package_dir "UI_THIRD_PARTY_NOTICES\.txt"\)#-Destination "$package_dir"#' "$fixture/workflows/release-artifacts.yml"
@@ -436,11 +460,32 @@ expect_rejected() {
         missing-native-notice)
             expected_message='release package'
             ;;
+        missing-native-evidence-collection|missing-rust-stdlib-capture)
+            expected_message='native notice evidence'
+            ;;
+        missing-rust-docs-component)
+            expected_message='missing required workflow behavior'
+            ;;
+        missing-windows-static-crt)
+            expected_message='Windows native packaging'
+            ;;
+        missing-native-evidence-upload)
+            expected_message='native notice diagnostics'
+            ;;
+        missing-native-package-notices)
+            expected_message='native release package'
+            ;;
+        missing-native-provenance)
+            expected_message='native release package'
+            ;;
+        missing-native-smoke-notices)
+            expected_message='native notice smoke'
+            ;;
         unexpected-native-ui-notice)
             expected_message='native operator UI release package'
             ;;
         missing-native-release-gate)
-            expected_message='gate prebuilt binary release readiness'
+            expected_message='native matrix gate'
             ;;
         missing-native-ui-feature|missing-native-ui-build|missing-native-ui-package-notice|missing-native-ui-smoke|missing-native-ui-assets|missing-native-control-smoke)
             expected_message='native operator UI'
@@ -500,6 +545,14 @@ FINAL_FIX_MUTATIONS=(
     missing-ui-notice-verification
     missing-source-upload-notice
     missing-native-notice
+    missing-native-evidence-collection
+    missing-native-evidence-upload
+    missing-rust-stdlib-capture
+    missing-rust-docs-component
+    missing-windows-static-crt
+    missing-native-package-notices
+    missing-native-provenance
+    missing-native-smoke-notices
     unexpected-native-ui-notice
     missing-native-release-gate
     missing-native-ui-feature
@@ -576,6 +629,18 @@ if [ "$mutation_partition" = all ] || [ "$mutation_partition" = final-fixes ]; t
         'python3 scripts/generate-third-party-notices\.py' \
         'path:[[:space:]]*\$\{\{ runner\.temp \}\}/tellurion-public-core' \
         'Copy-Item .*THIRD_PARTY_NOTICES\.json' \
+        'Collect native notice evidence' \
+        'Upload native notice diagnostics' \
+        'generate-native-third-party-notices\.py' \
+        '--filter-platform \$target' \
+        'COPYRIGHT-library\.html' \
+        'licenses' \
+        'RUST_THIRD_PARTY_NOTICES\.json' \
+        'RUST_THIRD_PARTY_NOTICES\.txt' \
+        'runtime-provenance\.json' \
+        'source_sha256' \
+        'Invoke-WebRequest -Uri \$musl\.source_url' \
+        'musl-1\.2\.5\.tar\.gz' \
         'shasum -a 256 .*THIRD_PARTY_NOTICES\.json.*SHA256SUMS' \
         '\$env:GITHUB_REF_TYPE -eq "tag"' \
         '\$env:GITHUB_REF_NAME -ne "v\$\{\{ steps\.version\.outputs\.version \}\}"'; do
@@ -588,6 +653,9 @@ if [ "$mutation_partition" = all ] || [ "$mutation_partition" = final-fixes ]; t
         'npm run build' \
         'build.*--features tellurion/ui' \
         'UI_THIRD_PARTY_NOTICES\.txt' \
+        'RUST_THIRD_PARTY_NOTICES\.txt' \
+        'ConvertFrom-Json' \
+        'text_sha256' \
         'Invoke-WebRequest -Uri "\$base_url/ui/"'; do
         if ! rg -q -- "$native_ui_behavior" .github/workflows/release-artifacts.yml; then
             echo "FAIL: native operator UI release behavior is missing $native_ui_behavior" >&2
@@ -632,7 +700,7 @@ expect_guide_rejected() {
 if [ "$mutation_partition" = all ] || [ "$mutation_partition" = guide ]; then
     current_version="$(workspace_version)"
     expect_guide_rejected stale-install-guide \
-        "s/tellurion-v$current_version-aarch64/tellurion-v9.9.9-aarch64/"
+        "s/tellurion-v$current_version-x86_64/tellurion-v9.9.9-x86_64/"
     expect_guide_rejected undocumented-target \
         '/x86_64-pc-windows-msvc/d'
 fi
