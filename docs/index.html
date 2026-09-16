@@ -41,7 +41,7 @@
         <div class="coordinate-strip" aria-label="Guide principles">
           <span>Truthful status</span><span>Canonical instructions</span><span>Bounded claims</span>
         </div>
-        <p class="evidence-stamp"><strong>Documentation snapshot: 2026-09-03</strong> · Product evidence: public Tellurion v0.5.0-rc.1 release-candidate source, its quickstart and installation manual, plus bounded demo artifacts.</p>
+        <p class="evidence-stamp"><strong>Release update: 2026-09-16</strong> · Product evidence: public Tellurion v0.5.0 stable binaries and source, its quickstart and installation manual, plus separately versioned demo artifacts. Format descriptions retain their documented preview boundaries.</p>
       </section>
 
       <section class="doc-section" id="status">
@@ -58,7 +58,7 @@
           <article role="listitem"><span class="tag available-tag">Available</span><h3>Embedded GeoPackage</h3><p>The public vector demonstration uses the embedded GeoPackage path for a self-contained, read-only evaluation.</p><a href="../demos/vector/">Inspect the GeoPackage demo →</a></article>
           <article role="listitem"><span class="tag optional-tag">Optional</span><h3>Valkey cache and browser UI</h3><p>Valkey adds an opt-in L2 tile cache; the embedded browser UI is a separate opt-in build feature. Neither is required for the default serving engine.</p><a href="../proof/#boundary">Review what is publicly inspectable →</a></article>
           <article role="listitem"><span class="tag preview-tag">Preview</span><h3>Interactive evaluation</h3><p>The public gallery demonstrates bounded vector, raster, Zarr, 3D, CQL2, STAC, Maps and Styles paths. Demo availability is evidence, not a production SLA or benchmark.</p><a href="../#capabilities">Open the demo gallery →</a></article>
-          <article role="listitem"><span class="tag planned-tag">Planned</span><h3>Approved v0.5 binaries</h3><p>Tellurion v0.5.0-rc.1 source is public. Platform archives are intended, but there is no verified public v0.5 binary release today; build from source using the installation manual.</p><a href="#download">See the source and download state →</a></article>
+          <article role="listitem"><span class="tag">Available</span><h3>Stable v0.5.0 binaries</h3><p>Linux and Windows archives include the operator UI, checksums and attestations. macOS remains source-only.</p><a href="../releases/v0.5.0/">Download and run locally →</a></article>
         </div>
 
         <div class="table-wrap" tabindex="0" role="region" aria-label="Driver support matrix">
@@ -85,17 +85,17 @@
         <div class="section-heading"><p class="station">Station 02</p><h2>Choose your first route</h2><p>Begin with the smallest shape that answers your evaluation question.</p></div>
         <ol class="routes">
           <li><span class="route-number">A</span><div><h3>Try your own public file</h3><p>Open a public COG, GeoParquet file, or zipped Shapefile in a temporary preview before installing anything. Use only credential-free, non-sensitive data.</p><a href="https://tellurion-public-demo.onrender.com/ui/">Open the public-file preview →</a></div></li>
-          <li><span class="route-number">B</span><div><h3>Run v0.5.0-rc.1 source</h3><p>Use the public release-candidate source and its self-contained GeoPackage quickstart for a self-hosted evaluation.</p><a href="https://github.com/ccancellieri/tellurion#quickstart">Open the quickstart →</a></div></li>
-          <li><span class="route-number">C</span><div><h3>Read the installation manual</h3><p>Build v0.5.0-rc.1 source with the documented platform prerequisites and commands. The checksummed 0.3.0 binaries remain historical evidence.</p><a href="https://github.com/ccancellieri/tellurion/blob/main/docs/quickstart/install.md">Open the installation manual →</a></div></li>
+          <li><span class="route-number">B</span><div><h3>Run v0.5.0 locally</h3><p>Download the stable release and start the self-contained GeoPackage demo with its embedded map interface.</p><a href="../releases/v0.5.0/">Download and run locally →</a></div></li>
+          <li><span class="route-number">C</span><div><h3>Read the installation manual</h3><p>Verify native packages or build from source with the documented prerequisites. The checksummed 0.3.0 binaries remain historical evidence.</p><a href="https://github.com/ccancellieri/tellurion/blob/main/docs/quickstart/install.md">Open the installation manual →</a></div></li>
         </ol>
       </section>
 
       <section class="doc-section" id="download">
         <div class="section-heading"><p class="station">Station 03</p><h2>Download state</h2></div>
         <div class="notice" role="note" aria-label="Current download status">
-          <strong>Tellurion v0.5.0-rc.1 source is public.</strong>
-          <p>v0.5.0-rc.1 is a release candidate for self-hosted evaluation. Start with the source and quickstart, then use the installation manual to build it. No verified public v0.5 binary is available yet; the checksummed 0.3.0 archives remain historical.</p>
-          <div class="actions"><a class="button primary" href="https://github.com/ccancellieri/tellurion">Open v0.5.0-rc.1 source</a><a class="button" href="https://github.com/ccancellieri/tellurion#quickstart">Run the quickstart</a><a class="button" href="https://github.com/ccancellieri/tellurion/blob/main/docs/quickstart/install.md">Installation manual</a></div>
+          <strong>Tellurion v0.5.0 stable release is public.</strong>
+          <p>Linux and Windows binaries, source, dependency notices and SHA-256 checksums are published together. Follow the local demo guide and verify the GitHub attestations. macOS is source-only; Cargo registry publication is separate. Historical hosted demos have not been relabelled as v0.5.0.</p>
+          <div class="actions"><a class="button primary" href="../releases/v0.5.0/">Download and run v0.5.0</a><a class="button" href="https://github.com/ccancellieri/tellurion#quickstart">Run the quickstart</a><a class="button" href="https://github.com/ccancellieri/tellurion/blob/main/docs/quickstart/install.md">Installation manual</a></div>
         </div>
         <div class="safety-grid">
           <div><h3>Before production</h3><p>Read the licence that applies to the version and intended use. The licence text controls.</p><a href="../NOTICE.md">Read the public licence notice →</a></div>
@@ -104,9 +104,10 @@
       </section>
 
       <section class="doc-section" id="operate">
-        <div class="section-heading"><p class="station">Station 04</p><h2>Use the public source and evidence set</h2><p>The v0.5.0-rc.1 release-candidate source, quickstart and installation manual are public. Tellurion is self-hosted: no Tellurion Cloud, SLA or support service is offered.</p></div>
+        <div class="section-heading"><p class="station">Station 04</p><h2>Use the public source and evidence set</h2><p>The stable v0.5.0 release, quickstart and installation manual are public. Tellurion is self-hosted: no Tellurion Cloud, SLA or support service is offered.</p></div>
         <div class="manuals">
-          <a href="https://github.com/ccancellieri/tellurion"><strong>Tellurion v0.5.0-rc.1 source</strong><span>Public release-candidate source for self-hosted evaluation.</span></a>
+          <a href="https://github.com/ccancellieri/tellurion/releases/tag/v0.5.0"><strong>Tellurion v0.5.0 release</strong><span>Stable binaries and source for self-hosted evaluation.</span></a>
+          <a href="https://github.com/ccancellieri/tellurion"><strong>Source repository</strong><span>Development, issues and contributions.</span></a>
           <a href="https://github.com/ccancellieri/tellurion#quickstart"><strong>Quickstart</strong><span>Self-contained GeoPackage evaluation path.</span></a>
           <a href="https://github.com/ccancellieri/tellurion/blob/main/docs/quickstart/install.md"><strong>Installation manual</strong><span>Build prerequisites and platform-specific instructions.</span></a>
           <a href="https://github.com/ccancellieri/tellurion/tree/main/demo/gallery"><strong>Demo source</strong><span>Fixtures, deployment definitions and page code for every public demonstration.</span></a>
