@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remote COG, local computation, reproducible default — Tellurion Italy</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <meta name="description" content="A Cloud Optimized GeoTIFF can make a large raster usable without treating it as an all-or-nothing download. For this demonstration, the refresh workflow reads a Rome window from the ESA WorldCover COG through HTTP range ">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/articles/remote-cog-local-computation/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Remote COG, local computation, reproducible default">
+  <meta property="og:description" content="A Cloud Optimized GeoTIFF can make a large raster usable without treating it as an all-or-nothing download. For this demonstration, the refresh workflow reads a Rome window from the ESA WorldCover COG through HTTP range ">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/articles/remote-cog-local-computation/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/03-tellurion-italy.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="627">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Remote COG, local computation, reproducible default">
+  <meta name="twitter:description" content="A Cloud Optimized GeoTIFF can make a large raster usable without treating it as an all-or-nothing download. For this demonstration, the refresh workflow reads a Rome window from the ESA WorldCover COG through HTTP range ">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/03-tellurion-italy.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#article">Skip to article</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="../../"><span class="brand-mark" aria-hidden="true"></span>Tellurion Italy</a>
+      <div class="nav-links">
+        <a href="../../#evidence">Evidence</a>
+        <a href="../../#comparison">Comparison</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
+      </div>
+    </nav>
+  </header>
+  <main class="article-main" id="article">
+    <p class="eyebrow">Field note 03 of 10</p>
+    <h1>Remote COG, local computation, reproducible default</h1>
+    <figure class="article-lead-image">
+      <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/03-tellurion-italy.png" alt="Article card for Remote COG, local computation, reproducible default">
+      <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
+    </figure>
+    <article class="article-body"><p>A Cloud Optimized GeoTIFF can make a large raster usable without treating it as an all-or-nothing download. For this demonstration, the refresh workflow reads a Rome window from the ESA WorldCover COG through HTTP range requests. The default workflow instead uses the included raster window, so a reviewer can reproduce the published result without a live upstream dependency.</p>
+<p>That split is intentional. The default is a fixed artifact; <code>./reproduce.sh --refresh</code> is a new observation against then-current source access. Neither should be silently substituted for the other. The source URL, scope, and caveats are documented in <a href="https://github.com/ccancellieri/tellurion-italy-demo#readme">the README</a>, while the bundled file is <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">data/rome-worldcover.tif</a>.</p>
+<p>The raster calculation itself is Python using Rasterio, NumPy, and Shapely—not a Tellurion analysis engine. It rasterises OSM line geometries onto the WorldCover grid and counts the categorical values under the mask. Tellurion enters later, for the local GeoPackage and OGC API Features/Tiles serving path described in the same README.</p>
+<p>This is a hybrid pattern rather than a claim of superiority: keep authoritative public raster access at its source when that works, retain local computation and derived artifacts when control matters, and make the boundary visible. QGIS can support equivalent desktop/Processing workflows; other deployments may reasonably mirror data locally.</p>
+<p>Do you use remote COGs directly, maintain a local mirror, or choose per dataset? I would like to hear what made that decision durable in practice.</p>
+<p class="eyebrow">#COG #Rasterio #GDAL #EarthObservation #OnPrem</p></article>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="source-list" style="margin-top: 1.5rem">
+      <a href="../../#sources">Sources &amp; licences</a>
+      <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
+      <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover / CC BY 4.0</a>
+      <a href="https://doi.org/10.5281/zenodo.7254221">WorldCover 2021 DOI</a>
+    </div>
+    <nav class="article-nav" aria-label="Article sequence"><a href="../two-open-layers-in-rome/"><span class="article-number">Previous</span><br>two open layers in rome</a><a href="../the-analysis-boundary/"><span class="article-number">Next</span><br>the analysis boundary</a></nav>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-grid"><span>Tellurion Italy · field note 3</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+  </footer>
+</body>
+</html>

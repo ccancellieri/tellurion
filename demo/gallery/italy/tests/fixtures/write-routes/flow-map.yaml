@@ -1,0 +1,3 @@
+collections:
+  - id: rome_roads
+    routing: { "write": main }

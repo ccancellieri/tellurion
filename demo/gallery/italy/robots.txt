@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ccancellieri.github.io/tellurion-italy-demo/sitemap.xml

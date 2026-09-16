@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reproduce before you believe the screenshot — Tellurion Italy</title>
+  <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+  <meta name="description" content="A map card can communicate a result, but it cannot show how the result was made. For this Rome example, the useful artifact is the chain a reviewer can inspect: input snapshot, code, command, generated vectors, metrics, ">
+  <link rel="canonical" href="https://ccancellieri.github.io/tellurion-italy-demo/articles/reproduce-before-you-believe/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Reproduce before you believe the screenshot">
+  <meta property="og:description" content="A map card can communicate a result, but it cannot show how the result was made. For this Rome example, the useful artifact is the chain a reviewer can inspect: input snapshot, code, command, generated vectors, metrics, ">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-italy-demo/articles/reproduce-before-you-believe/">
+  <meta property="og:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/06-tellurion-italy.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="627">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Reproduce before you believe the screenshot">
+  <meta name="twitter:description" content="A map card can communicate a result, but it cannot show how the result was made. For this Rome example, the useful artifact is the chain a reviewer can inspect: input snapshot, code, command, generated vectors, metrics, ">
+  <meta name="twitter:image" content="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/06-tellurion-italy.png">
+  <link rel="stylesheet" href="../../styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#article">Skip to article</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="../../"><span class="brand-mark" aria-hidden="true"></span>Tellurion Italy</a>
+      <div class="nav-links">
+        <a href="../../#evidence">Evidence</a>
+        <a href="../../#comparison">Comparison</a>
+        <a class="button" href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">Download kit</a>
+      </div>
+    </nav>
+  </header>
+  <main class="article-main" id="article">
+    <p class="eyebrow">Field note 06 of 10</p>
+    <h1>Reproduce before you believe the screenshot</h1>
+    <figure class="article-lead-image">
+      <img src="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/06-tellurion-italy.png" alt="Article card for Reproduce before you believe the screenshot">
+      <figcaption class="map-caption">Map data © OpenStreetMap contributors, ODbL 1.0. Land cover © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, CC BY 4.0.</figcaption>
+    </figure>
+    <article class="article-body"><p>A map card can communicate a result, but it cannot show how the result was made. For this Rome example, the useful artifact is the chain a reviewer can inspect: input snapshot, code, command, generated vectors, metrics, and image.</p>
+<p>The smallest path is intentionally short:</p>
+<p>``<code>bash chmod +x reproduce.sh ./reproduce.sh </code>``</p>
+<p>Those commands and their requirements are documented in <a href="../../#reproduce">README.md</a>. The default run is network-independent after download. <code>./reproduce.sh --refresh</code> is explicitly different: it retrieves fresh OSM data and reads the remote ESA COG window. Report which mode you used when comparing results.</p>
+<p>The same README documents <code>--install</code>, <code>--load-rome</code>, and <code>--serve-rome</code>, plus feature and vector-tile requests. Tellurion 0.3.0 binaries are public for macOS Apple Silicon, Linux x86_64 and Windows x86_64; the installer selects the matching macOS or Linux archive and verifies it against the published SHA-256 manifest. That path demonstrates an on-prem Tellurion deployment over a GeoPackage; it does not transform the Python/Rasterio calculation into a Tellurion analysis capability.</p>
+<p>Reproducibility is also a way to invite disagreement. If a command fails, the most useful report includes the OS/architecture, command, error, and relevant artifact such as <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/metrics.json">output/metrics.json</a>. If it succeeds but the definition is weak, that is equally valuable feedback.</p>
+<p>Would you rather receive a geospatial demo as a container, a small shell runner, or both? And what is the first thing you look for before trusting a published map?</p>
+<p class="eyebrow">#Reproducibility #OpenScience #DevOps #Geospatial #OpenSource</p></article>
+    <div class="caveat"><strong>Reproduce and challenge it:</strong> <a href="https://github.com/ccancellieri/tellurion-italy-demo/releases/download/demo-v0.2.0/tellurion-italy-demo-v0.2.0.zip">download the versioned kit</a>, retain the source attribution, and <a href="https://github.com/ccancellieri/tellurion-italy-demo/issues/new">report your environment and metrics</a>.</div>
+    <div class="source-list" style="margin-top: 1.5rem">
+      <a href="../../#sources">Sources &amp; licences</a>
+      <a href="https://www.openstreetmap.org/copyright">OSM / ODbL</a>
+      <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover / CC BY 4.0</a>
+      <a href="https://doi.org/10.5281/zenodo.7254221">WorldCover 2021 DOI</a>
+    </div>
+    <nav class="article-nav" aria-label="Article sequence"><a href="../what-the-number-means/"><span class="article-number">Previous</span><br>what the number means</a><a href="../tools-have-different-jobs/"><span class="article-number">Next</span><br>tools have different jobs</a></nav>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-grid"><span>Tellurion Italy · field note 6</span><span><a href="../../#sources">Sources &amp; licences</a> · <a href="https://github.com/ccancellieri/tellurion-italy-demo">Source</a></span></div>
+  </footer>
+</body>
+</html>

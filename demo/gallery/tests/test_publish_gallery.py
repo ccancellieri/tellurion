@@ -9,6 +9,22 @@ spec.loader.exec_module(publisher)
 
 
 class PublicationTests(unittest.TestCase):
+    def test_exports_italy_case_and_disables_jekyll_without_exporting_private_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source, target = Path(temporary) / 'source', Path(temporary) / 'target'
+            (source / 'italy/articles/field-note').mkdir(parents=True)
+            target.mkdir()
+            (source / 'index.html').write_text('Gallery')
+            (source / '.nojekyll').write_text('')
+            (source / 'italy/index.html').write_text('Italy case')
+            (source / 'italy/articles/field-note/index.html').write_text('Historical evidence')
+            (source / 'italy/.env').write_text('private')
+            publisher.apply_export(target, publisher.plan_export(source, target))
+            self.assertTrue((target / '.nojekyll').is_file())
+            self.assertEqual((target / 'italy/index.html').read_text(), 'Italy case')
+            self.assertEqual((target / 'italy/articles/field-note/index.html').read_text(), 'Historical evidence')
+            self.assertFalse((target / 'italy/.env').exists())
+
     def test_rejects_publication_metadata_symlink(self):
         with tempfile.TemporaryDirectory() as temporary:
             source, target = Path(temporary) / 'source', Path(temporary) / 'target'

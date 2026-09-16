@@ -3,8 +3,12 @@
 The authoritative public source is now `demo/gallery` in
 [Tellurion](https://github.com/ccancellieri/tellurion/tree/main/demo/gallery).
 The `tellurion-demos` repository remains the publication destination and retains
-its existing GitHub Pages and Render addresses. The Italy case-study repository
-remains separate. No private repository history or Enterprise code is imported.
+its existing GitHub Pages and Render addresses during migration. The Italy
+case-study source now lives in `italy/`; its legacy deployment and downloads
+remain active until the replacement is verified. See
+[Italy migration provenance](../italy/MIGRATION.md) and
+[repository retirement](https://github.com/ccancellieri/tellurion/issues/37).
+No private repository history or Enterprise code is imported.
 
 ## Existing versions
 

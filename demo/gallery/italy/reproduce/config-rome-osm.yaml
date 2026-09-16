@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+cache:
+  memory_percent: 10.0
+
+storages:
+  - id: main
+    driver: geopackage
+    url_env: TELLURION_GEOPACKAGE_PATH
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: rome_roads
+    catalog: default
+    storage: main

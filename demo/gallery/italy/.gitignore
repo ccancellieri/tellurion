@@ -1,0 +1,22 @@
+# Binary/data artifacts are distributed through GitHub Releases, not Git.
+*.zip
+*.tar
+*.tar.gz
+*.tif
+*.tiff
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.geojson
+*.gpkg
+*.pmtiles
+*.parquet
+*.zarr
+reproduce/bin/
+reproduce/downloads/
+
+# Local tooling.
+.DS_Store
+__pycache__/
+*.pyc
