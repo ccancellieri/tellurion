@@ -24,6 +24,11 @@ printf '%s\n' "$output" | grep -F "$manual_tool" >/dev/null || {
     exit 1
 }
 
+printf '%s\n' "$output" | grep -E '^generate-native-third-party-notices\.py[[:space:]]+yes[[:space:]]+via test_native_third_party_notices\.py$' >/dev/null || {
+    echo "FAIL: native notice generator was not classified through its hosted tests" >&2
+    exit 1
+}
+
 make_fixture() {
     fixture="$1"
     mkdir -p "$fixture/scripts" "$fixture/.github/workflows"

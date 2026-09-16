@@ -291,6 +291,7 @@ INDIRECT=(
     "check-crates-io-release-readiness.sh:publish-crates-io.sh"
     "check-pss-restricted.py:validate-deploy-manifests.sh"
     "check-workflow-permissions.py:check-ci-workflows.sh"
+    "generate-native-third-party-notices.py:test_native_third_party_notices.py"
 )
 # These inspect or prepare publication state. They are intentional manual
 # owner gates, not ordinary CI commands, and must remain visible in the audit.
