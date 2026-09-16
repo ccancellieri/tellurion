@@ -17,7 +17,25 @@ from urllib.parse import urlparse
 
 
 NOTICE_NAME = re.compile(r"^(?:licen[cs]e|copying|copyright|notice)(?:[._-].*)?$", re.I)
-NATIVE_NAMES = ("sqlite", "ring", "aws-lc")
+NATIVE_NAMES = ("sqlite", "ring", "aws-lc", "zstd")
+
+
+def _sqlite_disclaimer(directory: Path) -> tuple[str, bytes]:
+    relative = "sqlite3/sqlite3.c"
+    path = directory / relative
+    if path.is_symlink() or not path.resolve().is_relative_to(directory) or not path.is_file():
+        raise ValueError("SQLite copyright disclaimer source missing or unsafe")
+    # The amalgamation can be many megabytes. Its initial copyright block is
+    # sufficient; never embed the implementation in a notice document.
+    with path.open("rb") as source:
+        prefix = source.read(65536)
+    marker = b"The author disclaims copyright to this source code."
+    position = prefix.find(marker)
+    start = prefix.rfind(b"/*", 0, position) if position >= 0 else -1
+    end = prefix.find(b"*/", position) if position >= 0 else -1
+    if start < 0 or end < 0 or prefix.find(b"*/", start) != end:
+        raise ValueError("SQLite copyright disclaimer missing or changed")
+    return relative + "#copyright-disclaimer", prefix[start:end + 2]
 
 
 def _files(package: dict) -> list[tuple[str, bytes]]:
@@ -42,6 +60,8 @@ def _files(package: dict) -> list[tuple[str, bytes]]:
             relative = path.relative_to(directory).as_posix()
             if relative != declared:
                 found.append((relative, path.read_bytes()))
+    if package["name"] == "libsqlite3-sys":
+        found.append(_sqlite_disclaimer(directory))
     found.sort(key=lambda item: item[0])
     return found
 

@@ -203,7 +203,7 @@ class NativeNoticesTests(unittest.TestCase):
 
     def test_nested_bundled_native_notices_included(self):
         metadata = self.metadata()
-        metadata["packages"][2]["name"] = "libsqlite3-sys"
+        metadata["packages"][2]["name"] = "ring"
         nested = self.registry / "runtime" / "sqlite3" / "vendor"
         nested.mkdir(parents=True)
         (nested / "NOTICE.txt").write_text("Bundled native notice\n")
@@ -220,6 +220,48 @@ class NativeNoticesTests(unittest.TestCase):
         manifest, text = module.generate(metadata, self.root, ("tellurion", "tellurion-ingest"))
         self.assertIn("Unusual license text", text)
         self.assertEqual("terms.txt", manifest["packages"][1]["files"][0]["path"])
+
+    def test_zstd_bundled_license_texts_are_not_omitted(self):
+        metadata = self.metadata()
+        metadata["packages"][2]["name"] = "zstd-sys"
+        nested = self.registry / "runtime" / "zstd"
+        nested.mkdir()
+        (nested / "LICENSE").write_bytes(b"Bundled BSD terms\r\n")
+        (nested / "COPYING").write_bytes(b"Bundled GPL alternative\n")
+        manifest, text = module.generate(metadata, self.root, ("tellurion", "tellurion-ingest"))
+        record = next(p for p in manifest["packages"] if p["name"] == "zstd-sys")
+        self.assertIn("Bundled BSD terms\r\n", text)
+        self.assertIn("Bundled GPL alternative\n", text)
+        self.assertIn("zstd/LICENSE", [f["path"] for f in record["files"]])
+
+    def test_sqlite_embedded_disclaimer_is_collected_without_source_body(self):
+        metadata = self.metadata()
+        metadata["packages"][2]["name"] = "libsqlite3-sys"
+        nested = self.registry / "runtime" / "sqlite3"
+        nested.mkdir()
+        disclaimer = (b"/*\n** 2001 September 15\n**\n"
+                      b"** The author disclaims copyright to this source code.  In place of\n"
+                      b"** a legal notice, here is a blessing:\n**\n"
+                      b"**    May you do good and not evil.\n*/")
+        (nested / "sqlite3.c").write_bytes(b"/* amalgamation */\n" + disclaimer + b"\nint not_a_notice;\n")
+        manifest, text = module.generate(metadata, self.root, ("tellurion", "tellurion-ingest"))
+        record = next(p for p in manifest["packages"] if p["name"] == "libsqlite3-sys")
+        self.assertIn(disclaimer.decode(), text)
+        self.assertNotIn("int not_a_notice", text)
+        entry = next(f for f in record["files"] if f["path"] == "sqlite3/sqlite3.c#copyright-disclaimer")
+        self.assertEqual(hashlib.sha256(disclaimer).hexdigest(), entry["sha256"])
+
+    def test_sqlite_missing_or_changed_disclaimer_blocks_collection(self):
+        metadata = self.metadata()
+        metadata["packages"][2]["name"] = "libsqlite3-sys"
+        nested = self.registry / "runtime" / "sqlite3"
+        nested.mkdir()
+        for content in (None, b"/* changed terms */", b"/* The author disclaims copyright to this source code."):
+            with self.subTest(content=content):
+                if content is not None:
+                    (nested / "sqlite3.c").write_bytes(content)
+                with self.assertRaisesRegex(ValueError, "SQLite.*disclaimer"):
+                    module.generate(metadata, self.root, ("tellurion", "tellurion-ingest"))
 
     def test_nonworkspace_path_dependency_is_not_silently_omitted(self):
         metadata = self.metadata()
