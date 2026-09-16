@@ -160,6 +160,8 @@ describe('production platform settings editor', () => {
     await vi.waitFor(() => expect(editor.querySelector('[data-action="retry"]')).not.toBeNull());
     click(editor, 'retry');
     await vi.waitFor(() => expect(applyCalls).toBe(3));
+    await vi.waitFor(() => expect(settingsReads).toBe(3));
+    await vi.waitFor(() => expect(overviewCalls).toBe(3));
     const writes = fetchMock.mock.calls.filter(([path, init]) => path === '/_control/v1/platform/settings' && init.method === 'PUT');
     expect(writes[1][1].body).toBe(writes[2][1].body);
   });

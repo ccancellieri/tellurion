@@ -1,4 +1,9 @@
-import { ControlApiError, ProductionControlReadClient } from '../lib/control-api';
+import {
+  ControlApiError,
+  ProductionControlReadClient,
+  controlSettingsScopeDescriptor,
+  type ControlSettingsEditScope,
+} from '../lib/control-api';
 import { PlatformSettingsEditSession, type PlatformSettingsEditView } from '../lib/platform-settings-session';
 
 function escape(value: unknown): string {
@@ -19,10 +24,12 @@ function parseCacheValue(raw: string): number | null {
   return value;
 }
 
-/** Scoped, production-only view over the durable platform settings edit session. */
+/** Production-only view over the durable settings edit session. */
 export class TellurionPlatformSettingsEditor extends HTMLElement {
   client!: ProductionControlReadClient;
+  scope: ControlSettingsEditScope = { kind: 'platform' };
   #session?: PlatformSettingsEditSession;
+  #resourceKey = 'platform';
   #generation = 0;
   #validation?: string;
   #error?: string;
@@ -36,7 +43,8 @@ export class TellurionPlatformSettingsEditor extends HTMLElement {
   connectedCallback(): void {
     if (!(this.client instanceof ProductionControlReadClient)) return;
     const generation = ++this.#generation;
-    this.#session = new PlatformSettingsEditSession(this.client);
+    this.#resourceKey = controlSettingsScopeDescriptor(this.scope).resourceKey;
+    this.#session = new PlatformSettingsEditSession(this.client, undefined, this.scope);
     this.#validation = undefined;
     this.#error = undefined;
     this.#lastCommit = undefined;
@@ -72,7 +80,7 @@ export class TellurionPlatformSettingsEditor extends HTMLElement {
       return true;
     } catch (error) {
       if (!this.#isCurrent(generation, session)) return false;
-      this.#error = this.#safeError(error, 'Platform settings are unavailable.');
+      this.#error = this.#safeError(error, 'Control settings are unavailable.');
       this.#render();
       return false;
     }
@@ -87,15 +95,19 @@ export class TellurionPlatformSettingsEditor extends HTMLElement {
     if (!view) return;
     const loading = view.phase === 'unloaded' || view.phase === 'loading';
     const editable = view.phase === 'editing' || view.phase === 'previewed';
+    const label = this.scope.kind === 'platform' ? 'Platform' : this.scope.kind === 'tenant' ? 'Tenant' : 'Catalog';
+    const description = this.scope.kind === 'platform'
+      ? 'Platform-wide changes become inherited defaults for tenant, catalog, and collection settings unless overridden. A changed control revision does not guarantee runtime activation.'
+      : `Changes to this ${this.scope.kind} cache lifetime do not alter sibling scopes. A changed control revision does not guarantee runtime activation.`;
     this.innerHTML = `
-      <section class="control-sheet__section control-editor" aria-labelledby="platform-settings-heading" ${loading ? 'aria-busy="true"' : ''}>
-        <div class="control-sheet__section-heading"><p class="control-label">Durable settings</p><h2 id="platform-settings-heading">Platform settings</h2></div>
-        <p class="control-note">Platform-wide changes become inherited defaults for tenant, catalog, and collection settings unless overridden. A changed control revision does not guarantee runtime activation.</p>
+      <section class="control-sheet__section control-editor" aria-labelledby="control-settings-heading" ${loading ? 'aria-busy="true"' : ''}>
+        <div class="control-sheet__section-heading"><p class="control-label">Durable settings</p><h2 id="control-settings-heading">${label} settings</h2></div>
+        <p class="control-note">${description}</p>
         ${view.entityVersion ? `<p class="control-note">Entity version <code>${escape(view.entityVersion)}</code> · source revision ${escape(view.controlRevision)}</p>` : ''}
-        ${loading ? '<p class="control-note" role="status">Loading platform settings…</p>' : view.draft ? `
-          <label for="platform-cache-ttl">Cache lifetime (seconds)</label>
-          <input id="platform-cache-ttl" data-field="cache-ttl" type="text" inputmode="numeric" value="${escape(cacheValue(view))}" ${editable ? '' : 'disabled'} aria-describedby="platform-cache-help${this.#validation ? ' platform-cache-error' : ''}" ${this.#validation ? 'aria-invalid="true"' : ''}>
-          <p id="platform-cache-help" class="control-note">Use a non-negative whole number, including 0. Leave blank to unset the platform value.</p>
+        ${loading ? `<p class="control-note" role="status">Loading ${label.toLowerCase()} settings…</p>` : view.draft ? `
+          <label for="control-cache-ttl">Cache lifetime (seconds)</label>
+          <input id="control-cache-ttl" data-field="cache-ttl" type="text" inputmode="numeric" value="${escape(cacheValue(view))}" ${editable ? '' : 'disabled'} aria-describedby="control-cache-help${this.#validation ? ' control-cache-error' : ''}" ${this.#validation ? 'aria-invalid="true"' : ''}>
+          <p id="control-cache-help" class="control-note">Use a non-negative whole number, including 0. Leave blank to unset this scope's value.</p>
         ` : ''}
         <div data-field="editor-feedback" aria-live="polite">${this.#feedback()}</div>
         <div data-field="editor-actions" class="control-editor__actions">${this.#actions(view)}</div>
@@ -110,12 +122,12 @@ export class TellurionPlatformSettingsEditor extends HTMLElement {
     const view = this.#session?.view();
     const preview = view?.preview;
     return `
-      ${this.#validation ? `<p id="platform-cache-error" role="alert" class="control-note control-note--error">${escape(this.#validation)}</p>` : ''}
+      ${this.#validation ? `<p id="control-cache-error" role="alert" class="control-note control-note--error">${escape(this.#validation)}</p>` : ''}
       ${this.#error ? `<p role="alert" class="control-note control-note--error">${escape(this.#error)}</p>` : ''}
-      ${view?.needsRebase ? '<p class="control-note">The platform entity changed. Your draft is retained; rebase it before previewing again.</p>' : ''}
+      ${view?.needsRebase ? '<p class="control-note">The settings entity changed. Your draft is retained; rebase it before previewing again.</p>' : ''}
       ${view?.phase === 'uncertain' ? '<p class="control-note control-note--error" role="alert">Apply outcome is uncertain. Retry the exact request before editing or leaving.</p>' : ''}
       ${view?.phase === 'applying' ? '<p class="control-note" role="status">Applying the previewed settings…</p>' : ''}
-      ${preview ? `<p class="control-note" data-field="preview-summary">Revision ${escape(preview.baseRevision)} → ${escape(preview.prospectiveRevision)} · changed resource ${escape(preview.changedResources.join(', '))} · proposed entity version ${escape(preview.entityVersions.platform)}</p>` : ''}
+      ${preview ? `<p class="control-note" data-field="preview-summary">Revision ${escape(preview.baseRevision)} → ${escape(preview.prospectiveRevision)} · changed resource ${escape(preview.changedResources.join(', '))} · proposed entity version ${escape(preview.entityVersions[this.#resourceKey])}</p>` : ''}
       ${this.#lastCommit ? `<p class="control-note" role="status">Changed ${escape(this.#lastCommit.changedResources.join(', '))} at revision ${escape(this.#lastCommit.revision)}. ${view?.phase === 'loading' ? 'Reloading settings…' : this.#error ? 'Reload failed; the changed revision is recorded above.' : 'Settings reloaded.'}</p>` : ''}`;
   }
 
@@ -145,7 +157,7 @@ export class TellurionPlatformSettingsEditor extends HTMLElement {
     this.#bindActions();
     const input = this.querySelector<HTMLInputElement>('[data-field="cache-ttl"]');
     if (input) {
-      input.setAttribute('aria-describedby', `platform-cache-help${this.#validation ? ' platform-cache-error' : ''}`);
+      input.setAttribute('aria-describedby', `control-cache-help${this.#validation ? ' control-cache-error' : ''}`);
       if (this.#validation) input.setAttribute('aria-invalid', 'true');
       else input.removeAttribute('aria-invalid');
     }
@@ -182,7 +194,7 @@ export class TellurionPlatformSettingsEditor extends HTMLElement {
       this.querySelector<HTMLElement>('[data-action="apply"]')?.focus();
     } catch (error) {
       if (!this.#isCurrent(generation, session)) return;
-      this.#error = this.#safeError(error, 'Platform settings preview is unavailable.');
+      this.#error = this.#safeError(error, 'Control settings preview is unavailable.');
       this.#render();
       this.querySelector<HTMLElement>('[data-action="rebase"], [data-action="preview"]')?.focus();
     }
@@ -202,7 +214,7 @@ export class TellurionPlatformSettingsEditor extends HTMLElement {
       this.querySelector<HTMLElement>('[data-field="cache-ttl"]')?.focus();
     } catch (error) {
       if (!this.#isCurrent(generation, session)) return;
-      this.#error = this.#safeError(error, 'Platform settings could not be rebased.');
+      this.#error = this.#safeError(error, 'Control settings could not be rebased.');
       this.#render();
     }
   }
@@ -220,10 +232,10 @@ export class TellurionPlatformSettingsEditor extends HTMLElement {
       this.#lastCommit = commit;
       this.#render();
       const reloaded = await this.#load(generation);
-      if (reloaded && this.#isCurrent(generation, session)) this.dispatchEvent(new CustomEvent('platform-settings-applied', { bubbles: true }));
+      if (reloaded && this.#isCurrent(generation, session)) this.dispatchEvent(new CustomEvent('control-settings-applied', { bubbles: true }));
     } catch (error) {
       if (!this.#isCurrent(generation, session)) return;
-      this.#error = this.#safeError(error, 'Platform settings apply is unavailable.');
+      this.#error = this.#safeError(error, 'Control settings apply is unavailable.');
       this.#render();
       this.querySelector<HTMLElement>('[data-action="retry"], [data-action="preview"]')?.focus();
     }

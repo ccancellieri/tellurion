@@ -6,6 +6,8 @@ import {
   type PlatformSettingsCommit,
   type PlatformSettingsEnvelope,
   type PlatformSettingsPreview,
+  type ControlSettingsEditScope,
+  controlSettingsScopeDescriptor,
   ProductionControlReadClient,
 } from './control-api';
 
@@ -30,6 +32,8 @@ interface FrozenSettingsRequest {
 export class PlatformSettingsEditSession {
   private readonly client: ProductionControlReadClient;
   private readonly newIdempotencyKey: () => string;
+  private readonly scope: ControlSettingsEditScope;
+  private readonly resourceKey: string;
   #phase: PlatformSettingsEditPhase = 'unloaded';
   #source?: PlatformSettingsEnvelope;
   #draft?: Record<string, unknown>;
@@ -43,9 +47,12 @@ export class PlatformSettingsEditSession {
   constructor(
     client: ProductionControlReadClient,
     newIdempotencyKey: () => string = () => crypto.randomUUID(),
+    scope: ControlSettingsEditScope = { kind: 'platform' },
   ) {
     this.client = client;
     this.newIdempotencyKey = newIdempotencyKey;
+    this.resourceKey = controlSettingsScopeDescriptor(scope).resourceKey;
+    this.scope = { ...scope };
   }
 
   view(): PlatformSettingsEditView {
@@ -71,7 +78,7 @@ export class PlatformSettingsEditSession {
     try {
       const session = await this.client.session();
       if (!session.authenticated) throw new ControlSignInRequiredError();
-      const source = await this.client.platformSettings();
+      const source = await this.client.rawSettings(this.scope);
       this.#source = source;
       this.#draft = structuredClone(source.resource);
       this.#principal = session.principal;
@@ -95,7 +102,7 @@ export class PlatformSettingsEditSession {
     try {
       const session = await this.client.session();
       if (!session.authenticated || session.principal !== this.#principal) throw new ControlSignInRequiredError();
-      const source = await this.client.platformSettings();
+      const source = await this.client.rawSettings(this.scope);
       const cacheTtl = this.#draft.cache_ttl_s;
       this.#source = source;
       this.#draft = { ...structuredClone(source.resource), cache_ttl_s: cacheTtl };
@@ -138,17 +145,17 @@ export class PlatformSettingsEditSession {
         idempotency_key: idempotencyKey,
         operations: [{
           expected_entity_version: this.#source.entityVersion,
-          operation: { SetPlatformSettings: structuredClone(this.#draft) },
+          operation: this.settingsOperation(structuredClone(this.#draft)),
         }],
       }),
       csrfToken: this.#csrfToken,
     };
     this.#phase = 'previewing';
     try {
-      const result = await this.client.previewPlatformSettings(frozen.body, frozen.csrfToken);
-      if (result.changedResources.length !== 1 || result.changedResources[0] !== 'platform' ||
-        !result.entityVersions.platform) {
-        throw new ControlApiError(200, 'Platform settings preview is unavailable.');
+      const result = await this.client.previewSettings(this.scope, frozen.body, frozen.csrfToken);
+      if (result.changedResources.length !== 1 || result.changedResources[0] !== this.resourceKey ||
+        !result.entityVersions[this.resourceKey]) {
+        throw new ControlApiError(200, 'Control settings preview is unavailable.');
       }
       this.#frozen = frozen;
       this.#preview = result;
@@ -180,8 +187,8 @@ export class PlatformSettingsEditSession {
   private async sendApply(frozen: FrozenSettingsRequest, retry: boolean): Promise<PlatformSettingsCommit> {
     this.#phase = 'applying';
     try {
-      const commit = await this.client.applyPlatformSettings(frozen.body, frozen.csrfToken);
-      if (commit.changedResources.length !== 1 || commit.changedResources[0] !== 'platform') {
+      const commit = await this.client.applySettings(this.scope, frozen.body, frozen.csrfToken);
+      if (commit.changedResources.length !== 1 || commit.changedResources[0] !== this.resourceKey) {
         throw new ControlUncertainWriteError();
       }
       this.#commit = commit;
@@ -199,6 +206,14 @@ export class PlatformSettingsEditSession {
         if (error instanceof ControlEntityConflictError) this.#needsRebase = true;
       }
       throw error;
+    }
+  }
+
+  private settingsOperation(settings: Record<string, unknown>): Record<string, unknown> {
+    switch (this.scope.kind) {
+      case 'platform': return { SetPlatformSettings: settings };
+      case 'tenant': return { SetTenantSettings: { tenant: this.scope.tenant, settings } };
+      case 'catalog': return { SetCatalogSettings: { tenant: this.scope.tenant, catalog: this.scope.catalog, settings } };
     }
   }
 }

@@ -29,6 +29,37 @@ const preview = {
 const commit = { revision: 8, changed_resources: ['platform'], replayed: false };
 
 describe('durable platform settings client', () => {
+  it('rejects malformed scoped settings IDs before a request', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new ProductionControlReadClient();
+
+    await expect(client.rawSettings({ kind: 'tenant', tenant: 'a/b' })).rejects.toMatchObject({ status: 400 });
+    await expect(client.rawSettings({ kind: 'catalog', tenant: 'tenant-a', catalog: '../b' })).rejects.toMatchObject({ status: 400 });
+    await expect(client.rawSettings({ kind: 'tenant', tenant: undefined } as unknown as { kind: 'tenant'; tenant: string }))
+      .rejects.toMatchObject({ status: 400 });
+    await expect(client.rawSettings({ kind: 'platform', tenant: 'tenant-b' } as unknown as { kind: 'platform' }))
+      .rejects.toMatchObject({ status: 400 });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('labels a denied tenant settings read without exposing response content', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ detail: 'private setting' }, 403)));
+    const client = new ProductionControlReadClient();
+
+    await expect(client.rawSettings({ kind: 'tenant', tenant: 'tenant-a' })).rejects.toMatchObject({
+      status: 403, message: 'You do not have access to this control resource.',
+    });
+  });
+
+  it('labels an unavailable catalog settings read by scope', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ detail: 'private setting' }, 503)));
+    const client = new ProductionControlReadClient();
+
+    await expect(client.rawSettings({ kind: 'catalog', tenant: 'tenant-a', catalog: 'cadastre' })).rejects.toMatchObject({
+      status: 503, message: 'Catalog settings is unavailable.',
+    });
+  });
   it('reads the raw settings and entity version with cookies, without loading effective settings', async () => {
     const fetchMock = vi.fn().mockResolvedValue(json(settings, 200, { etag: '"control-entity-5"' }));
     vi.stubGlobal('fetch', fetchMock);
@@ -72,6 +103,96 @@ describe('durable platform settings client', () => {
     const result = await new ProductionControlReadClient().platformSettings();
     expect(result.resource.slow_request_ms).toBe(Number.MAX_SAFE_INTEGER);
     expect(result.resource.stac).toEqual({ note: 'escaped " quote \\ and 9007199254740993' });
+  });
+});
+
+describe('scoped settings edit session', () => {
+  it.each([
+    {
+      scope: { kind: 'tenant', tenant: 'tenant-a' } as const,
+      path: '/_control/v1/tenants/tenant-a/settings',
+      key: 'tenant/tenant-a',
+      operation: { SetTenantSettings: { tenant: 'tenant-a', settings: { ...settings.resource, cache_ttl_s: 60 } } },
+    },
+    {
+      scope: { kind: 'catalog', tenant: 'tenant-a', catalog: 'cadastre' } as const,
+      path: '/_control/v1/tenants/tenant-a/catalogs/cadastre/settings',
+      key: 'tenant/tenant-a/catalog/cadastre',
+      operation: { SetCatalogSettings: { tenant: 'tenant-a', catalog: 'cadastre', settings: { ...settings.resource, cache_ttl_s: 60 } } },
+    },
+  ])('uses only the $scope.kind settings endpoint and preserves opaque fields in frozen preview/apply', async ({ scope, path, key, operation }) => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(session))
+      .mockResolvedValueOnce(json(settings))
+      .mockResolvedValueOnce(json({ ...preview, changed_resources: [key], entity_versions: { [key]: '8' } }))
+      .mockResolvedValueOnce(json({ ...commit, changed_resources: [key] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const editor = new PlatformSettingsEditSession(new ProductionControlReadClient(), () => 'scoped-id', scope);
+    await editor.load();
+    editor.editCacheTtlSeconds(60);
+    await editor.preview();
+    await editor.apply();
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/_auth/control/session', path, `${path}?dry_run=true`, path,
+    ]);
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: 'GET', credentials: 'include' });
+    const previewCall = fetchMock.mock.calls[2][1];
+    const applyCall = fetchMock.mock.calls[3][1];
+    expect(previewCall.body).toBe(applyCall.body);
+    expect(JSON.parse(previewCall.body)).toEqual({
+      idempotency_key: 'scoped-id',
+      operations: [{ expected_entity_version: '5', operation }],
+    });
+    expect(previewCall.headers['x-tellurion-csrf']).toBe('csrf-secret');
+    expect(applyCall.headers['x-tellurion-csrf']).toBe('csrf-secret');
+  });
+
+  it('rebases a tenant cache draft over newly read opaque fields after an entity conflict', async () => {
+    const scope = { kind: 'tenant', tenant: 'tenant-a' } as const;
+    const key = 'tenant/tenant-a';
+    const newer = { ...settings, entity_version: '9', resource: { ...settings.resource, future_setting: { nested: ['updated'] } } };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(session)).mockResolvedValueOnce(json(settings))
+      .mockResolvedValueOnce(json({ ...preview, changed_resources: [key], entity_versions: { [key]: '8' } }))
+      .mockResolvedValueOnce(json({ type: 'about:blank', title: 'Conflict', status: 409, code: 'ControlEntityVersionConflict' }, 409, { 'content-type': 'application/problem+json' }))
+      .mockResolvedValueOnce(json(session)).mockResolvedValueOnce(json(newer))
+      .mockResolvedValueOnce(json({ ...preview, changed_resources: [key], entity_versions: { [key]: '10' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const editor = new PlatformSettingsEditSession(new ProductionControlReadClient(), () => 'rebase-id', scope);
+    await editor.load();
+    editor.editCacheTtlSeconds(61);
+    await editor.preview();
+    await expect(editor.apply()).rejects.toBeInstanceOf(ControlEntityConflictError);
+    await editor.rebaseAfterConflict();
+    await editor.preview();
+
+    expect(JSON.parse(fetchMock.mock.calls[6][1].body).operations[0]).toEqual({
+      expected_entity_version: '9',
+      operation: { SetTenantSettings: { tenant: 'tenant-a', settings: { ...newer.resource, cache_ttl_s: 61 } } },
+    });
+    expect(fetchMock.mock.calls[5][0]).toBe('/_control/v1/tenants/tenant-a/settings');
+  });
+
+  it('retries an uncertain catalog apply with the identical scoped request', async () => {
+    const scope = { kind: 'catalog', tenant: 'tenant-a', catalog: 'cadastre' } as const;
+    const key = 'tenant/tenant-a/catalog/cadastre';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(session)).mockResolvedValueOnce(json(settings))
+      .mockResolvedValueOnce(json({ ...preview, changed_resources: [key], entity_versions: { [key]: '8' } }))
+      .mockRejectedValueOnce(new TypeError('network failed'))
+      .mockResolvedValueOnce(json({ ...commit, changed_resources: [key], replayed: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const editor = new PlatformSettingsEditSession(new ProductionControlReadClient(), () => 'retry-scoped-id', scope);
+    await editor.load();
+    editor.editCacheTtlSeconds(64);
+    await editor.preview();
+    await expect(editor.apply()).rejects.toMatchObject({ name: 'ControlUncertainWriteError' });
+    await editor.retryUncertainApply();
+
+    expect(fetchMock.mock.calls[3]).toEqual(fetchMock.mock.calls[4]);
+    expect(fetchMock.mock.calls[4][0]).toBe('/_control/v1/tenants/tenant-a/catalogs/cadastre/settings');
+    expect(editor.view()).toMatchObject({ phase: 'applied', commit: { replayed: true } });
   });
 });
 

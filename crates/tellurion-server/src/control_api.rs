@@ -125,7 +125,7 @@ pub(crate) fn router_with_browser(
         )
         .route(
             "/_control/v1/tenants/{tenant}/settings",
-            put(mutate).patch(mutate),
+            get(get_tenant_settings).put(mutate).patch(mutate),
         )
         .route(
             "/_control/v1/tenants/{tenant}/catalogs",
@@ -145,7 +145,7 @@ pub(crate) fn router_with_browser(
         )
         .route(
             "/_control/v1/tenants/{tenant}/catalogs/{catalog}/settings",
-            put(mutate).patch(mutate),
+            get(get_catalog_settings).put(mutate).patch(mutate),
         )
         .route(
             "/_control/v1/tenants/{tenant}/catalogs/{catalog}/collections",
@@ -721,6 +721,44 @@ async fn get_tenant(
     )
 }
 
+async fn get_tenant_settings(
+    State(ctx): State<Arc<AppContext>>,
+    Extension(routes): Extension<Arc<ControlRouteRegistry>>,
+    Extension(ControlRequestCredential(credential)): Extension<ControlRequestCredential>,
+    OriginalUri(uri): OriginalUri,
+    matched: MatchedPath,
+    method: Method,
+    Path(tenant_id): Path<String>,
+) -> Response {
+    let read =
+        match authorized_read_prelude(&ctx, &routes, &uri, &matched, &method, &credential).await {
+            Ok(read) => read,
+            Err(response) => return response,
+        };
+    let Some(tenant) = read
+        .snapshot
+        .snapshot
+        .config
+        .tenants
+        .iter()
+        .find(|tenant| tenant.external_id() == tenant_id)
+    else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let scope = ControlScope::Tenant {
+        tenant_id: tenant.id.clone(),
+    };
+    let version = entity_version(&read.snapshot, &scope);
+    json_with_entity_etag(
+        ResourceEnvelope {
+            control_revision: read.snapshot.revision,
+            entity_version: version.clone(),
+            resource: tenant.settings.clone(),
+        },
+        &version,
+    )
+}
+
 async fn list_catalogs(
     State(ctx): State<Arc<AppContext>>,
     Extension(routes): Extension<Arc<ControlRouteRegistry>>,
@@ -845,6 +883,55 @@ async fn get_catalog(
                 visibility: visibility_view(&catalog.visibility, &read.snapshot),
                 tombstoned: read.snapshot.snapshot.tombstoned_resources.contains(&scope),
             },
+        },
+        &version,
+    )
+}
+
+async fn get_catalog_settings(
+    State(ctx): State<Arc<AppContext>>,
+    Extension(routes): Extension<Arc<ControlRouteRegistry>>,
+    Extension(ControlRequestCredential(credential)): Extension<ControlRequestCredential>,
+    OriginalUri(uri): OriginalUri,
+    matched: MatchedPath,
+    method: Method,
+    Path((tenant_id, catalog_id)): Path<(String, String)>,
+) -> Response {
+    let read =
+        match authorized_read_prelude(&ctx, &routes, &uri, &matched, &method, &credential).await {
+            Ok(read) => read,
+            Err(response) => return response,
+        };
+    let Some(tenant) = read
+        .snapshot
+        .snapshot
+        .config
+        .tenants
+        .iter()
+        .find(|tenant| tenant.external_id() == tenant_id)
+    else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let Some(catalog) = read
+        .snapshot
+        .snapshot
+        .config
+        .catalogs
+        .iter()
+        .find(|catalog| catalog.tenant == tenant.id && catalog.external_id() == catalog_id)
+    else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let scope = ControlScope::Catalog {
+        tenant_id: tenant.id.clone(),
+        catalog_id: catalog.id.clone(),
+    };
+    let version = entity_version(&read.snapshot, &scope);
+    json_with_entity_etag(
+        ResourceEnvelope {
+            control_revision: read.snapshot.revision,
+            entity_version: version.clone(),
+            resource: catalog.settings.clone(),
         },
         &version,
     )
@@ -1263,7 +1350,23 @@ async fn mutate(
         };
     }
     match store.transact(&authorization, &changes).await {
-        Ok(commit) => Json(commit).into_response(),
+        Ok(mut commit) => {
+            if let [versioned] = changes.operations.as_slice() {
+                let external = match &versioned.operation {
+                    ControlOperation::SetTenantSettings { tenant, .. } => {
+                        Some(format!("tenant/{tenant}"))
+                    }
+                    ControlOperation::SetCatalogSettings {
+                        tenant, catalog, ..
+                    } => Some(format!("tenant/{tenant}/catalog/{catalog}")),
+                    _ => None,
+                };
+                if let Some(external) = external {
+                    commit.changed_resources = vec![external];
+                }
+            }
+            Json(commit).into_response()
+        }
         Err(error) => render_core_error(error),
     }
 }
@@ -3292,6 +3395,484 @@ auth:
         let mut expected = initial.snapshot.config;
         expected.settings = settings;
         assert_eq!(durable.snapshot.config, expected);
+    }
+
+    #[tokio::test]
+    async fn scoped_settings_reads_return_only_raw_settings_with_entity_versions() {
+        let mut seed = snapshot();
+        seed.config.tenants[0].settings.cache_ttl_s = Some(11);
+        seed.config.catalogs[0].settings.cache_ttl_s = Some(22);
+        seed.path_policies = vec![PathPolicy::new(
+            "read-tenant-settings",
+            "settings_reader",
+            ControlScope::Tenant {
+                tenant_id: "tenant-internal".to_string(),
+            },
+            PolicyEffect::Allow,
+            ["GET"],
+            ["/_control/v1/tenants/acme/settings"],
+        )];
+        let expected = [
+            (
+                "tenant_admin",
+                ControlScope::Tenant {
+                    tenant_id: "tenant-internal".to_string(),
+                },
+                "/_control/v1/tenants/acme/settings",
+                11,
+            ),
+            (
+                "catalog_admin",
+                ControlScope::Catalog {
+                    tenant_id: "tenant-internal".to_string(),
+                    catalog_id: "catalog-internal".to_string(),
+                },
+                "/_control/v1/tenants/acme/catalogs/cadastre/settings",
+                22,
+            ),
+            (
+                "settings_reader",
+                ControlScope::Tenant {
+                    tenant_id: "tenant-internal".to_string(),
+                },
+                "/_control/v1/tenants/acme/settings",
+                11,
+            ),
+        ];
+        for (role, scope, path, ttl) in expected {
+            let mut scoped = seed.clone();
+            scoped.role_bindings = vec![RoleBinding {
+                principal: principal(),
+                role: role.to_string(),
+                scope,
+            }];
+            let (ctx, store) = fixture_context_with(
+                true,
+                Some(Arc::new(VerifiedAuthorizer {
+                    identity: principal(),
+                })),
+                scoped,
+            )
+            .await;
+            let durable = store.load_snapshot().await.unwrap();
+            let response = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(read_request(path, Some("verified")))
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK, "{path}");
+            assert_eq!(response.headers()["etag"], "\"control-entity-0\"");
+            let body = response_json(response).await;
+            assert_eq!(body["control_revision"], durable.revision);
+            assert_eq!(body["entity_version"], "0");
+            assert_eq!(body["resource"]["cache_ttl_s"], ttl);
+            assert!(body["resource"].get("id").is_none());
+            assert!(body["resource"].get("tenant").is_none());
+            assert!(body.get("config").is_none());
+        }
+    }
+
+    #[tokio::test]
+    async fn scoped_settings_reads_do_not_open_sibling_or_ancestor_resources() {
+        let mut seed = snapshot();
+        seed.role_bindings = vec![RoleBinding {
+            principal: principal(),
+            role: "catalog_admin".to_string(),
+            scope: ControlScope::Catalog {
+                tenant_id: "tenant-internal".to_string(),
+                catalog_id: "catalog-internal".to_string(),
+            },
+        }];
+        seed.config.catalogs.push(
+            serde_yaml::from_str(
+                "{ id: sibling-internal, external_id: sibling, tenant: tenant-internal }",
+            )
+            .unwrap(),
+        );
+        let (ctx, _) = fixture_context_with(
+            true,
+            Some(Arc::new(VerifiedAuthorizer {
+                identity: principal(),
+            })),
+            seed,
+        )
+        .await;
+        for (path, status) in [
+            ("/_control/v1/tenants/acme/settings", StatusCode::FORBIDDEN),
+            (
+                "/_control/v1/tenants/acme/catalogs/sibling/settings",
+                StatusCode::NOT_FOUND,
+            ),
+            (
+                "/_control/v1/tenants/acme/catalogs/unknown/settings",
+                StatusCode::NOT_FOUND,
+            ),
+        ] {
+            let response = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(read_request(path, Some("verified")))
+                .await
+                .unwrap();
+            assert_eq!(response.status(), status, "{path}");
+        }
+    }
+
+    #[tokio::test]
+    async fn explicit_deny_overrides_custom_scoped_settings_read() {
+        let mut seed = snapshot();
+        seed.role_bindings = vec![RoleBinding {
+            principal: principal(),
+            role: "settings_reader".to_string(),
+            scope: ControlScope::Tenant {
+                tenant_id: "tenant-internal".to_string(),
+            },
+        }];
+        seed.path_policies = [PolicyEffect::Allow, PolicyEffect::Deny]
+            .into_iter()
+            .enumerate()
+            .map(|(index, effect)| {
+                PathPolicy::new(
+                    format!("settings-policy-{index}"),
+                    "settings_reader",
+                    ControlScope::Tenant {
+                        tenant_id: "tenant-internal".to_string(),
+                    },
+                    effect,
+                    ["GET"],
+                    ["/_control/v1/tenants/acme/settings"],
+                )
+            })
+            .collect();
+        let (ctx, _) = fixture_context_with(
+            true,
+            Some(Arc::new(VerifiedAuthorizer {
+                identity: principal(),
+            })),
+            seed,
+        )
+        .await;
+        let response = super::router(&ctx)
+            .with_state(ctx)
+            .oneshot(read_request(
+                "/_control/v1/tenants/acme/settings",
+                Some("verified"),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    fn scoped_settings_request(path: &str, changes: &ControlChangeSet) -> Request<Body> {
+        Request::builder()
+            .method("PUT")
+            .uri(path)
+            .header("authorization", "Bearer verified")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(changes).unwrap()))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn scoped_settings_preview_apply_and_replay_preserve_opaque_fields() {
+        for (path, operation, key) in [
+            (
+                "/_control/v1/tenants/acme/settings",
+                ControlOperation::SetTenantSettings {
+                    tenant: "acme".to_string(),
+                    settings: SettingsDecl {
+                        cache_ttl_s: Some(71),
+                        ..SettingsDecl::default()
+                    },
+                },
+                "tenant/acme",
+            ),
+            (
+                "/_control/v1/tenants/acme/catalogs/cadastre/settings",
+                ControlOperation::SetCatalogSettings {
+                    tenant: "acme".to_string(),
+                    catalog: "cadastre".to_string(),
+                    settings: SettingsDecl {
+                        cache_ttl_s: Some(72),
+                        ..SettingsDecl::default()
+                    },
+                },
+                "tenant/acme/catalog/cadastre",
+            ),
+        ] {
+            let mut seed = snapshot();
+            seed.config.catalogs[0].visibility.public = true;
+            let (ctx, store) = fixture_context_with(
+                true,
+                Some(Arc::new(VerifiedAuthorizer {
+                    identity: principal(),
+                })),
+                seed,
+            )
+            .await;
+            let before = store.load_snapshot().await.unwrap();
+            let changes = ControlChangeSet {
+                idempotency_key: Some(format!("scoped-settings-{key}")),
+                operations: vec![VersionedControlOperation {
+                    expected_entity_version: Some("0".to_string()),
+                    operation,
+                }],
+            };
+            let preview = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(scoped_settings_request(
+                    &format!("{path}?dry_run=true"),
+                    &changes,
+                ))
+                .await
+                .unwrap();
+            assert_eq!(preview.status(), StatusCode::OK, "{path}");
+            let preview = response_json(preview).await;
+            assert_eq!(preview["changed_resources"], serde_json::json!([key]));
+            assert_eq!(preview["entity_versions"][key], "2");
+            assert_eq!(store.load_snapshot().await.unwrap(), before);
+
+            for replayed in [false, true] {
+                let response = super::router(&ctx)
+                    .with_state(Arc::clone(&ctx))
+                    .oneshot(scoped_settings_request(path, &changes))
+                    .await
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::OK, "{path}");
+                let body = response_json(response).await;
+                assert_eq!(body["replayed"], replayed);
+                assert_eq!(body["revision"], 2);
+                assert_eq!(body["changed_resources"], serde_json::json!([key]));
+            }
+            let after = store.load_snapshot().await.unwrap();
+            let mut expected = before.snapshot.config;
+            match &changes.operations[0].operation {
+                ControlOperation::SetTenantSettings { settings, .. } => {
+                    expected.tenants[0].settings = settings.clone()
+                }
+                ControlOperation::SetCatalogSettings { settings, .. } => {
+                    expected.catalogs[0].settings = settings.clone()
+                }
+                _ => unreachable!(),
+            }
+            assert_eq!(after.snapshot.config, expected);
+            assert_eq!(
+                after.entity_versions[&key
+                    .replace("acme", "tenant-internal")
+                    .replace("cadastre", "catalog-internal")],
+                "2"
+            );
+            let read = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(read_request(path, Some("verified")))
+                .await
+                .unwrap();
+            assert_eq!(read.status(), StatusCode::OK);
+            assert_eq!(read.headers()["etag"], "\"control-entity-2\"");
+            let read = response_json(read).await;
+            assert_eq!(read["entity_version"], "2");
+            assert_eq!(
+                read["resource"],
+                serde_json::to_value(match &changes.operations[0].operation {
+                    ControlOperation::SetTenantSettings { settings, .. }
+                    | ControlOperation::SetCatalogSettings { settings, .. } => settings,
+                    _ => unreachable!(),
+                })
+                .unwrap()
+            );
+
+            let stale = ControlChangeSet {
+                idempotency_key: Some(format!("stale-{key}")),
+                ..changes
+            };
+            let response = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(scoped_settings_request(path, &stale))
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::CONFLICT);
+            assert_eq!(
+                response_json(response).await["code"],
+                "ControlEntityVersionConflict"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn scoped_settings_mutation_refuses_wrong_or_missing_external_target() {
+        let mut seed = snapshot();
+        seed.config.tenants.push(
+            serde_yaml::from_str("{ id: tenant-bravo-internal, external_id: bravo }").unwrap(),
+        );
+        seed.config.catalogs.push(
+            serde_yaml::from_str(
+                "{ id: sibling-internal, external_id: sibling, tenant: tenant-internal }",
+            )
+            .unwrap(),
+        );
+        let (ctx, store) = fixture_context_with(
+            true,
+            Some(Arc::new(VerifiedAuthorizer {
+                identity: principal(),
+            })),
+            seed,
+        )
+        .await;
+        let before = store.load_snapshot().await.unwrap();
+        for (path, operation) in [
+            (
+                "/_control/v1/tenants/acme/settings",
+                ControlOperation::SetCatalogSettings {
+                    tenant: "acme".to_string(),
+                    catalog: "cadastre".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+            ),
+            (
+                "/_control/v1/tenants/acme/catalogs/cadastre/settings",
+                ControlOperation::SetTenantSettings {
+                    tenant: "acme".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+            ),
+            (
+                "/_control/v1/tenants/acme/settings",
+                ControlOperation::SetTenantSettings {
+                    tenant: "bravo".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+            ),
+            (
+                "/_control/v1/tenants/acme/settings",
+                ControlOperation::SetTenantSettings {
+                    tenant: "missing".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+            ),
+            (
+                "/_control/v1/tenants/acme/catalogs/cadastre/settings",
+                ControlOperation::SetCatalogSettings {
+                    tenant: "bravo".to_string(),
+                    catalog: "cadastre".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+            ),
+            (
+                "/_control/v1/tenants/acme/catalogs/cadastre/settings",
+                ControlOperation::SetCatalogSettings {
+                    tenant: "acme".to_string(),
+                    catalog: "sibling".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+            ),
+            (
+                "/_control/v1/tenants/acme/catalogs/cadastre/settings",
+                ControlOperation::SetCatalogSettings {
+                    tenant: "acme".to_string(),
+                    catalog: "missing".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+            ),
+        ] {
+            let changes = ControlChangeSet {
+                idempotency_key: None,
+                operations: vec![VersionedControlOperation {
+                    expected_entity_version: Some("0".to_string()),
+                    operation,
+                }],
+            };
+            let response = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(scoped_settings_request(path, &changes))
+                .await
+                .unwrap();
+            assert_ne!(response.status(), StatusCode::OK, "{path}");
+            assert_eq!(store.load_snapshot().await.unwrap(), before);
+        }
+    }
+
+    #[tokio::test]
+    async fn catalog_admin_settings_mutation_stays_inside_its_catalog() {
+        let mut seed = snapshot();
+        seed.role_bindings = vec![RoleBinding {
+            principal: principal(),
+            role: "catalog_admin".to_string(),
+            scope: ControlScope::Catalog {
+                tenant_id: "tenant-internal".to_string(),
+                catalog_id: "catalog-internal".to_string(),
+            },
+        }];
+        seed.config.catalogs.push(
+            serde_yaml::from_str(
+                "{ id: sibling-internal, external_id: sibling, tenant: tenant-internal }",
+            )
+            .unwrap(),
+        );
+        let (ctx, store) = fixture_context_with(
+            true,
+            Some(Arc::new(VerifiedAuthorizer {
+                identity: principal(),
+            })),
+            seed,
+        )
+        .await;
+        let before = store.load_snapshot().await.unwrap();
+        for (path, operation, expected) in [
+            (
+                "/_control/v1/tenants/acme/settings",
+                ControlOperation::SetTenantSettings {
+                    tenant: "acme".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+                StatusCode::FORBIDDEN,
+            ),
+            (
+                "/_control/v1/tenants/acme/catalogs/sibling/settings",
+                ControlOperation::SetCatalogSettings {
+                    tenant: "acme".to_string(),
+                    catalog: "sibling".to_string(),
+                    settings: SettingsDecl::default(),
+                },
+                StatusCode::NOT_FOUND,
+            ),
+        ] {
+            let changes = ControlChangeSet {
+                idempotency_key: None,
+                operations: vec![VersionedControlOperation {
+                    expected_entity_version: Some("0".to_string()),
+                    operation,
+                }],
+            };
+            let response = super::router(&ctx)
+                .with_state(Arc::clone(&ctx))
+                .oneshot(scoped_settings_request(path, &changes))
+                .await
+                .unwrap();
+            assert_eq!(response.status(), expected, "{path}");
+            assert_eq!(store.load_snapshot().await.unwrap(), before);
+        }
+        let own = ControlChangeSet {
+            idempotency_key: None,
+            operations: vec![VersionedControlOperation {
+                expected_entity_version: Some("0".to_string()),
+                operation: ControlOperation::SetCatalogSettings {
+                    tenant: "acme".to_string(),
+                    catalog: "cadastre".to_string(),
+                    settings: SettingsDecl {
+                        cache_ttl_s: Some(81),
+                        ..SettingsDecl::default()
+                    },
+                },
+            }],
+        };
+        let response = super::router(&ctx)
+            .with_state(ctx)
+            .oneshot(scoped_settings_request(
+                "/_control/v1/tenants/acme/catalogs/cadastre/settings",
+                &own,
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]

@@ -110,6 +110,7 @@ export class TellurionControlShell extends HTMLElement {
   #scopedItems: CatalogView[] | CollectionView[] = [];
   #scopedAfter?: string;
   #scopedLoading = false;
+  #scopedError?: string;
 
   connectedCallback(): void {
     this.#scope = workspaceScopeFor(location.pathname) ?? { kind: 'platform' };
@@ -169,6 +170,7 @@ export class TellurionControlShell extends HTMLElement {
     this.#scopedItems = [];
     this.#scopedAfter = undefined;
     this.#scopedLoading = false;
+    this.#scopedError = undefined;
   }
 
   #isCurrent(generation: number, client: ControlReadClient): boolean {
@@ -186,11 +188,22 @@ export class TellurionControlShell extends HTMLElement {
       if (!this.#isCurrent(generation, client)) return;
       this.#scopedItems = page.items;
       this.#scopedAfter = page.nextAfter;
+      this.#scopedError = undefined;
       this.#renderScoped();
+      if (this.mode === 'production' && client instanceof ProductionControlReadClient) {
+        this.#mountEditor(client, generation);
+      }
     } catch (error) {
       if (!this.#isCurrent(generation, client)) return;
       this.#scopedItems = [];
       this.#scopedAfter = undefined;
+      if (this.#editor?.isConnected && this.#editor.hasUnresolvedWrite()) {
+        this.#scopedError = error instanceof ControlForbiddenError || error instanceof ControlSignInRequiredError
+          ? 'Scope inventory is unavailable pending authorization; the pending settings request remains in this tab.'
+          : 'Scope inventory refresh failed; the pending settings request remains in this tab.';
+        this.#renderScoped();
+        return;
+      }
       if (error instanceof ControlSignInRequiredError) this.#renderSignIn();
       else if (error instanceof ControlForbiddenError) this.#renderForbidden();
       else this.#renderTerminal(errorMessage(error, 'Control scope is unavailable.'));
@@ -213,6 +226,7 @@ export class TellurionControlShell extends HTMLElement {
       this.#scopedItems = [...this.#scopedItems, ...page.items] as CatalogView[] | CollectionView[];
       this.#scopedAfter = page.nextAfter;
       this.#scopedLoading = false;
+      this.#scopedError = undefined;
       this.#renderScoped();
       this.querySelector<HTMLElement>('[data-action="more-scoped"], [data-field="scoped-list"]')?.focus();
     } catch (error) {
@@ -220,6 +234,13 @@ export class TellurionControlShell extends HTMLElement {
       this.#scopedItems = [];
       this.#scopedAfter = undefined;
       this.#scopedLoading = false;
+      if (this.#editor?.isConnected && this.#editor.hasUnresolvedWrite()) {
+        this.#scopedError = error instanceof ControlForbiddenError || error instanceof ControlSignInRequiredError
+          ? 'Scope inventory is unavailable pending authorization; the pending settings request remains in this tab.'
+          : 'Scope inventory refresh failed; the pending settings request remains in this tab.';
+        this.#renderScoped();
+        return;
+      }
       if (error instanceof ControlSignInRequiredError) this.#renderSignIn();
       else if (error instanceof ControlForbiddenError) this.#renderForbidden();
       else this.#renderTerminal(errorMessage(error, 'Control scope is unavailable.'));
@@ -281,13 +302,17 @@ export class TellurionControlShell extends HTMLElement {
   }
 
   #mountEditor(client: ProductionControlReadClient, generation: number): void {
-    const slot = this.querySelector<HTMLElement>('[data-field="platform-editor-slot"]');
+    const slot = this.querySelector<HTMLElement>('[data-field="platform-editor-slot"], [data-field="settings-editor-slot"]');
     if (!slot || this.#editor) return;
     const editor = document.createElement('tellurion-platform-settings-editor') as TellurionPlatformSettingsEditor;
     editor.client = client;
+    editor.scope = { ...this.#scope };
     this.#editor = editor;
-    editor.addEventListener('platform-settings-applied', () => {
-      if (this.#isCurrent(generation, client)) void this.#loadPanels(generation, client);
+    editor.addEventListener('control-settings-applied', () => {
+      if (this.#isCurrent(generation, client)) {
+        if (this.#scope.kind === 'platform') void this.#loadPanels(generation, client);
+        else void this.#loadScoped(generation, client);
+      }
     });
     slot.append(editor);
   }
@@ -360,7 +385,7 @@ export class TellurionControlShell extends HTMLElement {
       const detail = isTenant ? 'Catalog' : (item as CollectionView).resource.kind;
       return `<li>${name}<span>${escape(detail)}</span></li>`;
     }).join('');
-    this.innerHTML = `
+    const markup = `
       <section class="control-workspace" data-mode="${this.mode}" data-scope="${scope.kind}">
         ${this.mode === 'fixture' ? '<p class="control-demo-boundary">Demonstration data · fixture-only workspace</p>' : ''}
         <nav class="control-nav" aria-label="Workspace navigation">
@@ -370,16 +395,28 @@ export class TellurionControlShell extends HTMLElement {
         <main class="control-sheet control-sheet--scoped" aria-live="polite">
           <p class="control-breadcrumb">Control / ${isTenant ? 'tenant' : 'catalog'}</p>
           <h1 id="control-workspace-heading">${escape(title)}</h1>
-          <p class="control-coordinate">${escape(coordinate)} · read-only</p>
+          <p class="control-coordinate">${escape(coordinate)} · inventory read-only</p>
           <section class="control-sheet__section" aria-labelledby="scoped-items-heading">
             <h2 id="scoped-items-heading">${isTenant ? 'Catalogs' : 'Collections'}</h2>
-            ${entries ? `<ul class="control-scope-list control-scope-list--scoped" data-field="scoped-list" tabindex="-1">${entries}</ul>`
+            ${this.#scopedError ? `<div data-field="scoped-list" tabindex="-1"><p class="control-note control-note--error">${escape(this.#scopedError)}</p></div>`
+              : entries ? `<ul class="control-scope-list control-scope-list--scoped" data-field="scoped-list" tabindex="-1">${entries}</ul>`
               : `<div data-field="scoped-list" tabindex="-1"><p class="control-note">No ${isTenant ? 'catalogs' : 'collections'} are available in this scope.</p></div>`}
             ${this.#scopedLoading ? '<p class="control-note" role="status">Loading more…</p>' : ''}
             ${this.#scopedAfter ? `<button type="button" class="control-more" data-action="more-scoped" ${this.#scopedLoading ? 'disabled' : ''}>Load more</button>` : ''}
           </section>
+          ${this.mode === 'production' ? '<div data-field="settings-editor-slot"></div>' : ''}
         </main>
       </section>`;
+    if (this.#editor?.isConnected) {
+      const template = document.createElement('template');
+      template.innerHTML = markup;
+      const current = this.querySelector<HTMLElement>('[aria-labelledby="scoped-items-heading"]');
+      const next = template.content.querySelector<HTMLElement>('[aria-labelledby="scoped-items-heading"]');
+      if (current && next) current.replaceWith(next);
+      this.querySelector<HTMLButtonElement>('[data-action="more-scoped"]')?.addEventListener('click', () => void this.#moreScoped());
+      return;
+    }
+    this.innerHTML = markup;
     this.querySelector<HTMLButtonElement>('[data-action="more-scoped"]')?.addEventListener('click', () => void this.#moreScoped());
   }
 

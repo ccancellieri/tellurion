@@ -769,7 +769,8 @@ fn validated_return_to(raw_query: Option<&str>) -> Option<String> {
     }
     let value = url::form_urlencoded::parse(raw_query.as_bytes())
         .find_map(|(key, value)| (key == "return_to").then(|| value.into_owned()))?;
-    ControlWorkspace::parse(&value).map(|_| value)
+    ControlWorkspace::parse(&value)?;
+    Some(value)
 }
 
 fn session_cookie(headers: &HeaderMap) -> Result<Option<String>, ()> {

@@ -558,10 +558,12 @@ impl ControlChangeSet {
             if matches!(
                 &operation.operation,
                 ControlOperation::SetPlatformSettings(_)
+                    | ControlOperation::SetTenantSettings { .. }
+                    | ControlOperation::SetCatalogSettings { .. }
             ) && operation.expected_entity_version.is_none()
             {
                 return Err(Error::ControlValidation(
-                    "platform settings edit requires an expected entity version".to_string(),
+                    "settings edit requires an expected entity version".to_string(),
                 ));
             }
             if operation
@@ -656,6 +658,15 @@ pub struct VersionedControlOperation {
 pub enum ControlOperation {
     ReplacePlatformSettings(AppConfig),
     SetPlatformSettings(SettingsDecl),
+    SetTenantSettings {
+        tenant: String,
+        settings: SettingsDecl,
+    },
+    SetCatalogSettings {
+        tenant: String,
+        catalog: String,
+        settings: SettingsDecl,
+    },
     PutTenant(TenantDecl),
     PutCatalog(CatalogDecl),
     PutCollection(CollectionDecl),
@@ -1202,6 +1213,22 @@ fn operation_scopes(
         ControlOperation::ReplacePlatformSettings(_) | ControlOperation::SetPlatformSettings(_) => {
             Ok(vec![ControlScope::Platform])
         }
+        ControlOperation::SetTenantSettings { tenant, .. } => {
+            let scope =
+                stable_settings_scope(authority_snapshot, candidate_snapshot, tenant, None)?;
+            Ok(vec![scope])
+        }
+        ControlOperation::SetCatalogSettings {
+            tenant, catalog, ..
+        } => {
+            let scope = stable_settings_scope(
+                authority_snapshot,
+                candidate_snapshot,
+                tenant,
+                Some(catalog),
+            )?;
+            Ok(vec![scope])
+        }
         ControlOperation::PutTenant(tenant) => Ok(vec![authority_snapshot
             .config
             .tenants
@@ -1316,6 +1343,60 @@ fn operation_scopes(
     }
 }
 
+fn settings_scope(
+    snapshot: &ControlSnapshot,
+    tenant_external: &str,
+    catalog_external: Option<&str>,
+) -> Result<ControlScope> {
+    let tenant = snapshot
+        .config
+        .tenants
+        .iter()
+        .find(|tenant| tenant.external_id() == tenant_external)
+        .ok_or_else(|| {
+            Error::ControlValidation("settings edit references an unknown tenant".to_string())
+        })?;
+    match catalog_external {
+        None => Ok(ControlScope::Tenant {
+            tenant_id: tenant.id.clone(),
+        }),
+        Some(catalog_external) => {
+            let catalog = snapshot
+                .config
+                .catalogs
+                .iter()
+                .find(|catalog| {
+                    catalog.tenant == tenant.id && catalog.external_id() == catalog_external
+                })
+                .ok_or_else(|| {
+                    Error::ControlValidation(
+                        "settings edit references an unknown catalog in this tenant".to_string(),
+                    )
+                })?;
+            Ok(ControlScope::Catalog {
+                tenant_id: tenant.id.clone(),
+                catalog_id: catalog.id.clone(),
+            })
+        }
+    }
+}
+
+fn stable_settings_scope(
+    authority_snapshot: &ControlSnapshot,
+    candidate_snapshot: &ControlSnapshot,
+    tenant_external: &str,
+    catalog_external: Option<&str>,
+) -> Result<ControlScope> {
+    let authority = settings_scope(authority_snapshot, tenant_external, catalog_external)?;
+    let candidate = settings_scope(candidate_snapshot, tenant_external, catalog_external)?;
+    if authority != candidate {
+        return Err(Error::ControlValidation(
+            "settings edit target changed within the control changeset".to_string(),
+        ));
+    }
+    Ok(authority)
+}
+
 fn deny_preserves(candidate: &PathPolicy, previous: &PathPolicy) -> bool {
     if candidate.effect != PolicyEffect::Deny
         || candidate.role != previous.role
@@ -1350,6 +1431,12 @@ fn operation_key(operation: &ControlOperation, snapshot: &ControlSnapshot) -> Re
         ControlOperation::ReplacePlatformSettings(_) | ControlOperation::SetPlatformSettings(_) => {
             Ok("platform".to_string())
         }
+        ControlOperation::SetTenantSettings { tenant, .. } => {
+            Ok(settings_scope(snapshot, tenant, None)?.resource_key())
+        }
+        ControlOperation::SetCatalogSettings {
+            tenant, catalog, ..
+        } => Ok(settings_scope(snapshot, tenant, Some(catalog))?.resource_key()),
         ControlOperation::PutTenant(tenant) => Ok(format!("tenant/{}", tenant.id)),
         ControlOperation::PutCatalog(catalog) => {
             Ok(format!("tenant/{}/catalog/{}", catalog.tenant, catalog.id))
@@ -1401,6 +1488,36 @@ fn apply_operation(snapshot: &mut ControlSnapshot, operation: &ControlOperation)
         ControlOperation::ReplacePlatformSettings(config) => snapshot.config = config.clone(),
         ControlOperation::SetPlatformSettings(settings) => {
             snapshot.config.settings = settings.clone();
+        }
+        ControlOperation::SetTenantSettings { tenant, settings } => {
+            let ControlScope::Tenant { tenant_id } = settings_scope(snapshot, tenant, None)? else {
+                unreachable!("tenant settings resolve to tenant scope")
+            };
+            snapshot
+                .config
+                .tenants
+                .iter_mut()
+                .find(|item| item.id == tenant_id)
+                .expect("resolved tenant remains present")
+                .settings = settings.clone();
+        }
+        ControlOperation::SetCatalogSettings {
+            tenant,
+            catalog,
+            settings,
+        } => {
+            let ControlScope::Catalog { catalog_id, .. } =
+                settings_scope(snapshot, tenant, Some(catalog))?
+            else {
+                unreachable!("catalog settings resolve to catalog scope")
+            };
+            snapshot
+                .config
+                .catalogs
+                .iter_mut()
+                .find(|item| item.id == catalog_id)
+                .expect("resolved catalog remains present")
+                .settings = settings.clone();
         }
         ControlOperation::PutTenant(tenant) => {
             upsert_by_id(&mut snapshot.config.tenants, tenant.clone(), |item| {
@@ -1499,7 +1616,47 @@ fn permanently_delete(config: &mut AppConfig, scope: &ControlScope) -> Result<()
 
 #[cfg(test)]
 mod tests {
-    use super::rewrite_collection_policy_pattern;
+    use super::*;
+
+    #[test]
+    fn scoped_settings_operations_use_external_ids_and_require_entity_versions() {
+        for operation in [
+            ControlOperation::SetTenantSettings {
+                tenant: "acme".to_string(),
+                settings: SettingsDecl::default(),
+            },
+            ControlOperation::SetCatalogSettings {
+                tenant: "acme".to_string(),
+                catalog: "roads".to_string(),
+                settings: SettingsDecl::default(),
+            },
+        ] {
+            let changes = ControlChangeSet {
+                idempotency_key: None,
+                operations: vec![VersionedControlOperation {
+                    expected_entity_version: None,
+                    operation: operation.clone(),
+                }],
+            };
+            assert!(changes.validate().is_err());
+            let mut conditional = changes;
+            conditional.operations[0].expected_entity_version = Some("0".to_string());
+            conditional.validate().unwrap();
+            let wire = serde_json::to_value(&conditional).unwrap();
+            assert_eq!(
+                serde_json::from_value::<ControlChangeSet>(wire.clone()).unwrap(),
+                conditional
+            );
+            assert_eq!(wire["operations"][0]["expected_entity_version"], "0");
+            let operation = &wire["operations"][0]["operation"];
+            if let Some(target) = operation.get("SetTenantSettings") {
+                assert_eq!(target["tenant"], "acme");
+            } else {
+                assert_eq!(operation["SetCatalogSettings"]["tenant"], "acme");
+                assert_eq!(operation["SetCatalogSettings"]["catalog"], "roads");
+            }
+        }
+    }
 
     #[test]
     fn collection_move_rewrites_anchored_patterns_preserves_safe_intersections_and_rejects_ambiguity(

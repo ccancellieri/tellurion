@@ -64,6 +64,11 @@ export interface ControlPage<T> {
 
 export type ControlSettingsLevel = 'platform' | 'tenant' | 'catalog' | 'collection';
 
+export type ControlSettingsEditScope =
+  | { kind: 'platform' }
+  | { kind: 'tenant'; tenant: string }
+  | { kind: 'catalog'; tenant: string; catalog: string };
+
 export type ControlSettingProvenance =
   | { kind: 'built_in_default' }
   | { kind: 'derived' }
@@ -175,7 +180,7 @@ export class ControlConflictError extends ControlApiError {
 
 export class ControlEntityConflictError extends ControlApiError {
   constructor() {
-    super(409, 'Platform settings changed. Refresh and preview the draft again.');
+    super(409, 'Control settings changed. Refresh and preview the draft again.');
     this.name = 'ControlEntityConflictError';
   }
 }
@@ -193,8 +198,30 @@ const MAX_PROBLEM_FIELD_LENGTH = 256;
 const MAX_PROBLEM_CODE_LENGTH = 128;
 const MAX_U64 = '18446744073709551615';
 
-export function validControlScopeId(value: string): boolean {
-  return value.length > 0 && value.length <= 128 && /^[A-Za-z0-9_-]+$/.test(value);
+export function validControlScopeId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 128 && /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+export function controlSettingsScopeDescriptor(scope: ControlSettingsEditScope): { path: string; resourceKey: string } {
+  if (!scope || typeof scope !== 'object') throw new ControlApiError(400, 'Control settings scope is invalid.');
+  const fields = Object.keys(scope);
+  if (scope.kind === 'platform' && fields.length === 1) {
+    return { path: '/_control/v1/platform/settings', resourceKey: 'platform' };
+  }
+  if (scope.kind === 'tenant' && fields.length === 2 && validControlScopeId(scope.tenant)) {
+    return { path: `/_control/v1/tenants/${scope.tenant}/settings`, resourceKey: `tenant/${scope.tenant}` };
+  }
+  if (scope.kind === 'catalog' && fields.length === 3 && validControlScopeId(scope.tenant) && validControlScopeId(scope.catalog)) {
+    return {
+      path: `/_control/v1/tenants/${scope.tenant}/catalogs/${scope.catalog}/settings`,
+      resourceKey: `tenant/${scope.tenant}/catalog/${scope.catalog}`,
+    };
+  }
+  throw new ControlApiError(400, 'Control settings scope is invalid.');
+}
+
+function settingsLabel(scope: ControlSettingsEditScope): string {
+  return scope.kind === 'platform' ? 'Platform settings' : scope.kind === 'tenant' ? 'Tenant settings' : 'Catalog settings';
 }
 
 function record(value: unknown): UnknownRecord | null {
@@ -573,15 +600,30 @@ export class ProductionControlReadClient implements ControlReadClient {
   }
 
   platformSettings(signal?: AbortSignal): Promise<PlatformSettingsEnvelope> {
-    return this.read('/_control/v1/platform/settings', 'Platform settings', readPlatformSettings, signal, true);
+    return this.rawSettings({ kind: 'platform' }, signal);
   }
 
   previewPlatformSettings(body: string, csrfToken: string): Promise<PlatformSettingsPreview> {
-    return this.write('/_control/v1/platform/settings?dry_run=true', body, csrfToken, readPlatformPreview, false);
+    return this.previewSettings({ kind: 'platform' }, body, csrfToken);
   }
 
   applyPlatformSettings(body: string, csrfToken: string): Promise<PlatformSettingsCommit> {
-    return this.write('/_control/v1/platform/settings', body, csrfToken, readPlatformCommit, true);
+    return this.applySettings({ kind: 'platform' }, body, csrfToken);
+  }
+
+  async rawSettings(scope: ControlSettingsEditScope, signal?: AbortSignal): Promise<PlatformSettingsEnvelope> {
+    const { path } = controlSettingsScopeDescriptor(scope);
+    return this.read(path, settingsLabel(scope), readPlatformSettings, signal, true);
+  }
+
+  async previewSettings(scope: ControlSettingsEditScope, body: string, csrfToken: string): Promise<PlatformSettingsPreview> {
+    const { path } = controlSettingsScopeDescriptor(scope);
+    return this.write(`${path}?dry_run=true`, body, csrfToken, readPlatformPreview, false, settingsLabel(scope));
+  }
+
+  async applySettings(scope: ControlSettingsEditScope, body: string, csrfToken: string): Promise<PlatformSettingsCommit> {
+    const { path } = controlSettingsScopeDescriptor(scope);
+    return this.write(path, body, csrfToken, readPlatformCommit, true, settingsLabel(scope));
   }
 
   async audit(after?: string, signal?: AbortSignal): Promise<ControlAuditPage> {
@@ -648,6 +690,7 @@ export class ProductionControlReadClient implements ControlReadClient {
     csrfToken: string,
     parse: (value: unknown) => T | null,
     mayHaveCommitted: boolean,
+    label: string,
   ): Promise<T> {
     let response: Response;
     try {
@@ -662,14 +705,14 @@ export class ProductionControlReadClient implements ControlReadClient {
         body,
       });
     } catch {
-      throw mayHaveCommitted ? new ControlUncertainWriteError() : new ControlApiError(0, 'Platform settings preview is unavailable.');
+      throw mayHaveCommitted ? new ControlUncertainWriteError() : new ControlApiError(0, `${label} preview is unavailable.`);
     }
     if (!response.ok) {
       const code = await readProblemCode(response);
       if (response.status === 409 && code === 'ControlEntityVersionConflict') throw new ControlEntityConflictError();
       if (response.status === 409 && code === 'ControlRevisionConflict') throw new ControlConflictError();
       if (mayHaveCommitted && response.status >= 500) throw new ControlUncertainWriteError();
-      throw readError(response.status, 'Platform settings', code);
+      throw readError(response.status, label, code);
     }
     let result: T | null;
     try {
@@ -678,7 +721,7 @@ export class ProductionControlReadClient implements ControlReadClient {
       result = null;
     }
     if (!result) {
-      throw mayHaveCommitted ? new ControlUncertainWriteError() : new ControlApiError(response.status, 'Platform settings preview is unavailable.');
+      throw mayHaveCommitted ? new ControlUncertainWriteError() : new ControlApiError(response.status, `${label} preview is unavailable.`);
     }
     return result;
   }

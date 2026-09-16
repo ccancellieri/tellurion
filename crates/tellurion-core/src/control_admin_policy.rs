@@ -657,6 +657,25 @@ fn validate_mutation_intent(
             "PUT" | "PATCH",
             ControlOperation::SetPlatformSettings(_),
         ) => operation.expected_entity_version.is_some(),
+        (
+            ControlRouteDescriptor::TenantSettings,
+            "PUT" | "PATCH",
+            ControlOperation::SetTenantSettings { tenant, .. },
+        ) => {
+            operation.expected_entity_version.is_some()
+                && matches!(resolved_scope, ControlScope::Tenant { .. })
+                && canonical.segments().nth(3) == Some(tenant.as_str())
+        }
+        (
+            ControlRouteDescriptor::CatalogSettings,
+            "PUT" | "PATCH",
+            ControlOperation::SetCatalogSettings { tenant, catalog, .. },
+        ) => {
+            operation.expected_entity_version.is_some()
+                && matches!(resolved_scope, ControlScope::Catalog { .. })
+                && canonical.segments().nth(3) == Some(tenant.as_str())
+                && canonical.segments().nth(5) == Some(catalog.as_str())
+        }
         (ControlRouteDescriptor::Tenant, "PUT", ControlOperation::PutTenant(tenant)) => {
             matches!(
                 resolved_scope,
