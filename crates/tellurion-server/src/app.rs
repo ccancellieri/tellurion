@@ -6227,15 +6227,15 @@ auth:
         )
     }
 
-    fn replace_durable_platform_settings() -> ControlChangeSet {
+    fn durable_platform_settings_change() -> ControlChangeSet {
         let mut changed_config: AppConfig =
             serde_yaml::from_str(DURABLE_CONTROL_TEST_CONFIG).unwrap();
         changed_config.settings.cache_ttl_s = Some(8);
         ControlChangeSet {
             idempotency_key: None,
             operations: vec![VersionedControlOperation {
-                expected_entity_version: None,
-                operation: ControlOperation::ReplacePlatformSettings(changed_config),
+                expected_entity_version: Some("0".to_string()),
+                operation: ControlOperation::SetPlatformSettings(changed_config.settings),
             }],
         }
     }
@@ -6253,7 +6253,7 @@ auth:
                     .header(header::CONTENT_TYPE, "application/json")
                     .header("x-request-id", "durable-control-full-app-1")
                     .body(Body::from(
-                        serde_json::to_vec(&replace_durable_platform_settings()).unwrap(),
+                        serde_json::to_vec(&durable_platform_settings_change()).unwrap(),
                     ))
                     .unwrap(),
             )
