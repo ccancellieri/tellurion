@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::config::{AppConfig, CatalogDecl, CollectionDecl, TenantDecl};
+use crate::config::{AppConfig, CatalogDecl, CollectionDecl, SettingsDecl, TenantDecl};
 use crate::error::{Error, Result};
 
 pub type ControlRevision = u64;
@@ -555,6 +555,15 @@ impl ControlChangeSet {
             ));
         }
         for operation in &self.operations {
+            if matches!(
+                &operation.operation,
+                ControlOperation::SetPlatformSettings(_)
+            ) && operation.expected_entity_version.is_none()
+            {
+                return Err(Error::ControlValidation(
+                    "platform settings edit requires an expected entity version".to_string(),
+                ));
+            }
             if operation
                 .expected_entity_version
                 .as_ref()
@@ -646,6 +655,7 @@ pub struct VersionedControlOperation {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ControlOperation {
     ReplacePlatformSettings(AppConfig),
+    SetPlatformSettings(SettingsDecl),
     PutTenant(TenantDecl),
     PutCatalog(CatalogDecl),
     PutCollection(CollectionDecl),
@@ -1189,7 +1199,9 @@ fn operation_scopes(
     candidate_snapshot: &ControlSnapshot,
 ) -> Result<Vec<ControlScope>> {
     match operation {
-        ControlOperation::ReplacePlatformSettings(_) => Ok(vec![ControlScope::Platform]),
+        ControlOperation::ReplacePlatformSettings(_) | ControlOperation::SetPlatformSettings(_) => {
+            Ok(vec![ControlScope::Platform])
+        }
         ControlOperation::PutTenant(tenant) => Ok(vec![authority_snapshot
             .config
             .tenants
@@ -1335,7 +1347,9 @@ fn deny_preserves(candidate: &PathPolicy, previous: &PathPolicy) -> bool {
 
 fn operation_key(operation: &ControlOperation, snapshot: &ControlSnapshot) -> Result<String> {
     match operation {
-        ControlOperation::ReplacePlatformSettings(_) => Ok("platform".to_string()),
+        ControlOperation::ReplacePlatformSettings(_) | ControlOperation::SetPlatformSettings(_) => {
+            Ok("platform".to_string())
+        }
         ControlOperation::PutTenant(tenant) => Ok(format!("tenant/{}", tenant.id)),
         ControlOperation::PutCatalog(catalog) => {
             Ok(format!("tenant/{}/catalog/{}", catalog.tenant, catalog.id))
@@ -1385,6 +1399,9 @@ fn operation_key(operation: &ControlOperation, snapshot: &ControlSnapshot) -> Re
 fn apply_operation(snapshot: &mut ControlSnapshot, operation: &ControlOperation) -> Result<()> {
     match operation {
         ControlOperation::ReplacePlatformSettings(config) => snapshot.config = config.clone(),
+        ControlOperation::SetPlatformSettings(settings) => {
+            snapshot.config.settings = settings.clone();
+        }
         ControlOperation::PutTenant(tenant) => {
             upsert_by_id(&mut snapshot.config.tenants, tenant.clone(), |item| {
                 &item.id

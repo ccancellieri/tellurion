@@ -273,3 +273,25 @@ fn a_well_formed_platform_changeset_is_valid() {
     };
     assert_eq!(request.method, "PUT");
 }
+
+#[test]
+fn settings_only_editor_requires_an_entity_precondition() {
+    let changes = ControlChangeSet {
+        idempotency_key: Some("settings-editor".to_string()),
+        operations: vec![VersionedControlOperation {
+            expected_entity_version: None,
+            operation: ControlOperation::SetPlatformSettings(SettingsDecl {
+                cache_ttl_s: Some(60),
+                ..SettingsDecl::default()
+            }),
+        }],
+    };
+
+    assert!(matches!(
+        changes.validate(),
+        Err(Error::ControlValidation(_))
+    ));
+    let mut conditional = changes;
+    conditional.operations[0].expected_entity_version = Some("0".to_string());
+    conditional.validate().expect("conditional settings edit");
+}
