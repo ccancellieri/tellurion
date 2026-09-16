@@ -360,6 +360,8 @@ jobs:
         run: |
           ./scripts/audit-dependency-licenses.py \
             --output "$RUNNER_TEMP/dependency-audit-summary.json"
+      - name: Native notice collection tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_native_third_party_notices.py'
       - name: CI topology contract
         run: |
           ./scripts/check-ci-workflows.sh
