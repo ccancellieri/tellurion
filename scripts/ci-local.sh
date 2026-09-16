@@ -252,6 +252,7 @@ phase_artifact_audit() { # ci.yml job: artifact-audit
         ./scripts/audit-dependency-licenses.py --output "$dependency_summary" || dependency_status=$?
     rm -f "$dependency_summary"
     [ "$dependency_status" -eq 0 ] &&
+        python3 -m unittest discover -s scripts/tests -p 'test_native_release_evidence.py' &&
         ./scripts/check-ci-workflows.sh &&
         ./scripts/test-ci-workflows.sh &&
         ./scripts/audit-artifacts.sh &&
@@ -292,6 +293,7 @@ INDIRECT=(
     "check-pss-restricted.py:validate-deploy-manifests.sh"
     "check-workflow-permissions.py:check-ci-workflows.sh"
     "generate-native-third-party-notices.py:test_native_third_party_notices.py"
+    "check-native-release-evidence.py:test_native_release_evidence.py"
 )
 # These inspect or prepare publication state. They are intentional manual
 # owner gates, not ordinary CI commands, and must remain visible in the audit.

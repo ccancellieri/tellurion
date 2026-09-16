@@ -1,0 +1,2 @@
+# These reviewed inputs are hashed as exact upstream bytes on every runner.
+distribution/native-notices/*.txt -text

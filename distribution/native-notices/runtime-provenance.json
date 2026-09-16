@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "rust_version": "1.97.1",
+  "rust_revision": "8bab26f4f68e0e26f0bb7960be334d5b520ea452",
+  "linux_musl": {
+    "version": "1.2.5",
+    "toolchain_recipe": "https://github.com/rust-lang/rust/blob/8bab26f4f68e0e26f0bb7960be334d5b520ea452/src/ci/docker/scripts/musl-toolchain.sh",
+    "patches": ["CVE-2026-6042", "CVE-2026-40200"],
+    "copyright_url": "https://git.musl-libc.org/cgit/musl/plain/COPYRIGHT?h=v1.2.5",
+    "copyright_path": "musl-1.2.5-COPYRIGHT.txt",
+    "copyright_sha256": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
+    "source_url": "https://musl.libc.org/releases/musl-1.2.5.tar.gz",
+    "source_sha256": "a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4",
+    "upstream_checksum_url": "https://github.com/richfelker/musl-cross-make/blob/3635262e4524c991552789af6f36211a335a77b3/hashes/musl-1.2.5.tar.gz.sha1",
+    "review_status": "source archive preserves the per-file terms referenced by COPYRIGHT; target archive verification remains required"
+  }
+}
