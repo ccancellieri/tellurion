@@ -21,8 +21,9 @@ This repository intentionally separates the public landing pages from the
 machine-readable OGC API endpoints. Start with the visual gallery; use the API
 links when you want to inspect the protocol payloads.
 
-Tellurion [v0.5.0-rc.1 release-candidate source](https://github.com/ccancellieri/tellurion)
-is public and is the primary self-hosted evaluation route. Start with its
+Tellurion [v0.5.0 stable release](https://github.com/ccancellieri/tellurion/releases/tag/v0.5.0)
+includes Linux and Windows binaries, source, checksums and attestations.
+macOS is source-only. Start with the [local demo guide](releases/v0.5.0/), its
 [Quickstart](https://github.com/ccancellieri/tellurion#quickstart) and
 [installation manual](https://github.com/ccancellieri/tellurion/blob/main/docs/quickstart/install.md).
 
