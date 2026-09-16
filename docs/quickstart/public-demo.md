@@ -18,6 +18,9 @@ object lengths, strong ETags, extents, and tested views live in
 [`demo/sources/public-examples.yaml`](../../demo/sources/public-examples.yaml).
 Candidate formats shown in the interface are not executable.
 
+For new showcase datasets and visual acceptance, follow the
+[demo evidence and dataset selection guidelines](../demo/demo-guidelines.md).
+
 ## What this mode does not do
 
 - It creates no tenant, catalog, collection configuration, control record, or
