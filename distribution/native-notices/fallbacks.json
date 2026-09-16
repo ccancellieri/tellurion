@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "packages": [
+    {
+      "name": "geo",
+      "version": "0.29.3",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/georust/geo",
+      "revision": "a76de54e053ac93c3657b52442cde08b67f6ae34",
+      "license_expression": "MIT OR Apache-2.0",
+      "files": [
+        {
+          "path": "georust-MIT.txt",
+          "sha256": "2f8267b247fd81e9555a2e196e119a5b341bcae21011cd93985c312f1312f727",
+          "url": "https://raw.githubusercontent.com/georust/geo/a76de54e053ac93c3657b52442cde08b67f6ae34/LICENSE-MIT"
+        },
+        {
+          "path": "georust-APACHE.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "url": "https://raw.githubusercontent.com/georust/geo/a76de54e053ac93c3657b52442cde08b67f6ae34/LICENSE-APACHE"
+        }
+      ]
+    },
+    {
+      "name": "geo-traits",
+      "version": "0.3.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/georust/geo",
+      "revision": "4516cec59e0cbd832ac7f0e00204758e6f8bd3e4",
+      "license_expression": "MIT OR Apache-2.0",
+      "files": [
+        {
+          "path": "georust-MIT.txt",
+          "sha256": "2f8267b247fd81e9555a2e196e119a5b341bcae21011cd93985c312f1312f727",
+          "url": "https://raw.githubusercontent.com/georust/geo/4516cec59e0cbd832ac7f0e00204758e6f8bd3e4/LICENSE-MIT"
+        },
+        {
+          "path": "georust-APACHE.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "url": "https://raw.githubusercontent.com/georust/geo/4516cec59e0cbd832ac7f0e00204758e6f8bd3e4/LICENSE-APACHE"
+        }
+      ]
+    },
+    {
+      "name": "geo-types",
+      "version": "0.7.19",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/georust/geo",
+      "revision": "981be9feea12cdede572fb252064536cb8b287b1",
+      "license_expression": "MIT OR Apache-2.0",
+      "files": [
+        {
+          "path": "georust-MIT.txt",
+          "sha256": "2f8267b247fd81e9555a2e196e119a5b341bcae21011cd93985c312f1312f727",
+          "url": "https://raw.githubusercontent.com/georust/geo/981be9feea12cdede572fb252064536cb8b287b1/LICENSE-MIT"
+        },
+        {
+          "path": "georust-APACHE.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "url": "https://raw.githubusercontent.com/georust/geo/981be9feea12cdede572fb252064536cb8b287b1/LICENSE-APACHE"
+        }
+      ]
+    },
+    {
+      "name": "geozero",
+      "version": "0.15.1",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/georust/geozero",
+      "revision": "6889c5dcaa116fb46b2fa95dbcb9fb71512838be",
+      "license_expression": "MIT OR Apache-2.0",
+      "files": [
+        {
+          "path": "geozero-MIT.txt",
+          "sha256": "fd490a8762ee58fad61d407872f1844b73d7f4cf5b4123b1cfb6b5ff3114c205",
+          "url": "https://raw.githubusercontent.com/georust/geozero/6889c5dcaa116fb46b2fa95dbcb9fb71512838be/LICENSE-MIT"
+        },
+        {
+          "path": "georust-APACHE.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "url": "https://raw.githubusercontent.com/georust/geozero/6889c5dcaa116fb46b2fa95dbcb9fb71512838be/LICENSE-APACHE"
+        }
+      ]
+    },
+    {
+      "name": "rstar",
+      "version": "0.12.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/georust/rstar",
+      "revision": "c8c5bf9e41468281d030869d409e3f67f1aaf5b7",
+      "license_expression": "MIT OR Apache-2.0",
+      "files": [
+        {
+          "path": "rstar-MIT.txt",
+          "sha256": "9b3a76c27bac8f3e0ff2d1f64f65941c50310ae3ff69318cea230bd4a36822c5",
+          "url": "https://raw.githubusercontent.com/georust/rstar/c8c5bf9e41468281d030869d409e3f67f1aaf5b7/LICENSE-MIT"
+        },
+        {
+          "path": "georust-APACHE.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "url": "https://raw.githubusercontent.com/georust/rstar/c8c5bf9e41468281d030869d409e3f67f1aaf5b7/LICENSE-APACHE"
+        }
+      ]
+    }
+  ]
+}

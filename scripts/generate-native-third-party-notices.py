@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import re
 import sys
+from urllib.parse import urlparse
 
 
 NOTICE_NAME = re.compile(r"^(?:licen[cs]e|copying|copyright|notice)(?:[._-].*)?$", re.I)
@@ -42,22 +43,104 @@ def _files(package: dict) -> list[tuple[str, bytes]]:
             if relative != declared:
                 found.append((relative, path.read_bytes()))
     found.sort(key=lambda item: item[0])
+    return found
+
+
+def _validate_license(package: dict, found: list[tuple[str, bytes]], fallback: list[bytes]) -> None:
+    declared = package.get("license_file")
     license_files = [(path, content) for path, content in found if path == declared or
                      re.match(r"^(?:licen[cs]e|copying)(?:[._-].*)?$", Path(path).name, re.I)]
-    if not license_files:
+    if not license_files and not fallback:
         raise ValueError(f"license text missing: {package['id']}")
-    if not any(content.strip() for _, content in license_files):
+    if license_files and not any(content.strip() for _, content in license_files):
         raise ValueError(f"empty license text: {package['id']}")
+    if fallback and not all(content.strip() for content in fallback):
+        raise ValueError(f"empty fallback license text: {package['id']}")
+
+
+def _fallback_files(package: dict, entry: dict, directory: Path) -> list[tuple[str, bytes, str]]:
+    identity = ("name", "version", "source", "repository", "license_expression")
+    expected = (package["name"], package["version"], package["source"], package.get("repository"), package.get("license"))
+    if tuple(entry.get(key) for key in identity) != expected:
+        raise ValueError(f"fallback package identity mismatch: {package['id']}")
+    revision = entry.get("revision")
+    if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ValueError(f"invalid fallback revision: {package['id']}")
+    vcs_path = Path(package["manifest_path"]).parent / ".cargo_vcs_info.json"
+    if vcs_path.is_symlink() or not vcs_path.is_file():
+        raise ValueError(f"missing safe Cargo VCS info: {package['id']}")
+    try:
+        vcs_revision = json.loads(vcs_path.read_text(encoding="utf-8"))["git"]["sha1"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise ValueError(f"invalid Cargo VCS info: {package['id']}") from error
+    if vcs_revision != revision:
+        raise ValueError(f"fallback revision mismatch: {package['id']}")
+    repo = urlparse(entry["repository"])
+    if repo.scheme != "https" or repo.netloc != "github.com" or repo.query or repo.fragment or not re.fullmatch(r"/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?", repo.path):
+        raise ValueError(f"invalid fallback repository: {package['id']}")
+    owner, name = repo.path.strip("/").split("/")
+    prefix = f"https://raw.githubusercontent.com/{owner}/{name}/{revision}/"
+    found = []
+    seen_files = set()
+    for file in entry["files"]:
+        relative = file["path"]
+        if relative in seen_files:
+            raise ValueError(f"duplicate fallback file: {package['id']}: {relative}")
+        seen_files.add(relative)
+        if not isinstance(relative, str) or not relative or Path(relative).is_absolute() or ".." in Path(relative).parts:
+            raise ValueError(f"unsafe fallback path: {package['id']}: {relative}")
+        path = directory / relative
+        if any(part.is_symlink() for part in (path, *path.parents) if part == directory or directory in part.parents):
+            raise ValueError(f"unsafe fallback path: {package['id']}: {relative}")
+        if not path.resolve().is_relative_to(directory) or not path.is_file():
+            raise ValueError(f"unsafe fallback path: {package['id']}: {relative}")
+        digest = file["sha256"]
+        content = path.read_bytes()
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or hashlib.sha256(content).hexdigest() != digest:
+            raise ValueError(f"fallback digest mismatch: {package['id']}: {relative}")
+        url = file["url"]
+        parsed = urlparse(url) if isinstance(url, str) else None
+        suffix = url[len(prefix):] if isinstance(url, str) and url.startswith(prefix) else ""
+        components = suffix.split("/")
+        if (parsed is None or parsed.scheme != "https" or parsed.netloc != "raw.githubusercontent.com"
+                or parsed.query or parsed.fragment or not suffix
+                or any(part in ("", ".", "..") or not re.fullmatch(r"[A-Za-z0-9._~-]+", part)
+                       for part in components)):
+            raise ValueError(f"invalid fallback URL: {package['id']}: {relative}")
+        found.append((relative, content, url))
     return found
 
 
 def generate(metadata: dict, workspace: Path, roots: tuple[str, ...], *,
              target: str = "unspecified", feature_profile: str = "unspecified",
-             metadata_sha256: str = "unspecified") -> tuple[dict, str]:
+             metadata_sha256: str = "unspecified", fallbacks_path: Path | None = None) -> tuple[dict, str]:
     """Return a sorted evidence manifest and the exact collected source texts."""
     packages = {package["id"]: package for package in metadata["packages"]}
     nodes = {node["id"]: node for node in metadata["resolve"]["nodes"]}
     workspace = workspace.resolve(strict=True)
+    fallback_entries = []
+    fallback_directory = None
+    if fallbacks_path is not None:
+        fallback_path = Path(fallbacks_path)
+        if fallback_path.is_symlink():
+            raise ValueError("unsafe fallback manifest path")
+        fallback_directory = fallback_path.parent.resolve(strict=True)
+        fallback_data = json.loads(fallback_path.read_text(encoding="utf-8"))
+        if not isinstance(fallback_data, dict) or fallback_data.get("schema_version") != 1 or not isinstance(fallback_data.get("packages"), list):
+            raise ValueError("invalid fallback manifest schema")
+        fallback_entries = fallback_data["packages"]
+        identities = set()
+        for entry in fallback_entries:
+            if not isinstance(entry, dict) or not all(isinstance(entry.get(key), str) for key in
+                    ("name", "version", "source", "repository", "revision", "license_expression")) or not isinstance(entry.get("files"), list) or not entry["files"]:
+                raise ValueError("invalid fallback manifest package")
+            if any(not isinstance(file, dict) or not all(isinstance(file.get(key), str) for key in ("path", "sha256", "url"))
+                   for file in entry["files"]):
+                raise ValueError("invalid fallback manifest file")
+            identity = (entry["name"], entry["version"], entry["source"])
+            if identity in identities:
+                raise ValueError(f"duplicate fallback package: {identity}")
+            identities.add(identity)
     root_ids = []
     for name in roots:
         matches = [p["id"] for p in packages.values() if p["name"] == name and p["source"] is None
@@ -96,6 +179,20 @@ def generate(metadata: dict, workspace: Path, roots: tuple[str, ...], *,
             continue
         try:
             files = _files(package)
+            additions = []
+            for entry in fallback_entries:
+                if entry.get("name") == package["name"]:
+                    additions.extend(_fallback_files(package, entry, fallback_directory))
+            existing = {path: content for path, content in files}
+            provenance = {}
+            for relative, content, url in additions:
+                if relative in existing and existing[relative] != content:
+                    raise ValueError(f"fallback path collision: {package['id']}: {relative}")
+                if relative not in existing:
+                    files.append((relative, content))
+                    provenance[relative] = url
+            files.sort(key=lambda item: item[0])
+            _validate_license(package, files, [content for _, content, _ in additions])
         except (OSError, ValueError) as error:
             errors.append(str(error))
             continue
@@ -103,7 +200,10 @@ def generate(metadata: dict, workspace: Path, roots: tuple[str, ...], *,
                   "source": package["source"], "license_expression": package.get("license"), "files": []}
         sections.append(f"\n===== {package['name']} {package['version']} ({package['id']}) =====\n")
         for relative, content in files:
-            record["files"].append({"path": relative, "sha256": hashlib.sha256(content).hexdigest()})
+            file_record = {"path": relative, "sha256": hashlib.sha256(content).hexdigest()}
+            if relative in provenance:
+                file_record.update({"provenance": "fallback", "url": provenance[relative]})
+            record["files"].append(file_record)
             sections.append(f"\n----- {relative} -----\n")
             try:
                 sections.append(content.decode("utf-8"))
@@ -130,13 +230,14 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--text", type=Path, required=True)
     parser.add_argument("--root", action="append", help="override default executable roots; repeat per root")
+    parser.add_argument("--fallbacks", type=Path, help="reviewed, pinned fallback license texts manifest")
     args = parser.parse_args()
     try:
         roots = tuple(args.root or ("tellurion", "tellurion-ingest"))
         metadata_bytes = args.metadata.read_bytes()
         manifest, notice = generate(json.loads(metadata_bytes.decode("utf-8")), args.workspace, roots,
                                     target=args.target, feature_profile=args.feature_profile,
-                                    metadata_sha256=hashlib.sha256(metadata_bytes).hexdigest())
+                                    metadata_sha256=hashlib.sha256(metadata_bytes).hexdigest(), fallbacks_path=args.fallbacks)
         args.manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="")
         args.text.write_text(notice, encoding="utf-8", newline="")
     except (OSError, ValueError, KeyError, TypeError) as error:

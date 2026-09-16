@@ -39,6 +39,7 @@ cargo +1.97.1 metadata --locked --offline --format-version 1 \
 python3 scripts/generate-native-third-party-notices.py \
   --metadata /path/to/cargo-metadata.json --target aarch64-apple-darwin \
   --feature-profile 'server=default,ui;ingest=default' \
+  --fallbacks distribution/native-notices/fallbacks.json \
   --workspace "$PWD" \
   --manifest /path/to/rust-notice-evidence.json \
   --text /path/to/RUST_THIRD_PARTY_NOTICES.txt
@@ -66,3 +67,24 @@ workspace members; use target-specific metadata and review the reachable
 dependency set before treating the result as archive-specific. The native
 release gate stays blocked until reviewed evidence is packaged and verified
 byte-for-byte for every archive.
+
+## Pinned upstream texts missing from crate archives
+
+`distribution/native-notices/fallbacks.json` supplies the upstream MIT and
+Apache texts for `geo` 0.29.3, `geo-traits` 0.3.0, `geo-types` 0.7.19,
+`geozero` 0.15.1, and `rstar` 0.12.2. Their registry archives do not contain
+these files. Each entry binds the crate name, version, registry, license
+expression, repository, Cargo VCS commit, upstream URL, and SHA-256. Shared
+local texts are deduplicated only when their upstream bytes are identical.
+The generator reads these checked-in texts offline; it does not download a
+moving branch or substitute a generic license based on an SPDX identifier.
+Packaged copyright and NOTICE files remain in the output.
+
+The current Linux musl and Windows MSVC dependency graphs produce source-text
+evidence with these fallbacks. That is not an archive installation test or a
+claim of complete native-library review. macOS still requires attention to
+`objc2-core-foundation` and `objc2-system-configuration` 0.3.2. Their pinned
+[upstream licensing note](https://github.com/madsmtm/objc2/blob/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md)
+links to license terms and discusses Apple SDK-derived material; it is not
+silently accepted as the missing complete license text. The native release
+gate remains in place while this and the archive review are unresolved.
