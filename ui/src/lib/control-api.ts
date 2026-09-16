@@ -26,6 +26,36 @@ export interface TenantView {
   };
 }
 
+export interface ControlVisibility {
+  public: boolean;
+  sharedWith: string[];
+}
+
+export interface CatalogView {
+  controlRevision: number;
+  entityVersion: string;
+  resource: {
+    id: string;
+    tenant: string;
+    settings: Record<string, unknown>;
+    visibility: ControlVisibility;
+    tombstoned: boolean;
+  };
+}
+
+export interface CollectionView {
+  controlRevision: number;
+  entityVersion: string;
+  resource: {
+    id: string;
+    catalog: string;
+    kind: 'vector' | 'raster' | 'record';
+    settings: Record<string, unknown>;
+    visibility: ControlVisibility;
+    tombstoned: boolean;
+  };
+}
+
 export interface ControlPage<T> {
   controlRevision: number;
   items: T[];
@@ -99,6 +129,8 @@ export interface ControlReadClient {
   session(): Promise<ControlSessionView>;
   overview(): Promise<ControlOverview>;
   tenants(after?: string): Promise<ControlPage<TenantView>>;
+  catalogs(tenant: string, after?: string): Promise<ControlPage<CatalogView>>;
+  collections(tenant: string, catalog: string, after?: string): Promise<ControlPage<CollectionView>>;
   effectiveSettings(): Promise<EffectiveSettingsView>;
   audit(after?: string): Promise<ControlAuditPage>;
 }
@@ -160,6 +192,10 @@ const MAX_CURSOR_LENGTH = 512;
 const MAX_PROBLEM_FIELD_LENGTH = 256;
 const MAX_PROBLEM_CODE_LENGTH = 128;
 const MAX_U64 = '18446744073709551615';
+
+export function validControlScopeId(value: string): boolean {
+  return value.length > 0 && value.length <= 128 && /^[A-Za-z0-9_-]+$/.test(value);
+}
 
 function record(value: unknown): UnknownRecord | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -332,6 +368,64 @@ function readTenants(value: unknown): ControlPage<TenantView> | null {
   return { controlRevision, items, ...(nextAfter ? { nextAfter } : {}) };
 }
 
+function readVisibility(value: unknown): ControlVisibility | null {
+  const source = record(value);
+  if (!source || typeof source.public !== 'boolean' || !Array.isArray(source.shared_with) ||
+    !source.shared_with.every((entry) => typeof entry === 'string')) return null;
+  return { public: source.public, sharedWith: source.shared_with };
+}
+
+function readScopedPage<T>(
+  value: unknown,
+  parseItem: (resource: UnknownRecord, controlRevision: number, entityVersion: string) => T | null,
+): ControlPage<T> | null {
+  const source = record(value);
+  const controlRevision = source ? unsignedSafeInteger(source.control_revision) : undefined;
+  if (controlRevision === undefined || !source || !Array.isArray(source.items)) return null;
+  const items: T[] = [];
+  for (const item of source.items) {
+    const envelope = record(item);
+    const resource = envelope ? record(envelope.resource) : null;
+    const revision = envelope ? unsignedSafeInteger(envelope.control_revision) : undefined;
+    const entityVersion = envelope ? nonEmptyText(envelope.entity_version) : undefined;
+    if (!resource || revision === undefined || !entityVersion) return null;
+    const parsed = parseItem(resource, revision, entityVersion);
+    if (!parsed) return null;
+    items.push(parsed);
+  }
+  const nextAfter = source.next_after;
+  if (nextAfter !== undefined && nextAfter !== null && typeof nextAfter !== 'string') return null;
+  return { controlRevision, items, ...(nextAfter ? { nextAfter } : {}) };
+}
+
+function readCatalogs(value: unknown, tenant: string): ControlPage<CatalogView> | null {
+  return readScopedPage(value, (resource, controlRevision, entityVersion) => {
+    const id = text(resource.id);
+    const settings = record(resource.settings);
+    const visibility = readVisibility(resource.visibility);
+    if (!id || !validControlScopeId(id) || resource.tenant !== tenant || !settings || !visibility ||
+      typeof resource.tombstoned !== 'boolean') return null;
+    return { controlRevision, entityVersion, resource: {
+      id, tenant, settings, visibility, tombstoned: resource.tombstoned,
+    } };
+  });
+}
+
+function readCollections(value: unknown, catalog: string): ControlPage<CollectionView> | null {
+  return readScopedPage(value, (resource, controlRevision, entityVersion) => {
+    const id = text(resource.id);
+    const settings = record(resource.settings);
+    const visibility = readVisibility(resource.visibility);
+    const kind = resource.kind;
+    if (!id || !validControlScopeId(id) || resource.catalog !== catalog || !settings || !visibility ||
+      (kind !== 'vector' && kind !== 'raster' && kind !== 'record') ||
+      typeof resource.tombstoned !== 'boolean') return null;
+    return { controlRevision, entityVersion, resource: {
+      id, catalog, kind, settings, visibility, tombstoned: resource.tombstoned,
+    } };
+  });
+}
+
 function readEffectiveSettings(value: unknown): EffectiveSettingsView | null {
   const source = record(value);
   if (!source) return null;
@@ -458,6 +552,20 @@ export class ProductionControlReadClient implements ControlReadClient {
 
   async tenants(after?: string, signal?: AbortSignal): Promise<ControlPage<TenantView>> {
     return this.read(this.cursorPath('/_control/v1/tenants', after, 'Tenant list'), 'Tenant list', readTenants, signal);
+  }
+
+  async catalogs(tenant: string, after?: string, signal?: AbortSignal): Promise<ControlPage<CatalogView>> {
+    if (!validControlScopeId(tenant)) throw new ControlApiError(400, 'Catalog list is unavailable.');
+    const path = this.cursorPath(`/_control/v1/tenants/${tenant}/catalogs`, after, 'Catalog list');
+    return this.read(path, 'Catalog list', (value) => readCatalogs(value, tenant), signal);
+  }
+
+  async collections(tenant: string, catalog: string, after?: string, signal?: AbortSignal): Promise<ControlPage<CollectionView>> {
+    if (!validControlScopeId(tenant) || !validControlScopeId(catalog)) {
+      throw new ControlApiError(400, 'Collection list is unavailable.');
+    }
+    const path = this.cursorPath(`/_control/v1/tenants/${tenant}/catalogs/${catalog}/collections`, after, 'Collection list');
+    return this.read(path, 'Collection list', (value) => readCollections(value, catalog), signal);
   }
 
   effectiveSettings(signal?: AbortSignal): Promise<EffectiveSettingsView> {

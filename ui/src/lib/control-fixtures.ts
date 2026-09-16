@@ -1,4 +1,6 @@
 import type {
+  CatalogView,
+  CollectionView,
   ControlAuditPage,
   ControlOverview,
   ControlPage,
@@ -112,6 +114,14 @@ export class FixtureControlReadClient implements ControlReadClient {
       items,
       ...(after === undefined ? { nextAfter: controlFixtures.tenants.at(-1)?.resource.id } : {}),
     });
+  }
+
+  async catalogs(_tenant: string, _after?: string): Promise<ControlPage<CatalogView>> {
+    return { controlRevision: controlFixtures.revision, items: [] };
+  }
+
+  async collections(_tenant: string, _catalog: string, _after?: string): Promise<ControlPage<CollectionView>> {
+    return { controlRevision: controlFixtures.revision, items: [] };
   }
 
   async effectiveSettings(): Promise<EffectiveSettingsView> {

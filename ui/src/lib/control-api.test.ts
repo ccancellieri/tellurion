@@ -31,6 +31,23 @@ const tenantPage = {
   next_after: 'tenant-a',
 };
 
+const catalogPage = {
+  control_revision: 8,
+  items: [{ control_revision: 8, entity_version: '3', resource: {
+    id: 'cadastre', tenant: 'tenant-a', settings: {}, visibility: { public: false, shared_with: [] }, tombstoned: false,
+  } }],
+  next_after: 'cadastre',
+};
+
+const collectionPage = {
+  control_revision: 8,
+  items: [{ control_revision: 8, entity_version: '4', resource: {
+    id: 'roads', catalog: 'cadastre', kind: 'vector', settings: {},
+    visibility: { public: false, shared_with: [] }, tombstoned: false,
+  } }],
+  next_after: 'roads',
+};
+
 const effectiveSettings = {
   applied_revision: 7,
   effective: {
@@ -56,6 +73,46 @@ const auditPage = {
 };
 
 describe('production control read client', () => {
+  it('production break: reads scoped catalogs and collections with bounded encoded continuations', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json(catalogPage))
+      .mockResolvedValueOnce(json(collectionPage));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new ProductionControlReadClient();
+
+    const catalogs = await client.catalogs('tenant-a', 'cursor/1');
+    const collections = await client.collections('tenant-a', 'cadastre', 'cursor/2');
+
+    expect(catalogs.items[0].resource).toMatchObject({ id: 'cadastre', tenant: 'tenant-a' });
+    expect(catalogs.nextAfter).toBe('cadastre');
+    expect(collections.items[0].resource).toMatchObject({ id: 'roads', catalog: 'cadastre', kind: 'vector' });
+    expect(collections.nextAfter).toBe('roads');
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/_control/v1/tenants/tenant-a/catalogs?after=cursor%2F1',
+      '/_control/v1/tenants/tenant-a/catalogs/cadastre/collections?after=cursor%2F2',
+    ]);
+  });
+
+  it('production break: rejects unsafe scoped identifiers before network access', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new ProductionControlReadClient();
+
+    await expect(client.catalogs('../platform')).rejects.toMatchObject({ status: 400 });
+    await expect(client.collections('tenant-a', 'a%2Fb')).rejects.toMatchObject({ status: 400 });
+    await expect(client.collections('tenant-a', 'x'.repeat(129))).rejects.toMatchObject({ status: 400 });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('production break: rejects malformed scoped list payloads rather than rendering foreign data', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(json({ ...catalogPage, items: [{ ...catalogPage.items[0], resource: { ...catalogPage.items[0].resource, tenant: 'tenant-b' } }] }))
+      .mockResolvedValueOnce(json({ ...collectionPage, items: [{ ...collectionPage.items[0], resource: { ...collectionPage.items[0].resource, kind: 'unknown' } }] })));
+    const client = new ProductionControlReadClient();
+
+    await expect(client.catalogs('tenant-a')).rejects.toMatchObject({ status: 200, message: 'Catalog list is unavailable.' });
+    await expect(client.collections('tenant-a', 'cadastre')).rejects.toMatchObject({ status: 200, message: 'Collection list is unavailable.' });
+  });
   it('production break: requests same-origin root resources with browser credentials and JSON accept headers', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(json({ authenticated: true, principal: 'operator', csrf_token: 'csrf-secret', expires_in_s: 60 }))

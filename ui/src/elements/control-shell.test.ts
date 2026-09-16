@@ -4,6 +4,8 @@ import {
   ControlApiError,
   ControlForbiddenError,
   type ControlAuditPage,
+  type CatalogView,
+  type CollectionView,
   type ControlOverview,
   type ControlPage,
   type ControlReadClient,
@@ -65,6 +67,8 @@ class StubClient implements ControlReadClient {
     this.tenantCalls.push(after);
     return Promise.resolve(this.tenantPages[this.tenantCalls.length - 1] ?? { controlRevision: 8, items: [] });
   }
+  catalogs(): Promise<ControlPage<CatalogView>> { return Promise.resolve({ controlRevision: 8, items: [] }); }
+  collections(): Promise<ControlPage<CollectionView>> { return Promise.resolve({ controlRevision: 8, items: [] }); }
   effectiveSettings(): Promise<EffectiveSettingsView> { return Promise.resolve(this.settingsValue); }
   audit(after?: string): Promise<ControlAuditPage> {
     this.auditCalls.push(after);
@@ -197,6 +201,27 @@ describe('control workspace', () => {
     expect(client.tenantCalls).toEqual([undefined, 'tenant-a']);
     expect(shell.textContent).toContain('tenant-b');
     expect(document.activeElement).toBe(shell.querySelector('[data-field="tenant-list"]'));
+  });
+
+  it('production break: links only valid production tenant inventory IDs to scoped workspaces', async () => {
+    const client = new StubClient();
+    client.tenantPages = [{ controlRevision: 8, items: [
+      tenantA,
+      { ...tenantB, resource: { ...tenantB.resource, id: 'tenant/unsafe' } },
+    ] }];
+    const shell = mount(client);
+    await settle();
+
+    expect(shell.querySelector<HTMLAnchorElement>('[data-field="tenant-list"] a')?.getAttribute('href'))
+      .toBe('/ui/control/tenants/tenant-a');
+    expect(shell.querySelectorAll('[data-field="tenant-list"] a')).toHaveLength(1);
+    expect(shell.textContent).toContain('tenant/unsafe');
+  });
+
+  it('production break: fixture tenant inventory never links to a live scoped workspace', async () => {
+    const shell = mount(new StubClient(), 'fixture');
+    await settle();
+    expect(shell.querySelector('[data-field="tenant-list"] a')).toBeNull();
   });
 
   it('production break: restores tenant inventory focus after a continuation error', async () => {

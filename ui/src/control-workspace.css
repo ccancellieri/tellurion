@@ -166,6 +166,18 @@ tellurion-control-shell {
   overflow-wrap: anywhere;
 }
 
+.control-scope-rail .control-scope-list a {
+  min-width: 0;
+  flex: 1 1 10rem;
+  color: var(--accent-deep);
+  overflow-wrap: anywhere;
+}
+
+.control-scope-rail .control-scope-list a:focus-visible {
+  outline: 3px solid var(--revision-amber);
+  outline-offset: 3px;
+}
+
 .control-scope-list span {
   flex: 0 0 auto;
   color: var(--ink-muted);
@@ -175,6 +187,32 @@ tellurion-control-shell {
 .control-sheet {
   min-width: 0;
   padding: clamp(1.1rem, 3vw, 2.1rem);
+}
+
+.control-sheet--scoped {
+  max-width: 68rem;
+  min-height: min(560px, calc(100vh - 170px));
+}
+
+.control-scope-list--scoped {
+  max-width: 58rem;
+  gap: 0;
+  margin-top: 1rem;
+}
+
+.control-scope-list--scoped li {
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+}
+
+.control-scope-list--scoped a {
+  min-width: 0;
+  color: var(--accent-deep);
+}
+
+.control-scope-list--scoped a:focus-visible {
+  outline: 3px solid var(--revision-amber);
+  outline-offset: 3px;
 }
 
 .control-sheet h1 {

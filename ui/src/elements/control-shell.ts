@@ -4,6 +4,9 @@ import {
   ControlForbiddenError,
   ControlSignInRequiredError,
   ProductionControlReadClient,
+  validControlScopeId,
+  type CatalogView,
+  type CollectionView,
   type ControlAuditItem,
   type ControlAuditPage,
   type ControlOverview,
@@ -21,6 +24,10 @@ import {
 import { TellurionPlatformSettingsEditor } from './platform-settings-editor';
 
 export type ControlMode = 'production' | 'fixture';
+export type ControlWorkspaceScope =
+  | { kind: 'platform' }
+  | { kind: 'tenant'; tenant: string }
+  | { kind: 'catalog'; tenant: string; catalog: string };
 
 function escape(value: unknown): string {
   return String(value)
@@ -53,8 +60,23 @@ function provenanceLabel(provenance: EffectiveSettingsView['effective']['setting
   }
 }
 
+export function workspaceScopeFor(pathname: string): ControlWorkspaceScope | undefined {
+  if (pathname === '/ui/control' || pathname === '/ui/control/') return { kind: 'platform' };
+  const segments = pathname.split('/');
+  if (segments.length === 5 && segments[0] === '' && segments[1] === 'ui' &&
+    segments[2] === 'control' && segments[3] === 'tenants' && validControlScopeId(segments[4])) {
+    return { kind: 'tenant', tenant: segments[4] };
+  }
+  if (segments.length === 7 && segments[0] === '' && segments[1] === 'ui' &&
+    segments[2] === 'control' && segments[3] === 'tenants' && validControlScopeId(segments[4]) &&
+    segments[5] === 'catalogs' && validControlScopeId(segments[6])) {
+    return { kind: 'catalog', tenant: segments[4], catalog: segments[6] };
+  }
+  return undefined;
+}
+
 export function workspaceModeFor(pathname: string, buildMode: string): ControlMode | undefined {
-  const control = pathname === '/ui/control' || pathname === '/ui/control/';
+  const control = workspaceScopeFor(pathname) !== undefined;
   const demo = pathname === '/ui/control-demo' || pathname === '/ui/control-demo/';
   if (buildMode === 'public-demo' && (control || demo)) return 'fixture';
   if (demo) return 'fixture';
@@ -83,8 +105,15 @@ export class TellurionControlShell extends HTMLElement {
   #fixtureStatus?: string;
   #editor?: TellurionPlatformSettingsEditor;
   #generation = 0;
+  #scope: ControlWorkspaceScope = { kind: 'platform' };
+  #scopePath = '/ui/control';
+  #scopedItems: CatalogView[] | CollectionView[] = [];
+  #scopedAfter?: string;
+  #scopedLoading = false;
 
   connectedCallback(): void {
+    this.#scope = workspaceScopeFor(location.pathname) ?? { kind: 'platform' };
+    this.#scopePath = location.pathname;
     if (!this.client) this.client = this.mode === 'fixture'
       ? new FixtureControlReadClient()
       : new ProductionControlReadClient();
@@ -109,7 +138,8 @@ export class TellurionControlShell extends HTMLElement {
         return;
       }
       this.#renderDataLoading();
-      await this.#loadPanels(generation, client);
+      if (this.#scope.kind === 'platform') await this.#loadPanels(generation, client);
+      else await this.#loadScoped(generation, client);
     } catch (error) {
       if (!this.#isCurrent(generation, client)) return;
       if (error instanceof ControlSignInRequiredError) this.#renderSignIn();
@@ -136,10 +166,64 @@ export class TellurionControlShell extends HTMLElement {
     this.#fixtureSimulation = undefined;
     this.#fixtureValidationError = undefined;
     this.#fixtureStatus = undefined;
+    this.#scopedItems = [];
+    this.#scopedAfter = undefined;
+    this.#scopedLoading = false;
   }
 
   #isCurrent(generation: number, client: ControlReadClient): boolean {
-    return this.isConnected && generation === this.#generation && client === this.client;
+    return this.isConnected && generation === this.#generation && client === this.client &&
+      location.pathname === this.#scopePath;
+  }
+
+  async #loadScoped(generation: number, client: ControlReadClient): Promise<void> {
+    const scope = this.#scope;
+    if (scope.kind === 'platform') return;
+    try {
+      const page = scope.kind === 'tenant'
+        ? await client.catalogs(scope.tenant)
+        : await client.collections(scope.tenant, scope.catalog);
+      if (!this.#isCurrent(generation, client)) return;
+      this.#scopedItems = page.items;
+      this.#scopedAfter = page.nextAfter;
+      this.#renderScoped();
+    } catch (error) {
+      if (!this.#isCurrent(generation, client)) return;
+      this.#scopedItems = [];
+      this.#scopedAfter = undefined;
+      if (error instanceof ControlSignInRequiredError) this.#renderSignIn();
+      else if (error instanceof ControlForbiddenError) this.#renderForbidden();
+      else this.#renderTerminal(errorMessage(error, 'Control scope is unavailable.'));
+    }
+  }
+
+  async #moreScoped(): Promise<void> {
+    const scope = this.#scope;
+    if (scope.kind === 'platform' || !this.#scopedAfter || this.#scopedLoading) return;
+    const after = this.#scopedAfter;
+    const generation = this.#generation;
+    const client = this.client;
+    this.#scopedLoading = true;
+    this.#renderScoped();
+    try {
+      const page = scope.kind === 'tenant'
+        ? await client.catalogs(scope.tenant, after)
+        : await client.collections(scope.tenant, scope.catalog, after);
+      if (!this.#isCurrent(generation, client)) return;
+      this.#scopedItems = [...this.#scopedItems, ...page.items] as CatalogView[] | CollectionView[];
+      this.#scopedAfter = page.nextAfter;
+      this.#scopedLoading = false;
+      this.#renderScoped();
+      this.querySelector<HTMLElement>('[data-action="more-scoped"], [data-field="scoped-list"]')?.focus();
+    } catch (error) {
+      if (!this.#isCurrent(generation, client)) return;
+      this.#scopedItems = [];
+      this.#scopedAfter = undefined;
+      this.#scopedLoading = false;
+      if (error instanceof ControlSignInRequiredError) this.#renderSignIn();
+      else if (error instanceof ControlForbiddenError) this.#renderForbidden();
+      else this.#renderTerminal(errorMessage(error, 'Control scope is unavailable.'));
+    }
   }
 
   async #loadPanels(generation: number, client: ControlReadClient): Promise<void> {
@@ -246,17 +330,57 @@ export class TellurionControlShell extends HTMLElement {
   }
 
   #renderSignIn(): void {
+    const scoped = this.#scope.kind !== 'platform';
     this.innerHTML = `
       <section class="control-gate">
         <p class="control-gate__eyebrow">Tellurion control</p>
         <h1>Sign in to control Tellurion</h1>
-        <p>Use an authorized platform account to inspect current configuration and propagation state.</p>
-        <a class="control-button" data-action="sign-in" href="/_auth/control/login?return_to=/ui/control">Sign in</a>
+        <p>${scoped ? 'Use an account authorized for this control scope.' : 'Use an authorized platform account to inspect current configuration and propagation state.'}</p>
+        <a class="control-button" data-action="sign-in" href="/_auth/control/login?return_to=${escape(scoped ? this.#scopePath : '/ui/control')}">Sign in</a>
       </section>`;
   }
 
   #renderForbidden(): void {
-    this.#renderTerminal('Platform scope unavailable');
+    this.#renderTerminal(this.#scope.kind === 'platform' ? 'Platform scope unavailable' : 'Control scope unavailable');
+  }
+
+  #renderScoped(): void {
+    const scope = this.#scope;
+    if (scope.kind === 'platform') return;
+    const isTenant = scope.kind === 'tenant';
+    const title = isTenant ? `${scope.tenant} catalogs` : `${scope.catalog} collections`;
+    const coordinate = isTenant ? `/tenants/${scope.tenant}` : `/tenants/${scope.tenant}/catalogs/${scope.catalog}`;
+    const entries = this.#scopedItems.map((item) => {
+      const href = isTenant
+        ? `/ui/control/tenants/${scope.tenant}/catalogs/${item.resource.id}`
+        : undefined;
+      const name = href
+        ? `<a href="${escape(href)}"><code>${escape(item.resource.id)}</code></a>`
+        : `<code>${escape(item.resource.id)}</code>`;
+      const detail = isTenant ? 'Catalog' : (item as CollectionView).resource.kind;
+      return `<li>${name}<span>${escape(detail)}</span></li>`;
+    }).join('');
+    this.innerHTML = `
+      <section class="control-workspace" data-mode="${this.mode}" data-scope="${scope.kind}">
+        ${this.mode === 'fixture' ? '<p class="control-demo-boundary">Demonstration data · fixture-only workspace</p>' : ''}
+        <nav class="control-nav" aria-label="Workspace navigation">
+          <a data-nav="catalog-map" href="${escape(`/ui/${location.search}${location.hash}`)}">Catalog map</a>
+          <a aria-current="page" href="${escape(this.#scopePath)}">${escape(title)}</a>
+        </nav>
+        <main class="control-sheet control-sheet--scoped" aria-live="polite">
+          <p class="control-breadcrumb">Control / ${isTenant ? 'tenant' : 'catalog'}</p>
+          <h1 id="control-workspace-heading">${escape(title)}</h1>
+          <p class="control-coordinate">${escape(coordinate)} · read-only</p>
+          <section class="control-sheet__section" aria-labelledby="scoped-items-heading">
+            <h2 id="scoped-items-heading">${isTenant ? 'Catalogs' : 'Collections'}</h2>
+            ${entries ? `<ul class="control-scope-list control-scope-list--scoped" data-field="scoped-list" tabindex="-1">${entries}</ul>`
+              : `<div data-field="scoped-list" tabindex="-1"><p class="control-note">No ${isTenant ? 'catalogs' : 'collections'} are available in this scope.</p></div>`}
+            ${this.#scopedLoading ? '<p class="control-note" role="status">Loading more…</p>' : ''}
+            ${this.#scopedAfter ? `<button type="button" class="control-more" data-action="more-scoped" ${this.#scopedLoading ? 'disabled' : ''}>Load more</button>` : ''}
+          </section>
+        </main>
+      </section>`;
+    this.querySelector<HTMLButtonElement>('[data-action="more-scoped"]')?.addEventListener('click', () => void this.#moreScoped());
   }
 
   #renderTerminal(message: string): void {
@@ -281,7 +405,9 @@ export class TellurionControlShell extends HTMLElement {
       : this.#tenants.length === 0
         ? '<div data-field="tenant-list" tabindex="-1"><p class="control-note">No tenants are available in this inventory.</p></div>'
         : `<ul class="control-scope-list" data-field="tenant-list" tabindex="-1">${this.#tenants.map((tenant) => `
-            <li><code>${escape(tenant.resource.id)}</code><span>revision ${tenant.controlRevision}</span></li>`).join('')}
+            <li>${this.mode === 'production' && validControlScopeId(tenant.resource.id)
+              ? `<a href="${escape(`/ui/control/tenants/${tenant.resource.id}`)}"><code>${escape(tenant.resource.id)}</code></a>`
+              : `<code>${escape(tenant.resource.id)}</code>`}<span>revision ${tenant.controlRevision}</span></li>`).join('')}
           </ul>${this.#tenantLoading ? '<p class="control-note" role="status">Loading tenant inventory…</p>' : ''}${this.#tenantAfter ? `<button type="button" class="control-more" data-action="more-tenants" ${this.#tenantLoading ? 'disabled' : ''}>Load another tenant</button>` : ''}`;
     const effective = this.#settingsError
       ? `<p class="control-note control-note--error">${escape(this.#settingsError)}</p>`
