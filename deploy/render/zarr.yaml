@@ -1,0 +1,54 @@
+server:
+  port: 10000
+  request_timeout_s: 30
+  log_json: true
+
+cache:
+  memory_percent: 10.0
+
+storages:
+  - id: zarr_t0
+    driver: zarr
+    url_env: TELLURION_ZARR_T0_PATH
+  - id: zarr_t1
+    driver: zarr
+    url_env: TELLURION_ZARR_T1_PATH
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: sample_zarr_t0
+    title: Synthetic multidimensional field — time slice T0
+    description: Read-only slice 0 from a deterministic Zarr v2 array shaped [time, y, x]. Not observational data.
+    catalog: default
+    storage: zarr_t0
+    tiles:
+      minzoom: 0
+      maxzoom: 14
+      caps: {}
+    settings:
+      colormap:
+        kind: ramp
+        ramp: viridis
+        min: 0.0
+        max: 255.0
+  - id: sample_zarr_t1
+    title: Synthetic multidimensional field — time slice T1
+    description: Read-only slice 1 from a deterministic Zarr v2 array shaped [time, y, x]. Not observational data.
+    catalog: default
+    storage: zarr_t1
+    tiles:
+      minzoom: 0
+      maxzoom: 14
+      caps: {}
+    settings:
+      colormap:
+        kind: ramp
+        ramp: viridis
+        min: 0.0
+        max: 255.0

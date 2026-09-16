@@ -1,0 +1,27 @@
+{
+  "version": 8,
+  "name": "Rome roads at night",
+  "sources": {
+    "tellurion": {
+      "type": "vector",
+      "tiles": [
+        "https://tellurion-vector-demo.onrender.com/public/tiles/catalogs/default/collections/sample_roads/tiles/WebMercatorQuad/{z}/{y}/{x}.mvt"
+      ],
+      "minzoom": 0,
+      "maxzoom": 14
+    }
+  },
+  "layers": [
+    {
+      "id": "roads-night",
+      "type": "line",
+      "source": "tellurion",
+      "source-layer": "sample_roads",
+      "paint": {
+        "line-color": "#75e6c4",
+        "line-opacity": 0.92,
+        "line-width": 1.6
+      }
+    }
+  ]
+}

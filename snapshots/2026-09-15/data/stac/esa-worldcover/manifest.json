@@ -1,0 +1,46 @@
+{
+  "digests": {
+    "collection": "381ac0bb927b0a3014134ac472c627ddf95a1b7c7ed01fbb9ede9f4916f92c49",
+    "item": "8370f37c0ffadd33fff59473c633a827653c14f1d46c4175ed07b77efbf17aa5"
+  },
+  "retrieved_at": "2026-08-03T20:16:29Z",
+  "served_asset": {
+    "byte_length": 41236803,
+    "href": "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39E012_Map.tif",
+    "relationship": "byte-identical-official-mirror",
+    "sha256": "5d951afb19e5fdcb90773bac374b556d425f8945ba4b719114c7f7b03157464a"
+  },
+  "source": {
+    "asset_href": "https://ai4edataeuwest.blob.core.windows.net/esa-worldcover/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39E012_Map.tif",
+    "asset_media_type": "image/tiff; application=geotiff; profile=cloud-optimized",
+    "collection_id": "esa-worldcover",
+    "item_id": "ESA_WorldCover_10m_2021_v200_N39E012",
+    "license": "CC-BY-4.0",
+    "providers": [
+      {
+        "name": "ESA",
+        "roles": [
+          "licensor",
+          "producer"
+        ],
+        "url": "https://esa-worldcover.org"
+      },
+      {
+        "description": "The WorldCover product is developed by a consortium led by VITO Remote Sensing together with partners Brockmann Consult, CS SI, Gamma Remote Sensing AG, IIASA and Wageningen University",
+        "name": "ESA WorldCover Consortium",
+        "roles": [
+          "processor"
+        ],
+        "url": "https://esa-worldcover.org"
+      },
+      {
+        "name": "Microsoft",
+        "roles": [
+          "host"
+        ],
+        "url": "https://planetarycomputer.microsoft.com"
+      }
+    ]
+  },
+  "transform_version": "2"
+}

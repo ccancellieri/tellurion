@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tellurion 3D capability demo</title>
+  <meta name="description" content="A human-facing Tellurion demo: synthetic footprints served as 3D Tiles 1.1 and rendered from a live GLB tile in the browser.">
+  <meta property="og:title" content="Tellurion 3D capability demo">
+  <meta property="og:description" content="From polygon footprints to streamed GLB content through a reproducible Tellurion deployment.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ccancellieri.github.io/tellurion-demos/demos/3d/">
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #eaf8f3;
+      --muted: #9db4ac;
+      --line: rgba(149, 241, 210, 0.2);
+      --panel: rgba(7, 24, 27, 0.86);
+      --accent: #63e6be;
+      --warm: #ffca80;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 82% 8%, rgba(46, 196, 182, 0.18), transparent 34rem),
+        linear-gradient(145deg, #061115 0%, #0a2021 52%, #111c1d 100%);
+    }
+    a { color: inherit; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 56px; }
+    .eyebrow { margin: 0 0 14px; color: var(--accent); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+    h1 { max-width: 850px; margin: 0; font-size: clamp(2.25rem, 6vw, 5.6rem); line-height: 0.96; letter-spacing: -0.055em; }
+    .intro { max-width: 760px; margin: 24px 0 30px; color: var(--muted); font-size: clamp(1rem, 2vw, 1.2rem); line-height: 1.65; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
+    .button { padding: 11px 16px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; font-weight: 750; background: rgba(99, 230, 190, 0.08); }
+    .button.primary { color: #06201a; border-color: var(--accent); background: var(--accent); }
+    .viewer-card { overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: #07191b; box-shadow: 0 28px 90px rgba(0, 0, 0, 0.35); }
+    #viewer { position: relative; min-height: min(68vh, 720px); }
+    #scene { position: absolute; inset: 0; background: radial-gradient(circle at 50% 42%, #163b3b, #061115 72%); }
+    #scene canvas { display: block; width: 100%; height: 100%; }
+    .status { position: absolute; z-index: 4; left: 18px; bottom: 18px; max-width: min(560px, calc(100% - 36px)); padding: 12px 15px; border: 1px solid var(--line); border-radius: 13px; color: var(--muted); background: rgba(4, 15, 17, 0.88); backdrop-filter: blur(12px); font-size: 0.9rem; }
+    .status strong { color: var(--ink); }
+    .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; border-top: 1px solid var(--line); background: var(--line); }
+    .fact { padding: 22px; background: var(--panel); }
+    .fact span { display: block; margin-bottom: 8px; color: var(--warm); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase; }
+    .fact p { margin: 0; color: var(--muted); line-height: 1.55; }
+    footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 24px; color: var(--muted); font-size: 0.82rem; line-height: 1.5; }
+    @media (max-width: 760px) { .shell { padding-top: 30px; } .facts { grid-template-columns: 1fr; } #viewer { min-height: 58vh; } footer { display: block; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <p class="eyebrow">Tellurion · live capability</p>
+    <h1>Footprints become streamable 3D.</h1>
+    <p class="intro">This browser view connects to a public Tellurion service and renders a representative GLB tile generated on demand from polygon footprints and height attributes. The same service publishes the complete 3D Tiles 1.1 tileset and implicit subtree for streaming clients.</p>
+    <div class="actions">
+      <a class="button primary" href="#viewer">Explore the scene</a>
+      <a class="button" href="https://tellurion-3d-demo.onrender.com/public/3dtiles/catalogs/default/collections/sample_buildings_3d/3dtiles">Inspect the technical tileset</a>
+      <a class="button" href="https://github.com/ccancellieri/tellurion-demos">Reproduce from source</a>
+    </div>
+
+    <section class="viewer-card" aria-label="Interactive Tellurion 3D scene">
+      <div id="viewer">
+        <div id="scene" aria-label="Interactive 3D building scene"></div>
+        <div class="status" id="status" role="status"><strong>Starting the public demo…</strong> Render free services may need a short cold start.</div>
+      </div>
+      <div class="facts">
+        <div class="fact"><span>Pipeline</span><p>GeoPackage polygons → vector tiles → footprint extrusion → GLB, served by one Tellurion process.</p></div>
+        <div class="fact"><span>Standard</span><p>The payload is 3D Tiles 1.1, an approved OGC Community Standard, including implicit tiling.</p></div>
+        <div class="fact"><span>Data</span><p>Synthetic capability data: 30 deterministic blocks with varied heights, not a model of real buildings.</p></div>
+      </div>
+    </section>
+
+    <footer>
+      <p>The URL shape follows Tellurion’s draft-inspired 3D API lane; OGC API 3D GeoVolumes remains a draft, so this page makes no API-conformance claim.</p>
+      <p>Viewer: Three.js · Engine and deployment evidence: Tellurion demos.</p>
+    </footer>
+  </main>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.179.1/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    let service = "https://tellurion-3d-demo.onrender.com";
+    const localOverride = new URLSearchParams(window.location.search).get("api");
+    if (localOverride) {
+      const candidate = new URL(localOverride);
+      if (["127.0.0.1", "localhost"].includes(candidate.hostname)) {
+        service = candidate.origin;
+      }
+    }
+    const glbUrl = `${service}/public/3dtiles/catalogs/default/collections/sample_buildings_3d/3dtiles/tiles/13/4095/4096.glb`;
+    const status = document.getElementById("status");
+    const sceneElement = document.getElementById("scene");
+
+    async function start() {
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x061115, 0.0007);
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100000);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.domElement.setAttribute("aria-label", "Tellurion GLB building tile");
+      sceneElement.appendChild(renderer.domElement);
+
+      scene.add(new THREE.HemisphereLight(0xb9fff0, 0x10201d, 2.2));
+      const sun = new THREE.DirectionalLight(0xffdfb5, 3.4);
+      sun.position.set(3, -2, 5);
+      scene.add(sun);
+
+      const gltf = await new GLTFLoader().loadAsync(glbUrl);
+      const model = gltf.scene;
+      const tileGroundMeters = 40075016.68557849 / (2 ** 13);
+      model.scale.set(tileGroundMeters, tileGroundMeters, 1);
+      const bounds = new THREE.Box3().setFromObject(model);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
+      model.position.sub(center);
+      scene.add(model);
+
+      const grid = new THREE.GridHelper(size * 2.2, 20, 0x63e6be, 0x214b47);
+      grid.rotation.x = Math.PI / 2;
+      grid.position.z = -bounds.min.z - center.z;
+      scene.add(grid);
+
+      camera.position.set(size * 0.52, -size * 0.65, size * 0.28);
+      camera.up.set(0, 0, 1);
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.target.set(0, 0, 0);
+      controls.update();
+
+      const resize = () => {
+        const width = sceneElement.clientWidth;
+        const height = sceneElement.clientHeight;
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      };
+      new ResizeObserver(resize).observe(sceneElement);
+      resize();
+
+      renderer.setAnimationLoop(() => {
+        controls.update();
+        renderer.render(scene, camera);
+      });
+      status.innerHTML = "<strong>Live GLB from Tellurion.</strong> Drag to orbit and scroll to zoom; the technical link exposes the full 3D Tiles tileset.";
+    }
+
+    start().catch((error) => {
+      console.error(error);
+      status.innerHTML = "<strong>The viewer could not reach the service.</strong> It may still be waking up; retry shortly or inspect the technical tileset link above.";
+    });
+  </script>
+</body>
+</html>

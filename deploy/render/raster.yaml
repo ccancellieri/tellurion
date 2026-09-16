@@ -1,0 +1,30 @@
+server:
+  port: 10000
+  request_timeout_s: 30
+  log_json: true
+
+cache:
+  memory_percent: 10.0
+
+storages:
+  - id: sample_cog
+    driver: cog
+    url_env: TELLURION_COG_PATH
+
+tenants:
+  - id: public
+
+catalogs:
+  - id: default
+    tenant: public
+
+collections:
+  - id: sample_landcover
+    title: ESA WorldCover COG sample
+    description: Read-only categorical raster sample from the reproducible Rome field case.
+    catalog: default
+    storage: sample_cog
+    tiles:
+      minzoom: 0
+      maxzoom: 14
+      caps: {}
