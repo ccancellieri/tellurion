@@ -1,5 +1,8 @@
 import importlib.util
+import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -9,6 +12,37 @@ spec.loader.exec_module(publisher)
 
 
 class PublicationTests(unittest.TestCase):
+    def test_exported_gallery_passes_link_checks_without_monorepo_files(self):
+        source = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / 'pages'
+            target.mkdir()
+            publisher.apply_export(target, publisher.plan_export(source, target))
+            unmarked = subprocess.run(
+                [sys.executable, str(target / 'tests/static_site_links.py')],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(unmarked.returncode, 0)
+            self.assertIn('gallery checker link targets missing file', unmarked.stderr)
+            (target / 'publication.json').write_text(json.dumps({
+                'source_repository': 'https://github.com/ccancellieri/tellurion',
+                'source_commit': 'a' * 40,
+                'source_directory': 'demo/gallery',
+            }))
+            result = subprocess.run(
+                [sys.executable, str(target / 'tests/static_site_links.py')],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            # Published layouts still reject broken local links.
+            (target / 'docs/index.html').unlink()
+            broken = subprocess.run(
+                [sys.executable, str(target / 'tests/static_site_links.py')],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertNotEqual(broken.returncode, 0)
+            self.assertIn('missing public page', broken.stderr)
+
     def test_exports_italy_case_and_disables_jekyll_without_exporting_private_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             source, target = Path(temporary) / 'source', Path(temporary) / 'target'

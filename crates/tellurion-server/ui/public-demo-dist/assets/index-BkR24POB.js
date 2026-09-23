@@ -1364,11 +1364,11 @@ in vec3 view_direction;uniform vec3 u_sun_pos;uniform vec3 u_globe_position;unif
       <ul>
         <li>
           <span class="public-demo-shell__resource-mark public-demo-shell__resource-mark--source" aria-hidden="true"></span>
-          <a href="https://github.com/ccancellieri/tellurion#quickstart" target="_blank" rel="noopener noreferrer">Build from source</a>
+          <a href="https://ccancellieri.github.io/tellurion/releases/v0.5.0/" target="_blank" rel="noopener noreferrer">Install Tellurion</a>
         </li>
         <li>
           <span class="public-demo-shell__resource-mark public-demo-shell__resource-mark--demo" aria-hidden="true"></span>
-          <a href="https://ccancellieri.github.io/tellurion-demos/" target="_blank" rel="noopener noreferrer">Verified demos</a>
+          <a href="https://ccancellieri.github.io/tellurion/" target="_blank" rel="noopener noreferrer">Verified demos</a>
         </li>
         <li>
           <span class="public-demo-shell__resource-mark public-demo-shell__resource-mark--feedback" aria-hidden="true"></span>
