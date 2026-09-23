@@ -84,6 +84,10 @@ disk. A prettier replacement image must not hide a decoder or overview defect.
 
 ## Make the value observable
 
+The [remote-vector inspection walkthrough](inspect-remote-vectors.md) covers
+the next-release tile-attribute inspector, its keyboard path and its limits.
+Check that the target deployment exposes the control before demonstrating it.
+
 Where instrumentation exists, distinguish browser response bytes from upstream
 source bytes, metadata reads from data reads, retries from successful reads,
 and cold starts from warm runs. Show source identity, native resolution, current

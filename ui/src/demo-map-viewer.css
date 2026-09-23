@@ -80,6 +80,61 @@ tellurion-demo-map-viewer {
   font-size: 0.76rem;
 }
 
+.demo-map__inspect {
+  padding: 1rem 1.2rem;
+  border-top: 1px solid #b7c9c5;
+  color: #1c3439;
+  background: #f7fbfa;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.demo-map__inspect[hidden],
+.demo-map__inspect [hidden] { display: none; }
+.demo-map__inspect p { max-width: 76ch; }
+.demo-map__inspect-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+}
+.demo-map__inspect-actions h3,
+.demo-map__inspect-actions p { margin: 0; }
+.demo-map__inspect button {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #2e6970;
+  color: #1c3439;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.demo-map__inspect button:focus-visible {
+  outline: 3px solid #2e6970;
+  outline-offset: 3px;
+}
+.demo-map__properties {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(0, 3fr);
+  max-height: 24rem;
+  overflow: auto;
+}
+.demo-map__properties dt,
+.demo-map__properties dd {
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem;
+  border-top: 1px solid #d7e1de;
+  white-space: pre-wrap;
+}
+.demo-map__properties dt { font-weight: 650; }
+
+@media (max-width: 450px) {
+  .demo-map__properties { grid-template-columns: minmax(0, 1fr); }
+  .demo-map__properties dd { border-top: 0; padding-top: 0; }
+}
+
 @media (max-width: 700px) {
   .demo-map__heading {
     align-items: start;

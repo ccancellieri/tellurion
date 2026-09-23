@@ -15,6 +15,7 @@ const ElementBase: typeof HTMLElement =
 interface MapRegistration {
   sourceId: string;
   layerId: string;
+  vector: boolean;
 }
 
 /** A temporary, demo-only map surface. It consumes only the server-issued
@@ -27,6 +28,7 @@ export class TellurionDemoMapViewer extends ElementBase {
   #expiryTimer: ReturnType<typeof setTimeout> | null = null;
   #mapListener = (event: Event): void => this.#receiveMap(event);
   #resetListener = (event: Event): void => this.#receiveReset(event);
+  #clickListener = (event: { point: { x: number; y: number } }): void => this.#inspect(event.point);
 
   connectedCallback(): void {
     this.innerHTML = `
@@ -46,6 +48,22 @@ export class TellurionDemoMapViewer extends ElementBase {
             <p>COG · GeoParquet · ZIP Shapefile</p>
           </div>
         </div>
+        <div class="demo-map__inspect" data-field="inspect-controls" hidden>
+          <div class="demo-map__inspect-actions">
+            <p>Click a feature, or pan the map and inspect its center.</p>
+            <button type="button" data-field="inspect-center">Inspect map center</button>
+          </div>
+          <p data-field="inspect-status" role="status"></p>
+          <section data-field="feature-details" aria-labelledby="demo-feature-title" hidden>
+            <div class="demo-map__inspect-actions">
+              <h3 id="demo-feature-title">Tile feature details</h3>
+              <button type="button" data-field="close-details">Close details</button>
+            </div>
+            <p>Rendered tile attributes and geometry may be simplified or incomplete compared with the original feature.</p>
+            <p>Tile feature ID: <span data-field="feature-id"></span></p>
+            <dl class="demo-map__properties" data-field="feature-properties"></dl>
+          </section>
+        </div>
         <p class="demo-map__attribution" data-field="attribution">Basemap intentionally omitted.</p>
       </section>
     `;
@@ -53,6 +71,15 @@ export class TellurionDemoMapViewer extends ElementBase {
     document.addEventListener('tellurion-demo-map-reset', this.#resetListener);
     this.#tileTransport = createDemoTileTransport();
     this.#map = createMap(this.#field('map'));
+    this.#map.on('click', this.#clickListener);
+    this.#field('inspect-center').onclick = () => {
+      const canvas = this.#map?.getCanvas();
+      if (canvas) this.#inspect({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 });
+    };
+    this.#field('close-details').onclick = () => {
+      this.#clearInspection();
+      this.#field('inspect-center').focus();
+    };
     this.#map.on('load', () => {
       if (this.#pending) this.#open(this.#pending.source, this.#pending.opacity, this.#pending.style);
     });
@@ -64,6 +91,9 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#clearExpiry();
     this.#pending = null;
     this.#registration = null;
+    this.#clearInspection();
+    this.#field('inspect-controls').hidden = true;
+    this.#map?.off('click', this.#clickListener);
     this.#map?.remove();
     this.#map = null;
     this.#tileTransport?.destroy();
@@ -107,7 +137,8 @@ export class TellurionDemoMapViewer extends ElementBase {
       if (!handoff) return;
       map.addSource(handoff.sourceId, { type: 'vector', tiles: [handoff.template], minzoom: 0, maxzoom: 22 });
       map.addLayer(vectorLayer(handoff, opacity, style));
-      this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId };
+      this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId, vector: true };
+      this.#field('inspect-controls').hidden = false;
       this.#field('empty').hidden = true;
       fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
       this.#field('status').textContent = 'Temporary vector map opened. It expires with this browser session.';
@@ -126,7 +157,7 @@ export class TellurionDemoMapViewer extends ElementBase {
     if (!tileTemplate) return;
     map.addSource(handoff.sourceId, { type: 'raster', tiles: [tileTemplate], tileSize: 256, minzoom: 0, maxzoom: 22 });
     map.addLayer({ id: handoff.layerId, type: 'raster', source: handoff.sourceId, paint: { 'raster-opacity': opacity } });
-    this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId };
+    this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId, vector: false };
     this.#field('empty').hidden = true;
     if (handoff.extent) fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
     this.#field('status').textContent = 'Temporary source map opened. It expires with this browser session.';
@@ -156,6 +187,8 @@ export class TellurionDemoMapViewer extends ElementBase {
   #remove(sourceId?: string): void {
     const registration = this.#registration;
     if (!registration || (sourceId && registration.sourceId !== `demo-source-${sourceId}`)) return;
+    this.#clearInspection();
+    this.#field('inspect-controls').hidden = true;
     this.#tileTransport?.clear();
     const map = this.#map;
     if (map) {
@@ -172,6 +205,57 @@ export class TellurionDemoMapViewer extends ElementBase {
     const field = this.querySelector<HTMLElement>(`[data-field="${name}"]`);
     if (!field) throw new Error(`demo map viewer is missing its ${name} field`);
     return field;
+  }
+
+  #clearInspection(): void {
+    this.#field('feature-details').hidden = true;
+    this.#field('feature-properties').replaceChildren();
+    this.#field('feature-id').textContent = '';
+    this.#field('inspect-status').textContent = '';
+  }
+
+  #inspect(point: { x: number; y: number }): void {
+    const registration = this.#registration;
+    if (!this.#map || !registration?.vector) return;
+    this.#clearInspection();
+    const feature = this.#map.queryRenderedFeatures(
+      [[point.x - 4, point.y - 4], [point.x + 4, point.y + 4]],
+      { layers: [registration.layerId] },
+    )[0];
+    if (!feature) {
+      this.#field('inspect-status').textContent = 'No rendered feature here. Click a visible feature or pan the map and try again.';
+      return;
+    }
+    let truncated = false;
+    const boundedText = (value: unknown): string => {
+      if (typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value)) {
+        return `${value} (approximate: exceeds JavaScript safe integer precision)`;
+      }
+      // MVT attributes are scalar values. Do not recursively expand unexpected objects.
+      const text = value !== null && typeof value === 'object' ? '[Structured value omitted]' : String(value);
+      if (text.length <= 1024) return text;
+      truncated = true;
+      return `${text.slice(0, 1024)}…`;
+    };
+    const properties = feature.properties ?? {};
+    const attributeId = typeof properties.id === 'string' || typeof properties.id === 'number' ? properties.id : undefined;
+    this.#field('feature-id').textContent = boundedText(feature.id ?? attributeId ?? 'Not available in this tile');
+    const list = this.#field('feature-properties');
+    let count = 0;
+    for (const key in properties) {
+      if (!Object.hasOwn(properties, key)) continue;
+      if (count === 64) { truncated = true; break; }
+      const name = document.createElement('dt');
+      const value = document.createElement('dd');
+      name.textContent = boundedText(key);
+      value.textContent = boundedText(properties[key]);
+      list.append(name, value);
+      count += 1;
+    }
+    this.#field('feature-details').hidden = false;
+    this.#field('inspect-status').textContent = truncated
+      ? 'Tile feature selected. Display truncated: at most 64 properties and 1,024 characters per name, value or ID.'
+      : count === 0 ? 'Tile feature selected. No attributes available in this tile.' : 'Tile feature selected.';
   }
 }
 

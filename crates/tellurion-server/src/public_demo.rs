@@ -46,6 +46,8 @@ const DEFAULT_POINT_RADIUS_PX: f32 = 3.0;
 const GEOJSON_MEDIA_TYPE: &str = "application/geo+json";
 const MVT_MEDIA_TYPE: &str = "application/vnd.mapbox-vector-tile";
 const CRS84_ROUNDING_TOLERANCE_DEGREES: f64 = 1e-6;
+const MAX_PREVIEW_TILE_PROPERTIES: usize = 16;
+const MAX_PREVIEW_PROPERTY_NAME_BYTES: usize = 256;
 
 #[derive(Clone)]
 struct DemoRegistry {
@@ -576,6 +578,25 @@ async fn inspect_vector(
     collection.row_estimate = number_matched;
     collection.srid = physical.srid;
     collection.attribute_columns = Some(attributes.clone());
+    // Keep preview attributes small and limited to scalar types shared by the
+    // GeoParquet and Shapefile encoders. `real` is ambiguous: GeoParquet reports
+    // both Float16 and Float32 that way, but tiles only support Float32.
+    for column in &attributes {
+        if collection.tile_properties.len() == MAX_PREVIEW_TILE_PROPERTIES {
+            break;
+        }
+        if matches!(
+            column.sql_type.as_str(),
+            "boolean" | "integer" | "bigint" | "double precision" | "text"
+        ) && !column.name.is_empty()
+            && column.name.len() <= MAX_PREVIEW_PROPERTY_NAME_BYTES
+            && !column.name.chars().any(char::is_control)
+            && column.name != "id"
+            && !collection.tile_properties.contains(&column.name)
+        {
+            collection.tile_properties.push(column.name.clone());
+        }
+    }
     Ok(DemoSource {
         raster: None,
         features: Some(features),
@@ -1476,6 +1497,92 @@ mod tests {
     }
 
     struct UnusedVectorSource;
+
+    struct CatalogWithAttributes(Vec<tellurion_core::AttributeColumn>);
+
+    #[async_trait]
+    impl CatalogSource for CatalogWithAttributes {
+        async fn collections(&self) -> tellurion_core::Result<Vec<PhysicalCollection>> {
+            CatalogWithSrid(Some(4326)).collections().await
+        }
+
+        async fn attribute_schema(
+            &self,
+            _physical: &PhysicalCollection,
+        ) -> tellurion_core::Result<Option<Vec<tellurion_core::AttributeColumn>>> {
+            Ok(Some(self.0.clone()))
+        }
+    }
+
+    #[tokio::test]
+    async fn inspect_vector_selects_bounded_scalar_tile_properties_without_trimming_metadata() {
+        let mut attributes = [
+            ("id", "text"),
+            ("", "text"),
+            ("bad\0name", "text"),
+            ("line\nbreak", "text"),
+            ("binary", "bytea"),
+            ("date", "date"),
+            ("time", "timestamp without time zone"),
+            ("nested", "struct"),
+            ("ambiguous_float", "real"),
+            ("name", "text"),
+            ("name", "text"),
+            ("population", "bigint"),
+            ("rank", "integer"),
+            ("area", "double precision"),
+            ("active", "boolean"),
+        ]
+        .into_iter()
+        .map(|(name, sql_type)| tellurion_core::AttributeColumn {
+            name: name.to_owned(),
+            sql_type: sql_type.to_owned(),
+        })
+        .collect::<Vec<_>>();
+        attributes.push(tellurion_core::AttributeColumn {
+            name: "x".repeat(257),
+            sql_type: "text".to_owned(),
+        });
+        attributes.push(tellurion_core::AttributeColumn {
+            name: "x".repeat(256),
+            sql_type: "text".to_owned(),
+        });
+        attributes.extend((0..12).map(|index| tellurion_core::AttributeColumn {
+            name: format!("extra_{index}"),
+            sql_type: "text".to_owned(),
+        }));
+        let object = Arc::new(FixtureRangeObject::new(0, Arc::new(AtomicUsize::new(0))));
+        let vector = Arc::new(UnusedVectorSource);
+        let source = inspect_vector(
+            object,
+            Arc::new(CatalogWithAttributes(attributes.clone())),
+            vector.clone(),
+            vector,
+            "geoparquet",
+            "test",
+        )
+        .await
+        .unwrap();
+
+        let mut expected = vec!["name", "population", "rank", "area", "active"]
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<Vec<_>>();
+        expected.push("x".repeat(256));
+        expected.extend((0..10).map(|index| format!("extra_{index}")));
+        assert_eq!(source.collection.tile_properties, expected);
+        assert_eq!(
+            source.collection.attribute_columns.as_ref(),
+            Some(&attributes)
+        );
+        assert_eq!(
+            source.metadata.properties,
+            attributes
+                .iter()
+                .map(|column| column.name.clone())
+                .collect::<Vec<_>>()
+        );
+    }
 
     #[async_trait]
     impl FeatureSource for UnusedVectorSource {
