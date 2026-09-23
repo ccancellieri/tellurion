@@ -9,6 +9,9 @@ const map = vi.hoisted(() => ({
   getSource: vi.fn(),
   isStyleLoaded: vi.fn(),
   on: vi.fn(),
+  off: vi.fn(),
+  queryRenderedFeatures: vi.fn(),
+  getCanvas: vi.fn(),
   remove: vi.fn(),
   removeLayer: vi.fn(),
   removeSource: vi.fn(),
@@ -79,6 +82,132 @@ beforeEach(() => {
   map.isStyleLoaded.mockReturnValue(true);
   map.getLayer.mockReturnValue(undefined);
   map.getSource.mockReturnValue(undefined);
+  map.queryRenderedFeatures.mockReturnValue([]);
+  map.getCanvas.mockReturnValue({ clientWidth: 800, clientHeight: 400 });
+});
+
+describe('rendered vector feature inspection', () => {
+  const vector = { ...source, format: 'geoparquet', geometryType: 'Polygon', srid: 4326,
+    numberMatched: 7, links: { ...source.links, mvt_tile_template: '/demo/vector.mvt' } };
+  function open(elementSource = vector): void {
+    document.dispatchEvent(new CustomEvent('tellurion-demo-map', { detail: { source: elementSource, opacity: 1 } }));
+  }
+  function click(): void {
+    const listener = map.on.mock.calls.find(([event]) => event === 'click')?.[1];
+    listener?.({ point: { x: 25, y: 30 } });
+  }
+  function field(element: HTMLElement, name: string): HTMLElement | null {
+    return element.querySelector(`[data-field="${name}"]`);
+  }
+
+  it.each(['geoparquet', 'shapefile-zip'])('shows %s tile properties and id without interpreting HTML', (format) => {
+    const element = mount();
+    open({ ...vector, format });
+    map.queryRenderedFeatures.mockReturnValue([{ id: 0, properties: { name: '<img src=x onerror=alert(1)>', count: 3, active: false, missing: null } }]);
+    click();
+    expect(field(element, 'feature-details')?.hidden).toBe(false);
+    expect(field(element, 'feature-id')?.textContent).toBe('0');
+    expect(field(element, 'feature-properties')?.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(field(element, 'feature-properties')?.textContent).toContain('false');
+    expect(field(element, 'feature-properties')?.textContent).toContain('null');
+    expect(element.querySelector('img')).toBeNull();
+    expect(map.queryRenderedFeatures).toHaveBeenCalledWith([[21, 26], [29, 34]], { layers: ['demo-layer-opaque-source'] });
+    expect(element.textContent).toContain('simplified');
+  });
+
+  it('offers center inspection as a native keyboard-accessible button and closes details', () => {
+    const element = mount();
+    open();
+    map.queryRenderedFeatures.mockReturnValue([{ properties: { name: 'Center feature' } }]);
+    const button = field(element, 'inspect-center');
+    expect(button?.tagName).toBe('BUTTON');
+    button?.click();
+    expect(map.queryRenderedFeatures).toHaveBeenCalledWith([[396, 196], [404, 204]], { layers: ['demo-layer-opaque-source'] });
+    expect(field(element, 'feature-properties')?.textContent).toContain('Center feature');
+    expect(field(element, 'feature-id')?.textContent).toContain('Not available');
+    field(element, 'close-details')?.click();
+    expect(field(element, 'feature-details')?.hidden).toBe(true);
+  });
+
+  it('uses a scalar id attribute when the tile has no top-level feature id', () => {
+    const element = mount();
+    open();
+    map.queryRenderedFeatures.mockReturnValue([{ properties: { id: 'boundary-42' } }]);
+    click();
+    expect(field(element, 'feature-id')?.textContent).toBe('boundary-42');
+    expect(field(element, 'feature-properties')?.textContent).toContain('boundary-42');
+  });
+
+  it('warns that integer IDs and attributes beyond JavaScript safe precision are approximate', () => {
+    const element = mount();
+    open();
+    map.queryRenderedFeatures.mockReturnValue([{ id: 9007199254740992, properties: { s2_id: 9007199254740992, count: 42 } }]);
+    click();
+    expect(field(element, 'feature-id')?.textContent).toContain('approximate');
+    const values = field(element, 'feature-properties')?.querySelectorAll('dd');
+    expect(values?.[0]?.textContent).toContain('approximate');
+    expect(values?.[0]?.textContent).toContain('safe integer precision');
+    expect(values?.[1]?.textContent).toBe('42');
+  });
+
+  it('ignores raster clicks and hides inspection controls', () => {
+    const element = mount();
+    document.dispatchEvent(new CustomEvent('tellurion-demo-map', { detail: { source, opacity: 1 } }));
+    click();
+    expect(map.queryRenderedFeatures).not.toHaveBeenCalled();
+    expect(field(element, 'inspect-controls')?.hidden).toBe(true);
+  });
+
+  it('clears old details and explains an empty selection', () => {
+    const element = mount();
+    open();
+    map.queryRenderedFeatures.mockReturnValueOnce([{ id: 7, properties: { name: 'Old value' } }]);
+    click();
+    click();
+    expect(field(element, 'feature-details')?.hidden).toBe(true);
+    expect(field(element, 'feature-properties')?.textContent).not.toContain('Old value');
+    expect(field(element, 'inspect-status')?.textContent).toContain('No rendered feature');
+  });
+
+  it.each(['reset', 'expiry', 'replacement'])('clears stale selection after %s', (action) => {
+    vi.useFakeTimers();
+    try {
+      const element = mount();
+      open({ ...vector, limits: { ...source.limits, expires_in_seconds: 2 } });
+      map.queryRenderedFeatures.mockReturnValue([{ id: 7, properties: { name: 'Old value' } }]);
+      click();
+      if (action === 'reset') document.dispatchEvent(new CustomEvent('tellurion-demo-map-reset', { detail: { sourceId: source.id } }));
+      else if (action === 'expiry') vi.advanceTimersByTime(2000);
+      else open({ ...vector, id: 'replacement' });
+      expect(field(element, 'feature-details')?.hidden).toBe(true);
+      expect(field(element, 'feature-properties')?.textContent).not.toContain('Old value');
+      if (action !== 'replacement') {
+        map.queryRenderedFeatures.mockClear();
+        click();
+        expect(map.queryRenderedFeatures).not.toHaveBeenCalled();
+      }
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('bounds properties, names and values and discloses truncation', () => {
+    const element = mount();
+    open();
+    const properties = Object.fromEntries(Array.from({ length: 70 }, (_, index) => [`property-${index}`, 'x'.repeat(2000)]));
+    map.queryRenderedFeatures.mockReturnValue([{ id: 'i'.repeat(2000), properties }]);
+    click();
+    const values = field(element, 'feature-properties')?.querySelectorAll('dd');
+    expect(values?.length).toBe(64);
+    expect(values?.[0]?.textContent?.length).toBeLessThanOrEqual(1025);
+    expect(field(element, 'feature-id')?.textContent?.length).toBeLessThanOrEqual(1025);
+    expect(field(element, 'inspect-status')?.textContent).toContain('truncated');
+  });
+
+  it('detaches its click listener on disconnect', () => {
+    const element = mount();
+    const listener = map.on.mock.calls.find(([event]) => event === 'click')?.[1];
+    element.remove();
+    expect(map.off).toHaveBeenCalledWith('click', listener);
+  });
 });
 
 afterEach(() => {
