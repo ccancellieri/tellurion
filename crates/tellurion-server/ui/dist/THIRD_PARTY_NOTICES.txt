@@ -4,7 +4,7 @@ This file is generated from the locked production dependency union.
 Sections with `notice-origin: package:*` reproduce the source UTF-8 text unchanged.
 Sections with `notice-origin: reviewed-fallback` are pinned, privacy-safe curated
 notices. Each fallback identifies its provenance and any omission in its own text.
-package-lock-sha256: 3471a34856b50c1c7f6d84545334f2b501676650da6338d3afc77fdfb208a859
+package-lock-sha256: 5c9087b3f288fc56ccff0c6af9b052ce1e15a0ec2ff25faa1e854c351a1f376f
 production-package-count: 159
 
 ==============================================================================
@@ -4894,7 +4894,7 @@ SOFTWARE.
 
 
 ==============================================================================
-package: fflate@0.7.4
+package: fflate@0.7.5
 license-expression: MIT
 notice-origin: package:LICENSE
 
