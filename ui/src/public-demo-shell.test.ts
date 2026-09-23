@@ -28,12 +28,12 @@ describe('public demo shell', () => {
       document.querySelectorAll<HTMLAnchorElement>('.public-demo-shell__resources a'),
     );
     expect(onwardLinks.map((link) => link.href)).toEqual([
-      'https://github.com/ccancellieri/tellurion#quickstart',
-      'https://ccancellieri.github.io/tellurion-demos/',
+      'https://ccancellieri.github.io/tellurion/releases/v0.5.0/',
+      'https://ccancellieri.github.io/tellurion/',
       'https://github.com/ccancellieri/tellurion/issues/new?template=evaluation.yml',
     ]);
     expect(onwardLinks.map((link) => link.textContent?.trim())).toEqual([
-      'Build from source',
+      'Install Tellurion',
       'Verified demos',
       'Share evaluation feedback',
     ]);

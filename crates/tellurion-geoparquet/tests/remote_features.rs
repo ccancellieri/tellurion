@@ -266,6 +266,129 @@ fn two_group_fixture_with_first_group(first_group: Vec<(f64, f64, String)>) -> T
 }
 
 #[tokio::test]
+async fn polygon_rows_preserve_geometry_and_ids_across_local_and_range_pages() {
+    // Synthetic coverage, not a reproduction of a historical corrupt source row.
+    // Different WKB lengths, a hole, and multiple components expose row-offset
+    // mistakes that the fixed-length point fixture cannot catch.
+    let geometries = [
+        serde_json::json!({"type": "Polygon", "coordinates": [
+            [[0,0],[2,0],[0,2],[0,0]]
+        ]}),
+        serde_json::json!({"type": "Polygon", "coordinates": [
+            [[3,0],[7,0],[7,4],[3,4],[3,0]],
+            [[4,1],[4,2],[5,2],[5,1],[4,1]]
+        ]}),
+        serde_json::json!({"type": "MultiPolygon", "coordinates": [
+            [[[8,0],[10,0],[8,2],[8,0]]],
+            [[[11,0],[13,0],[13,2],[11,2],[11,0]]]
+        ]}),
+        serde_json::json!({"type": "Polygon", "coordinates": [
+            [[14,0],[16,0],[17,1],[16,3],[14,2],[14,0]]
+        ]}),
+    ];
+    let names = ["triangle", "with-hole", "two-components", "pentagon"];
+    let schema = Arc::new(Schema::new(vec![
+        Field::new("geometry", DataType::Binary, false),
+        Field::new("name", DataType::Utf8, false),
+    ]));
+    let geo = serde_json::json!({
+        "version": "1.1.0", "primary_column": "geometry",
+        "columns": {"geometry": {
+            "encoding": "WKB", "geometry_types": ["Polygon", "MultiPolygon"],
+            "bbox": [0.0, 0.0, 17.0, 4.0]
+        }}
+    });
+    let properties = WriterProperties::builder()
+        .set_key_value_metadata(Some(vec![KeyValue::new(
+            "geo".to_string(),
+            geo.to_string(),
+        )]))
+        .build();
+    let mut bytes = Vec::new();
+    let mut writer =
+        ArrowWriter::try_new(&mut bytes, Arc::clone(&schema), Some(properties)).unwrap();
+    for (shapes, labels) in geometries.chunks(2).zip(names.chunks(2)) {
+        let encoded: Vec<Vec<u8>> = shapes
+            .iter()
+            .map(|geometry| {
+                let mut wkb = Vec::new();
+                let mut encoder =
+                    geozero::wkb::WkbWriter::new(&mut wkb, geozero::wkb::WkbDialect::Wkb);
+                geozero::geojson::GeoJson(&geometry.to_string())
+                    .process_geom(&mut encoder)
+                    .unwrap();
+                wkb
+            })
+            .collect();
+        let geometry_refs: Vec<&[u8]> = encoded.iter().map(Vec::as_slice).collect();
+        let batch = RecordBatch::try_new(
+            Arc::clone(&schema),
+            vec![
+                Arc::new(BinaryArray::from(geometry_refs)) as ArrayRef,
+                Arc::new(StringArray::from(labels.to_vec())) as ArrayRef,
+            ],
+        )
+        .unwrap();
+        writer.write(&batch).unwrap();
+        writer.flush().unwrap();
+    }
+    writer.close().unwrap();
+
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+        "tellurion-geoparquet-polygon-parity-{}-{stamp}.parquet",
+        std::process::id()
+    ));
+    std::fs::write(&path, &bytes).unwrap();
+    let local = GeoparquetBackend::from_input(GeoparquetInput::Local(path.clone()));
+    let remote = GeoparquetBackend::from_input(GeoparquetInput::Remote(Arc::new(
+        FixtureRangeObject::new(bytes),
+    )));
+
+    // With limit one, bbox counting continues into the second row group using
+    // geometry-only projection. Subsequent pages cross the same group boundary.
+    for bbox in [None, Some([-1.0, -1.0, 18.0, 5.0])] {
+        let mut token = None;
+        for (index, expected_geometry) in geometries.iter().enumerate() {
+            let query = ItemsQuery {
+                bbox,
+                limit: 1,
+                token: token.clone(),
+                ..ItemsQuery::default()
+            };
+            let local_page = local.items(&decl(), &query).await.unwrap();
+            let remote_page = remote.items(&decl(), &query).await.unwrap();
+            let expected = serde_json::json!({
+                "type": "Feature", "id": index.to_string(),
+                "geometry": expected_geometry,
+                "properties": {"name": names[index]}
+            });
+            assert_eq!(local_page.features_geojson, vec![expected.clone()]);
+            assert_eq!(remote_page.features_geojson, local_page.features_geojson);
+            assert_eq!(local_page.number_matched, Some(4));
+            assert_eq!(remote_page.number_matched, Some(4));
+            let next = (index < 3).then(|| index.to_string());
+            assert_eq!(local_page.next_token, next);
+            assert_eq!(remote_page.next_token, next);
+            for backend in [&local, &remote] {
+                assert_eq!(
+                    backend
+                        .item(&decl(), &index.to_string(), None)
+                        .await
+                        .unwrap(),
+                    Some(expected.clone())
+                );
+            }
+            token = next;
+        }
+    }
+    std::fs::remove_file(path).unwrap();
+}
+
+#[tokio::test]
 async fn remote_limit_one_keeps_the_first_stable_id_and_avoids_a_full_download() {
     let bytes = fixture_bytes();
     let object = Arc::new(FixtureRangeObject::new(bytes.clone()));
