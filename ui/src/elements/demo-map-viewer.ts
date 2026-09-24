@@ -30,6 +30,11 @@ export class TellurionDemoMapViewer extends ElementBase {
   #mapListener = (event: Event): void => this.#receiveMap(event);
   #resetListener = (event: Event): void => this.#receiveReset(event);
   #clickListener = (event: { point: { x: number; y: number } }): void => this.#inspect(event.point);
+  #errorListener = (event: unknown): void => {
+    if (!event || typeof event !== 'object' || !('sourceId' in event)) return;
+    if (typeof event.sourceId !== 'string' || event.sourceId !== this.#registration?.sourceId) return;
+    this.#field('status').textContent = 'Some map tiles could not be loaded. Try another zoom level; if the map stays incomplete, remove the temporary layer and inspect the source again.';
+  };
 
   connectedCallback(): void {
     this.innerHTML = `
@@ -74,6 +79,7 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#tileTransport = createDemoTileTransport();
     this.#map = createMap(this.#field('map'));
     this.#map.on('click', this.#clickListener);
+    this.#map.on('error', this.#errorListener);
     this.#field('fit-extent').onclick = () => {
       const extent = this.#registration?.extent;
       if (this.#map && extent) fitToExtent(this.#map, { spatial: { bbox: [extent], crs: 'EPSG:4326' } });
@@ -101,6 +107,7 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#clearInspection();
     this.#field('inspect-controls').hidden = true;
     this.#map?.off('click', this.#clickListener);
+    this.#map?.off('error', this.#errorListener);
     this.#map?.remove();
     this.#map = null;
     this.#tileTransport?.destroy();

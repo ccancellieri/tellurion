@@ -86,6 +86,83 @@ beforeEach(() => {
   map.getCanvas.mockReturnValue({ clientWidth: 800, clientHeight: 400 });
 });
 
+describe('temporary map tile errors', () => {
+  function open(value: unknown = source): void {
+    document.dispatchEvent(new CustomEvent('tellurion-demo-map', { detail: { source: value, opacity: 0.7 } }));
+  }
+  function emit(event: string, detail: unknown): void {
+    map.on.mock.calls.filter(([name]) => name === event).forEach(([, listener]) => listener(detail));
+  }
+  function status(element: HTMLElement): string | null | undefined {
+    return element.querySelector('[data-field="status"]')?.textContent;
+  }
+
+  it.each(['tiled-geotiff', 'geoparquet'])('warns about active %s tiles without exposing error details or changing the layer', (format) => {
+    const element = mount();
+    open({ ...source, format, geometryType: 'Polygon', srid: 4326, numberMatched: 7,
+      links: { ...source.links, mvt_tile_template: '/demo/vector.mvt' } });
+    map.addSource.mockClear();
+    map.addLayer.mockClear();
+    tileTransport.activate.mockClear();
+    emit('error', { sourceId: 'demo-source-opaque-source', error: new Error('https://private.example/?secret=token <img src=x>') });
+    expect(status(element)).toContain('Some map tiles could not be loaded');
+    expect(status(element)).toContain('Try another zoom level');
+    expect(element.textContent).not.toContain('private.example');
+    expect(element.textContent).not.toContain('secret=token');
+    expect(element.querySelector('img')).toBeNull();
+    expect(map.addSource).not.toHaveBeenCalled();
+    expect(map.addLayer).not.toHaveBeenCalled();
+    expect(map.removeLayer).not.toHaveBeenCalled();
+    expect(tileTransport.activate).not.toHaveBeenCalled();
+    emit('sourcedata', { sourceId: 'demo-source-opaque-source', isSourceLoaded: true });
+    expect(status(element)).toContain('Some map tiles could not be loaded');
+  });
+
+  it('ignores unscoped, unrelated and stale source errors', () => {
+    const element = mount();
+    open();
+    const opened = status(element);
+    for (const sourceId of [undefined, null, 123, 'other-source']) emit('error', { sourceId, error: new Error('unrelated') });
+    expect(status(element)).toBe(opened);
+    open({ ...source, id: 'replacement' });
+    emit('error', { sourceId: 'demo-source-opaque-source', error: new Error('stale') });
+    expect(status(element)).toBe(opened);
+    emit('error', { sourceId: 'demo-source-replacement', error: new Error('active') });
+    expect(status(element)).toContain('Some map tiles could not be loaded');
+  });
+
+  it.each(['reset', 'replacement', 'expiry'])('clears the error on %s and retains the original expiry deadline', (action) => {
+    vi.useFakeTimers();
+    try {
+      const element = mount();
+      open({ ...source, limits: { ...source.limits, expires_in_seconds: 2 } });
+      vi.advanceTimersByTime(1000);
+      emit('error', { sourceId: 'demo-source-opaque-source', error: new Error('failed tile') });
+      expect(status(element)).toContain('Some map tiles could not be loaded');
+      if (action === 'reset') document.dispatchEvent(new CustomEvent('tellurion-demo-map-reset', { detail: { sourceId: source.id } }));
+      else if (action === 'replacement') open({ ...source, id: 'replacement' });
+      else vi.advanceTimersByTime(1000);
+      const next = status(element);
+      expect(next).not.toContain('Some map tiles could not be loaded');
+      if (action === 'expiry') expect(next).toContain('expired');
+      emit('error', { sourceId: 'demo-source-opaque-source', error: new Error('late tile') });
+      expect(status(element)).toBe(next);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('removes its error listener on disconnect', () => {
+    const element = mount();
+    open();
+    const listener = map.on.mock.calls.find(([name]) => name === 'error')?.[1];
+    expect(listener).toBeTypeOf('function');
+    element.remove();
+    expect(map.off).toHaveBeenCalledWith('error', listener);
+    const previous = status(element);
+    listener?.({ sourceId: 'demo-source-opaque-source', error: new Error('late') });
+    expect(status(element)).toBe(previous);
+  });
+});
+
 describe('fit active source extent', () => {
   function open(value: unknown = source): void {
     document.dispatchEvent(new CustomEvent('tellurion-demo-map', { detail: { source: value, opacity: 0.7 } }));

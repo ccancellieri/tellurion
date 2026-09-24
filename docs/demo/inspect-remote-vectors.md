@@ -85,6 +85,20 @@ a zero-cost transfer or performance claim.
 - Raster layers do not expose this vector inspector. Pixel-value inspection and
   raster legends are separate capabilities.
 
+## Incomplete maps and tile errors
+
+Successful source inspection does not guarantee that every tile can be rendered.
+In builds with tile-error reporting, a failure attributed to the active source
+shows **Some map tiles could not be loaded**. Existing features can remain visible;
+do not treat that partial map as complete coverage.
+
+Try another zoom level. If the map stays incomplete, remove the temporary layer
+and inspect the source again. The warning does not trigger automatic retries,
+extend the session, or display the upstream error text or resource URL. It remains
+until the source is replaced, removed, or expires; a successful neighboring tile
+does not prove that the failed area recovered. Errors from unrelated sources do
+not replace the active source's status.
+
 ## Demo acceptance
 
 Before advertising a deployment, record its exact build revision and verify the
