@@ -16,6 +16,7 @@ interface MapRegistration {
   sourceId: string;
   layerId: string;
   vector: boolean;
+  extent: [number, number, number, number] | null;
 }
 
 /** A temporary, demo-only map surface. It consumes only the server-issued
@@ -39,6 +40,7 @@ export class TellurionDemoMapViewer extends ElementBase {
             <h2 id="demo-map-title">Remote source preview</h2>
           </div>
           <p class="demo-map__status" data-field="status" role="status">Choose a public HTTPS source to open a temporary layer.</p>
+          <button class="demo-map__fit" type="button" data-field="fit-extent" hidden>Fit source extent</button>
         </header>
         <div class="demo-map__viewport">
           <div class="demo-map__canvas" data-field="map" aria-label="Temporary source map"></div>
@@ -72,6 +74,10 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#tileTransport = createDemoTileTransport();
     this.#map = createMap(this.#field('map'));
     this.#map.on('click', this.#clickListener);
+    this.#field('fit-extent').onclick = () => {
+      const extent = this.#registration?.extent;
+      if (this.#map && extent) fitToExtent(this.#map, { spatial: { bbox: [extent], crs: 'EPSG:4326' } });
+    };
     this.#field('inspect-center').onclick = () => {
       const canvas = this.#map?.getCanvas();
       if (canvas) this.#inspect({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 });
@@ -91,6 +97,7 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#clearExpiry();
     this.#pending = null;
     this.#registration = null;
+    this.#field('fit-extent').hidden = true;
     this.#clearInspection();
     this.#field('inspect-controls').hidden = true;
     this.#map?.off('click', this.#clickListener);
@@ -137,7 +144,8 @@ export class TellurionDemoMapViewer extends ElementBase {
       if (!handoff) return;
       map.addSource(handoff.sourceId, { type: 'vector', tiles: [handoff.template], minzoom: 0, maxzoom: 22 });
       map.addLayer(vectorLayer(handoff, opacity, style));
-      this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId, vector: true };
+      this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId, vector: true, extent: handoff.extent };
+      this.#field('fit-extent').hidden = false;
       this.#field('inspect-controls').hidden = false;
       this.#field('empty').hidden = true;
       fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
@@ -157,7 +165,8 @@ export class TellurionDemoMapViewer extends ElementBase {
     if (!tileTemplate) return;
     map.addSource(handoff.sourceId, { type: 'raster', tiles: [tileTemplate], tileSize: 256, minzoom: 0, maxzoom: 22 });
     map.addLayer({ id: handoff.layerId, type: 'raster', source: handoff.sourceId, paint: { 'raster-opacity': opacity } });
-    this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId, vector: false };
+    this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId, vector: false, extent: handoff.extent };
+    this.#field('fit-extent').hidden = handoff.extent === null;
     this.#field('empty').hidden = true;
     if (handoff.extent) fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
     this.#field('status').textContent = 'Temporary source map opened. It expires with this browser session.';
@@ -187,6 +196,7 @@ export class TellurionDemoMapViewer extends ElementBase {
   #remove(sourceId?: string): void {
     const registration = this.#registration;
     if (!registration || (sourceId && registration.sourceId !== `demo-source-${sourceId}`)) return;
+    this.#field('fit-extent').hidden = true;
     this.#clearInspection();
     this.#field('inspect-controls').hidden = true;
     this.#tileTransport?.clear();

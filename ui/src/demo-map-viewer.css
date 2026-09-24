@@ -102,6 +102,7 @@ tellurion-demo-map-viewer {
 }
 .demo-map__inspect-actions h3,
 .demo-map__inspect-actions p { margin: 0; }
+.demo-map__fit,
 .demo-map__inspect button {
   padding: 0.6rem 0.85rem;
   border: 1px solid #2e6970;
@@ -110,6 +111,9 @@ tellurion-demo-map-viewer {
   font: inherit;
   cursor: pointer;
 }
+.demo-map__fit { flex-shrink: 0; }
+.demo-map__fit[hidden] { display: none; }
+.demo-map__fit:focus-visible,
 .demo-map__inspect button:focus-visible {
   outline: 3px solid #2e6970;
   outline-offset: 3px;

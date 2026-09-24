@@ -42,6 +42,18 @@ Choose **Coastline signal** and click a coastline segment. Its fields include
 line inspection, not detailed shoreline accuracy. Natural Earth data are public
 domain; attribution is retained in the viewer.
 
+## Return to the source area
+
+In builds that provide **Fit source extent**, activate that button after panning
+or zooming to return to the active source's reported geographic bounds. It is
+available for both vector and raster previews with a validated extent. The
+button is absent when no source is active or its geographic bounds are unknown.
+
+This action reuses the existing temporary layer and its appearance; it does not
+register the source again or extend the session lifetime. Moving the camera can
+request tiles for the newly visible area. Removing or replacing the source must
+not leave a control that returns to the previous dataset's bounds.
+
 GeoParquet uses bounded range reads. The Shapefile ZIP uses a bounded temporary
 archive spool. The inspector introduces no additional source fetch: it reads
 the vector tile already rendered in the browser. Ordinary map pan/zoom may still
