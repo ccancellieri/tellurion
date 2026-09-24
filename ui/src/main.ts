@@ -5,6 +5,8 @@ import './elements/demo-map-viewer';
 import { mountControlWorkspace, workspaceModeFor } from './elements/control-shell';
 import { thirdPartyNoticesLink } from './legal';
 import { mountPublicDemoShell } from './public-demo-shell';
+import { StacLaneDiscovery } from './stac-lane';
+import type { TellurionStacPanel } from './elements/stac-panel';
 
 function mountOperatorConsole(): void {
 
@@ -40,8 +42,10 @@ lab.innerHTML = `
     <button type="button" role="tab" id="png-tab" aria-controls="png-panel" aria-selected="false" tabindex="-1">PNG</button>
     <button type="button" role="tab" id="styled-tab" aria-controls="styled-panel" aria-selected="false" tabindex="-1">Styles</button>
     <button type="button" role="tab" id="places3d-tab" aria-controls="places3d-panel" aria-selected="false" tabindex="-1">3D</button>
+    <button type="button" role="tab" id="stac-tab" aria-controls="stac-panel" aria-selected="false" tabindex="-1" hidden>STAC</button>
   </div>
   <p class="protocol-lab__status" data-field="protocol-status" role="status"></p>
+  <p class="protocol-lab__status" data-field="stac-discovery-status" role="status"></p>
   <section id="features-panel" role="tabpanel" aria-labelledby="features-tab"></section>
   <section id="vector-panel" role="tabpanel" aria-labelledby="vector-tab" hidden>
     <p class="protocol-lab__note">MVT is a diagnostic lane: a collection’s advertised links may not identify a stable source-layer name, external ID, or PMTiles source.</p>
@@ -49,6 +53,7 @@ lab.innerHTML = `
   <section id="png-panel" role="tabpanel" aria-labelledby="png-tab" hidden></section>
   <section id="styled-panel" role="tabpanel" aria-labelledby="styled-tab" hidden></section>
   <section id="places3d-panel" role="tabpanel" aria-labelledby="places3d-tab" hidden></section>
+  <section id="stac-panel" role="tabpanel" aria-labelledby="stac-tab" hidden></section>
 `;
 main.append(lab);
 
@@ -61,7 +66,18 @@ const protocolPanelTags: Record<string, string> = {
   png: 'tellurion-png-panel',
   styled: 'tellurion-styled-panel',
   places3d: 'tellurion-places3d-panel',
+  stac: 'tellurion-stac-panel',
 };
+
+const stacDiscovery = new StacLaneDiscovery(
+  lab.querySelector<HTMLButtonElement>('#stac-tab')!,
+  lab.querySelector<HTMLElement>('[data-field="stac-discovery-status"]')!,
+  () => {
+    lab.querySelector('#stac-panel')!.replaceChildren();
+    mountedProtocolPanels.delete('stac');
+    if (lab.querySelector('#stac-tab')?.getAttribute('aria-selected') === 'true') void activateProtocolPanel('features');
+  },
+);
 
 function setProtocolStatus(message: string, retryTabId?: string): void {
   const status = lab.querySelector<HTMLElement>('[data-field="protocol-status"]');
@@ -88,11 +104,17 @@ async function importProtocolPanel(tabId: string): Promise<void> {
       if (tabId === 'png') await import('./elements/png-tiles-panel');
       if (tabId === 'styled') await import('./elements/styled-panel');
       if (tabId === 'places3d') await import('./elements/places3d-panel');
+      if (tabId === 'stac') await import('./elements/stac-panel');
 
       const panel = lab.querySelector<HTMLElement>(`#${tabId}-panel`);
       const tag = protocolPanelTags[tabId];
       if (!panel || !tag) throw new Error(`protocol lab cannot mount ${tabId}`);
-      panel.append(document.createElement(tag));
+      const element = document.createElement(tag);
+      if (tabId === 'stac') {
+        if (!stacDiscovery.endpoint) { setProtocolStatus(''); return; }
+        (element as TellurionStacPanel).endpoint = stacDiscovery.endpoint;
+      }
+      panel.append(element);
       mountedProtocolPanels.add(tabId);
       setProtocolStatus('');
     } catch (error) {
@@ -109,6 +131,10 @@ async function importProtocolPanel(tabId: string): Promise<void> {
 }
 
 async function activateProtocolPanel(tabId: string): Promise<void> {
+  if (tabId === 'stac') {
+    await stacDiscovery.refresh();
+    if (!stacDiscovery.endpoint) return;
+  }
   protocolTabs.forEach((candidate) => {
     const active = candidate.id === `${tabId}-tab`;
     candidate.setAttribute('aria-selected', String(active));
@@ -119,26 +145,31 @@ async function activateProtocolPanel(tabId: string): Promise<void> {
   await importProtocolPanel(tabId);
 }
 
-protocolTabs.forEach((tab, index) => {
+protocolTabs.forEach((tab) => {
   const tabId = tab.id.replace('-tab', '');
   tab.addEventListener('click', () => void activateProtocolPanel(tabId));
   tab.addEventListener('keydown', (event) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
+    const visibleTabs = protocolTabs.filter((candidate) => !candidate.hidden);
+    const index = visibleTabs.indexOf(tab);
     const nextIndex =
       event.key === 'Home'
         ? 0
         : event.key === 'End'
-          ? protocolTabs.length - 1
-          : (index + (event.key === 'ArrowRight' ? 1 : -1) + protocolTabs.length) % protocolTabs.length;
-    const next = protocolTabs[nextIndex];
+          ? visibleTabs.length - 1
+          : (index + (event.key === 'ArrowRight' ? 1 : -1) + visibleTabs.length) % visibleTabs.length;
+    const next = visibleTabs[nextIndex];
     void activateProtocolPanel(next.id.replace('-tab', ''));
     next.focus();
   });
 });
 
 lab.addEventListener('toggle', () => {
-  if (lab.open) void activateProtocolPanel('features');
+  if (lab.open) {
+    void activateProtocolPanel('features');
+    void stacDiscovery.refresh();
+  }
 });
 }
 
