@@ -16,7 +16,12 @@
     "happy-dom": "^20.0.10",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "@loaders.gl/compression": {
+      "fflate": "0.7.5"
+    }
   },
   "dependencies": {
     "@deck.gl/core": "^9.3.7",
