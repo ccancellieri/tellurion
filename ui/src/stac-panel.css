@@ -1,0 +1,17 @@
+.stac-inspector { overflow-wrap: anywhere; }
+.stac-inspector > p { max-width: 76ch; }
+.stac-inspector input {
+  width: min(22rem, 100%);
+  max-width: 100%;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+.stac-inspector label { max-width: 100%; }
+.stac-inspector [data-field="results"] { padding-left: 1.5rem; }
+.stac-inspector [data-field="results"] > li { padding: 0.75rem 0; border-top: 1px solid var(--border); }
+.stac-inspector h3 { font-size: 1rem; margin: 0 0 0.3rem; }
+.stac-inspector :is(button, input, a):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
