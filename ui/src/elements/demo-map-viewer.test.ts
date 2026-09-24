@@ -47,7 +47,7 @@ vi.mock('../lib/map', () => ({
 }));
 
 import './demo-map-viewer';
-import { createDemoTileTransport, fitToExtent } from '../lib/map';
+import { createDemoTileTransport, demoRasterMapHandoff, fitToExtent } from '../lib/map';
 
 const source = {
   id: 'opaque-source',
@@ -84,6 +84,87 @@ beforeEach(() => {
   map.getSource.mockReturnValue(undefined);
   map.queryRenderedFeatures.mockReturnValue([]);
   map.getCanvas.mockReturnValue({ clientWidth: 800, clientHeight: 400 });
+});
+
+describe('fit active source extent', () => {
+  function open(value: unknown = source): void {
+    document.dispatchEvent(new CustomEvent('tellurion-demo-map', { detail: { source: value, opacity: 0.7 } }));
+  }
+  function button(element: HTMLElement): HTMLButtonElement | null {
+    return element.querySelector('[data-field="fit-extent"]');
+  }
+
+  it.each(['tiled-geotiff', 'geoparquet', 'shapefile-zip'])('refits %s without reopening the source', (format) => {
+    const element = mount();
+    expect(button(element)?.hidden).toBe(true);
+    open({ ...source, format, geometryType: 'Polygon', srid: 4326, numberMatched: 7,
+      links: { ...source.links, mvt_tile_template: '/demo/vector.mvt' } });
+    expect(button(element)?.tagName).toBe('BUTTON');
+    expect(button(element)?.textContent).toBe('Fit source extent');
+    expect(button(element)?.hidden).toBe(false);
+    vi.mocked(fitToExtent).mockClear();
+    map.addSource.mockClear();
+    map.addLayer.mockClear();
+    tileTransport.activate.mockClear();
+    button(element)?.click();
+    expect(fitToExtent).toHaveBeenCalledWith(map, { spatial: { bbox: [[12, 39, 15, 42]], crs: 'EPSG:4326' } });
+    expect(map.addSource).not.toHaveBeenCalled();
+    expect(map.addLayer).not.toHaveBeenCalled();
+    expect(tileTransport.activate).not.toHaveBeenCalled();
+  });
+
+  it('uses validated active handoff bounds rather than source metadata or a pending source', () => {
+    const element = mount();
+    vi.mocked(demoRasterMapHandoff).mockReturnValueOnce({ sourceId: 'demo-source-opaque-source', layerId: 'demo-layer-opaque-source',
+      template: '/demo/tiles.png', attribution: 'Verified attribution', extent: [1, 2, 3, 4] });
+    open();
+    map.isStyleLoaded.mockReturnValue(false);
+    open({ ...source, id: 'pending', extent: [20, 30, 40, 50] });
+    vi.mocked(fitToExtent).mockClear();
+    button(element)?.click();
+    expect(fitToExtent).toHaveBeenCalledWith(map, { spatial: { bbox: [[1, 2, 3, 4]], crs: 'EPSG:4326' } });
+  });
+
+  it('uses replacement bounds, and hides the action for a replacement without bounds', () => {
+    const element = mount();
+    open();
+    open({ ...source, id: 'next', extent: [1, 2, 3, 4] });
+    vi.mocked(fitToExtent).mockClear();
+    button(element)?.click();
+    expect(fitToExtent).toHaveBeenCalledWith(map, { spatial: { bbox: [[1, 2, 3, 4]], crs: 'EPSG:4326' } });
+    open({ ...source, extent: null });
+    expect(button(element)?.hidden).toBe(true);
+    vi.mocked(fitToExtent).mockClear();
+    button(element)?.click();
+    expect(fitToExtent).not.toHaveBeenCalled();
+  });
+
+  it.each(['reset', 'expiry', 'disconnect'])('clears the action after %s without extending expiry when fitting', (action) => {
+    vi.useFakeTimers();
+    try {
+      const element = mount();
+      open({ ...source, limits: { ...source.limits, expires_in_seconds: 2 } });
+      vi.advanceTimersByTime(1000);
+      button(element)?.click();
+      if (action === 'reset') document.dispatchEvent(new CustomEvent('tellurion-demo-map-reset', { detail: { sourceId: source.id } }));
+      else if (action === 'expiry') vi.advanceTimersByTime(1000);
+      else element.remove();
+      expect(button(element)?.hidden).toBe(true);
+      vi.mocked(fitToExtent).mockClear();
+      button(element)?.click();
+      expect(fitToExtent).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('retains the active extent on an unrelated reset', () => {
+    const element = mount();
+    open();
+    document.dispatchEvent(new CustomEvent('tellurion-demo-map-reset', { detail: { sourceId: 'unrelated' } }));
+    expect(button(element)?.hidden).toBe(false);
+    vi.mocked(fitToExtent).mockClear();
+    button(element)?.click();
+    expect(fitToExtent).toHaveBeenCalledOnce();
+  });
 });
 
 describe('rendered vector feature inspection', () => {
