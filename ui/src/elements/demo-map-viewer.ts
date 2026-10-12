@@ -14,7 +14,7 @@ const ElementBase: typeof HTMLElement =
 
 interface MapRegistration {
   sourceId: string;
-  layerId: string;
+  layerIds: string[];
   vector: boolean;
   extent: [number, number, number, number] | null;
 }
@@ -151,7 +151,7 @@ export class TellurionDemoMapViewer extends ElementBase {
       if (!handoff) return;
       map.addSource(handoff.sourceId, { type: 'vector', tiles: [handoff.template], minzoom: 0, maxzoom: 22 });
       map.addLayer(vectorLayer(handoff, opacity, style));
-      this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId, vector: true, extent: handoff.extent };
+      this.#registration = { sourceId: handoff.sourceId, layerIds: [handoff.layerId], vector: true, extent: handoff.extent };
       this.#field('fit-extent').hidden = false;
       this.#field('inspect-controls').hidden = false;
       this.#field('empty').hidden = true;
@@ -172,7 +172,7 @@ export class TellurionDemoMapViewer extends ElementBase {
     if (!tileTemplate) return;
     map.addSource(handoff.sourceId, { type: 'raster', tiles: [tileTemplate], tileSize: 256, minzoom: 0, maxzoom: 22 });
     map.addLayer({ id: handoff.layerId, type: 'raster', source: handoff.sourceId, paint: { 'raster-opacity': opacity } });
-    this.#registration = { sourceId: handoff.sourceId, layerId: handoff.layerId, vector: false, extent: handoff.extent };
+    this.#registration = { sourceId: handoff.sourceId, layerIds: [handoff.layerId], vector: false, extent: handoff.extent };
     this.#field('fit-extent').hidden = handoff.extent === null;
     this.#field('empty').hidden = true;
     if (handoff.extent) fitToExtent(map, { spatial: { bbox: [handoff.extent], crs: 'EPSG:4326' } });
@@ -209,7 +209,9 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#tileTransport?.clear();
     const map = this.#map;
     if (map) {
-      if (map.getLayer(registration.layerId)) map.removeLayer(registration.layerId);
+      for (const layerId of [...registration.layerIds].reverse()) {
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+      }
       if (map.getSource(registration.sourceId)) map.removeSource(registration.sourceId);
     }
     this.#registration = null;
@@ -237,7 +239,7 @@ export class TellurionDemoMapViewer extends ElementBase {
     this.#clearInspection();
     const feature = this.#map.queryRenderedFeatures(
       [[point.x - 4, point.y - 4], [point.x + 4, point.y + 4]],
-      { layers: [registration.layerId] },
+      { layers: registration.layerIds },
     )[0];
     if (!feature) {
       this.#field('inspect-status').textContent = 'No rendered feature here. Click a visible feature or pan the map and try again.';
@@ -296,7 +298,7 @@ function isDemoSourceResponse(value: unknown): value is DemoSourceResponse {
     Number.isInteger(expiresInSeconds) && expiresInSeconds! > 0 && expiresInSeconds! <= 15 * 60 &&
     typeof links?.tile_template === 'string' &&
     (!vector || (typeof candidate.geometryType === 'string' && candidate.srid === 4326 &&
-      typeof candidate.numberMatched === 'number' && typeof links.mvt_tile_template === 'string'));
+      typeof candidate.numberMatched === 'number' && typeof links?.mvt_tile_template === 'string'));
 }
 
 function vectorLayer(

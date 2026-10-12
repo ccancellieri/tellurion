@@ -16,6 +16,51 @@ repository.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-12
+
+### Added
+
+- The operator console can discover an advertised STAC Item Search endpoint for
+  the selected tenant and catalog, then inspect bounded, read-only pages of item
+  metadata and asset links with collection, item ID, and date/time filters.
+- The public remote-source demo can inspect rendered vector-tile feature IDs and
+  scalar properties by pointer or keyboard, without fetching the source again.
+- Temporary vector and raster previews with known geographic bounds provide a
+  **Fit source extent** control for returning to the active source after panning
+  or zooming.
+- STAC search results can explicitly hand supported COG assets to the temporary
+  source preview; browsing results alone never starts a remote read.
+- The COG Explorer reports source-derived raster layout, overview, nodata,
+  palette, unit, and finite render-profile metadata.
+
+### Changed
+
+- The public gallery links to the v0.6.0 release downloads and provides a local
+  GeoPackage demo walkthrough for Linux and Windows binaries, with source-build
+  instructions for macOS.
+- Compatible UI dependency patches and the packaged third-party notices were
+  refreshed.
+- The UI uses MapLibre GL JS 6.14.0 with a bundled local worker, deck.gl 9.4.0
+  with its MapLibre overlay, and compatible luma.gl 9.4.2 dependencies.
+- The 3D places panel bounds implicit tilesets to the current viewport, treats
+  empty tile responses as empty content, and includes map navigation controls.
+
+### Fixed
+
+- The release workflow accepts the verified SBOM action v0.24.3 pin while
+  retaining the exact action identity and permission checks.
+- The UI build dependency lock uses source-map-js 1.2.2 to address its security
+  advisory, with the packaged notice fingerprint refreshed.
+- The MapLibre dependency update addresses its critical security advisory.
+- The 3D places viewer recognizes the server's extensionless tileset endpoint
+  as JSON while retaining binary GLB content loading.
+- The public remote-source demo reports tile failures for the active source so
+  an incomplete map is not presented as complete coverage.
+- The STAC gallery keeps long resource values within their cards and switches
+  its harvest layout to a single column on narrower screens.
+- Remote PMTiles inspection remains deferred; the existing opt-in local
+  memory-mapped PMTiles driver continues to serve read-only archives.
+
 ## [0.5.0] - 2026-09-16
 
 ### Added

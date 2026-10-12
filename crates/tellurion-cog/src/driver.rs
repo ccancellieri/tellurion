@@ -45,7 +45,7 @@ use tellurion_core::{
 
 use crate::colormap::ResolvedColormap;
 use crate::error::CogError;
-use crate::reader::{self, Bands, CogMeta, CogSource};
+use crate::reader::{self, Bands, CogMeta, CogSource, Nodata};
 use crate::remote::RemoteCogSource;
 use crate::tiling;
 
@@ -139,6 +139,68 @@ pub(crate) fn check_pixel_budget_total(requested: u64, budget: u64) -> Result<()
 #[derive(Default)]
 pub struct CogDriverFactory;
 
+/// Native pixel organization declared by the GeoTIFF.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CogBandLayout {
+    Gray,
+    Rgb,
+    Rgba,
+    Palette,
+}
+
+/// Complete set of render choices supported for a COG's native layout.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CogRenderProfile {
+    NativeRgb,
+    Grayscale,
+    Viridis,
+    EmbeddedPalette,
+}
+
+/// The source's declared nodata state. An unsupported declaration remains
+/// distinct from a source which does not declare nodata at all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CogNodata {
+    Absent,
+    Value(u8),
+    Unsupported,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CogLevelInspection {
+    pub width: u32,
+    pub height: u32,
+    pub tile_width: u32,
+    pub tile_height: u32,
+    pub pixel_size: [f64; 2],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CogPaletteEntry {
+    pub value: u8,
+    pub rgba: [u8; 4],
+}
+
+/// Facts read from the GeoTIFF itself. Inspection and tile rendering share
+/// the same lazily populated metadata cell on [`CogDriver`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct CogInspection {
+    pub layout: CogBandLayout,
+    pub channel_count: u8,
+    pub bits_per_sample: u8,
+    pub epsg: u32,
+    pub width: u32,
+    pub height: u32,
+    pub pixel_size: [f64; 2],
+    pub extent_crs84: [f64; 4],
+    pub levels: Vec<CogLevelInspection>,
+    pub nodata: CogNodata,
+    pub unit: Option<String>,
+    pub profiles: Vec<CogRenderProfile>,
+    pub default_profile: CogRenderProfile,
+    pub palette: Vec<CogPaletteEntry>,
+}
+
 impl CogDriverFactory {
     pub fn new() -> Self {
         Self
@@ -147,7 +209,13 @@ impl CogDriverFactory {
     /// Builds a COG storage driver from an already-authorized byte-range
     /// object. The object owns all remote transport policy and identity.
     pub fn build_range_object(&self, object: Arc<dyn RangeObject>) -> Arc<dyn StorageDriver> {
-        Arc::new(CogDriverImpl {
+        self.build_inspectable_range_object(object)
+    }
+
+    /// Builds the same storage driver while retaining the concrete handle
+    /// needed to inspect its source-derived raster metadata.
+    pub fn build_inspectable_range_object(&self, object: Arc<dyn RangeObject>) -> Arc<CogDriver> {
+        Arc::new(CogDriver {
             backend: Arc::new(CogBackend::new(CogSource::Remote(
                 RemoteCogSource::from_range_object(object),
             ))),
@@ -168,7 +236,7 @@ impl DriverFactory for CogDriverFactory {
             ))
         })?;
         let source = parse_source(&decl.id, &decl.url_env, &raw)?;
-        Ok(Arc::new(CogDriverImpl {
+        Ok(Arc::new(CogDriver {
             backend: Arc::new(CogBackend::new(source)),
         }))
     }
@@ -197,11 +265,17 @@ fn is_http_locator(raw: &str) -> bool {
             .is_some_and(|prefix| prefix.eq_ignore_ascii_case("https://"))
 }
 
-struct CogDriverImpl {
+pub struct CogDriver {
     backend: Arc<CogBackend>,
 }
 
-impl StorageDriver for CogDriverImpl {
+impl CogDriver {
+    pub async fn inspection(&self) -> Result<CogInspection, CogError> {
+        self.backend.inspection_inner().await
+    }
+}
+
+impl StorageDriver for CogDriver {
     fn catalog_source(&self) -> Arc<dyn CatalogSource> {
         Arc::clone(&self.backend) as Arc<dyn CatalogSource>
     }
@@ -234,6 +308,86 @@ impl CogBackend {
                 run_blocking_cog(move || reader::open(&source)).await
             })
             .await
+    }
+
+    async fn inspection_inner(&self) -> Result<CogInspection, CogError> {
+        let meta = self.meta().await?;
+        let level0 = &meta.levels[0];
+        let layout = match meta.bands {
+            Bands::Gray => CogBandLayout::Gray,
+            Bands::Rgb => CogBandLayout::Rgb,
+            Bands::Rgba => CogBandLayout::Rgba,
+            Bands::Palette => CogBandLayout::Palette,
+        };
+        let (profiles, default_profile) = match meta.bands {
+            Bands::Gray => (
+                vec![CogRenderProfile::Grayscale, CogRenderProfile::Viridis],
+                CogRenderProfile::Grayscale,
+            ),
+            Bands::Rgb | Bands::Rgba => (
+                vec![CogRenderProfile::NativeRgb],
+                CogRenderProfile::NativeRgb,
+            ),
+            Bands::Palette => (
+                vec![CogRenderProfile::EmbeddedPalette],
+                CogRenderProfile::EmbeddedPalette,
+            ),
+        };
+        let nodata = match (meta.bands, &meta.nodata) {
+            (Bands::Rgb | Bands::Rgba, Nodata::Value(_)) => CogNodata::Unsupported,
+            (_, Nodata::Absent) => CogNodata::Absent,
+            (_, Nodata::Value(value)) => CogNodata::Value(*value),
+            (_, Nodata::Unsupported) => CogNodata::Unsupported,
+        };
+        let palette = meta
+            .embedded_colormap
+            .as_ref()
+            .map(|colormap| {
+                (u8::MIN..=u8::MAX)
+                    .map(|value| {
+                        let mut rgba = colormap.apply(value);
+                        if meta.nodata == Nodata::Value(value) {
+                            rgba[3] = 0;
+                        }
+                        CogPaletteEntry { value, rgba }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let levels = meta
+            .levels
+            .iter()
+            .map(|level| CogLevelInspection {
+                width: level.width,
+                height: level.height,
+                tile_width: level.tile_width,
+                tile_height: level.tile_height,
+                pixel_size: [
+                    meta.total_geo_width_deg / f64::from(level.width),
+                    meta.total_geo_height_deg / f64::from(level.height),
+                ],
+            })
+            .collect();
+        let epsg = meta.crs.epsg.ok_or_else(|| {
+            CogError::Unsupported("the WGS84 GeoTIFF does not declare an EPSG code".to_string())
+        })?;
+
+        Ok(CogInspection {
+            layout,
+            channel_count: meta.bands.channel_count() as u8,
+            bits_per_sample: 8,
+            epsg,
+            width: level0.width,
+            height: level0.height,
+            pixel_size: [meta.transform.pixel_scale_x, meta.transform.pixel_scale_y],
+            extent_crs84: meta.extent_crs84,
+            levels,
+            nodata,
+            unit: None,
+            profiles,
+            default_profile,
+            palette,
+        })
     }
 
     async fn collections_inner(&self) -> Result<Vec<PhysicalCollection>, CogError> {
@@ -360,6 +514,7 @@ pub(crate) struct TileRead {
     coord: TileCoord,
     origin_y: f64,
     colormap: Option<ResolvedColormap>,
+    nodata: Option<u8>,
 }
 
 impl TileRead {
@@ -394,6 +549,10 @@ impl TileRead {
             coord,
             origin_y: meta.transform.origin_y,
             colormap,
+            nodata: match (meta.bands, &meta.nodata) {
+                (Bands::Gray | Bands::Palette, Nodata::Value(value)) => Some(*value),
+                _ => None,
+            },
         })
     }
 
@@ -418,9 +577,10 @@ impl TileRead {
             coord,
             origin_y,
             colormap,
+            nodata,
         } = self;
         let window_rgba = run_blocking_cog(move || {
-            reader::read_window(&source, &level, bands, window, colormap.as_ref())
+            reader::read_window(&source, &level, bands, window, colormap.as_ref(), nodata)
         })
         .await?;
 
@@ -535,6 +695,10 @@ mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/striped.tif")
     }
 
+    fn gray_fixture_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/gray_gradient.tif")
+    }
+
     fn decl() -> CollectionDecl {
         serde_yaml::from_str("id: tiled_rgb\ncatalog: default\nstorage: main\n").unwrap()
     }
@@ -542,6 +706,65 @@ mod tests {
     #[test]
     fn factory_name_matches_the_config_driver_key() {
         assert_eq!(CogDriverFactory::new().name(), "cog");
+    }
+
+    #[tokio::test]
+    async fn inspection_reports_rgb_layout_resolution_and_only_native_color() {
+        let object = Arc::new(FixtureRangeObject::new(
+            "rgb-inspection",
+            std::fs::read(fixture_path()).unwrap(),
+        ));
+        let driver = CogDriverFactory::new().build_inspectable_range_object(object);
+        let inspection = driver.inspection().await.unwrap();
+
+        assert_eq!(inspection.layout, CogBandLayout::Rgb);
+        assert_eq!(inspection.channel_count, 3);
+        assert_eq!(inspection.bits_per_sample, 8);
+        assert_eq!(inspection.epsg, 4326);
+        assert_eq!((inspection.width, inspection.height), (256, 256));
+        assert_eq!(inspection.pixel_size, [0.01, 0.01]);
+        assert_eq!(inspection.extent_crs84, [-1.28, -1.28, 1.28, 1.28]);
+        assert_eq!(inspection.nodata, CogNodata::Absent);
+        assert_eq!(inspection.unit, None);
+        assert_eq!(inspection.profiles, vec![CogRenderProfile::NativeRgb]);
+        assert_eq!(inspection.default_profile, CogRenderProfile::NativeRgb);
+        assert_eq!(inspection.levels.len(), 2);
+        assert_eq!(
+            (inspection.levels[0].width, inspection.levels[0].height),
+            (256, 256)
+        );
+        assert_eq!(
+            (inspection.levels[1].width, inspection.levels[1].height),
+            (128, 128)
+        );
+    }
+
+    #[tokio::test]
+    async fn inspection_offers_only_the_existing_finite_gray_profiles() {
+        let object = Arc::new(FixtureRangeObject::new(
+            "gray-inspection",
+            std::fs::read(gray_fixture_path()).unwrap(),
+        ));
+        let driver = CogDriverFactory::new().build_inspectable_range_object(object);
+        let inspection = driver.inspection().await.unwrap();
+
+        assert_eq!(inspection.layout, CogBandLayout::Gray);
+        assert_eq!(inspection.channel_count, 1);
+        assert_eq!(
+            inspection.profiles,
+            vec![CogRenderProfile::Grayscale, CogRenderProfile::Viridis]
+        );
+        assert_eq!(inspection.default_profile, CogRenderProfile::Grayscale);
+        assert!(inspection.palette.is_empty());
+    }
+
+    #[test]
+    fn range_object_factory_keeps_the_storage_driver_trait_object_contract() {
+        let object = Arc::new(FixtureRangeObject::new(
+            "trait-object-contract",
+            std::fs::read(fixture_path()).unwrap(),
+        ));
+        let _: Arc<dyn StorageDriver> = CogDriverFactory::new().build_range_object(object);
     }
 
     #[test]

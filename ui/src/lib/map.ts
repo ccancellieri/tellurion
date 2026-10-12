@@ -1,4 +1,5 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { Extent } from './api';
 import {
   DEMO_TILE_PROTOCOL,
@@ -7,6 +8,8 @@ import {
 } from './demo-tile-protocol';
 import { demoTileTemplateFromAdvertisedLink, isVectorDemoSource, type DemoSourceResponse } from './demo-source';
 import { maplibreTileTemplate, resolveDataHref, type AdvertisedTileLink } from './tile-url';
+
+maplibregl.setWorkerUrl(workerUrl);
 
 export interface WorkspaceContext {
   tenantId: string;
@@ -184,7 +187,17 @@ export function demoRasterMapHandoff(
   source: DemoSourceResponse,
   origin: string,
 ): DemoRasterMapHandoff | null {
-  const template = demoTileTemplateFromAdvertisedLink(source.links.tile_template, origin, source.id);
+  if (!source.links.tile_template) return null;
+  const selectedProfile = source.links.raster_profiles?.find(
+    (profile) => profile.tile_template === source.links.tile_template,
+  )?.id;
+  const template = demoTileTemplateFromAdvertisedLink(
+    source.links.tile_template,
+    origin,
+    source.id,
+    'png',
+    selectedProfile,
+  );
   if (!template || !/^[A-Za-z0-9_-]+$/.test(source.id)) return null;
   return {
     sourceId: `demo-source-${source.id}`,

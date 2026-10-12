@@ -56,7 +56,7 @@ geozero = { workspace = true, features = ["with-wkb", "with-geojson", "with-geo"
 # coordinate walk (`crs.rs`): `geo`'s `MapCoordsInPlace` applies the
 # per-vertex Web Mercator transform to a decoded `geo_types::Geometry` in
 # place, with no native projection dependency.
-geo = "0.29"
+geo = "0.31"
 geo-types = "0.7"
 
 [dev-dependencies]

@@ -6,11 +6,11 @@ the top-level README's "Scaling up: PostGIS" section for the database-backed
 path once a single GeoPackage's one-writer-many-readers ceiling stops
 fitting — that path is out of scope here.
 
-## Version 0.5.0 release archives
+## Version 0.6.0 release archives
 
-Archives are available only after an approved v0.5.0 public release.
+Archives are available only after an approved v0.6.0 public release.
 Download only assets attached to the public
-[v0.5.0 release](https://github.com/ccancellieri/tellurion/releases/tag/v0.5.0).
+[v0.6.0 release](https://github.com/ccancellieri/tellurion/releases/tag/v0.6.0).
 Actions workflow artifacts are internal build candidates, not published releases.
 If the release or matching asset is not available, use the source-build instructions
 below. No archive or binary is committed to this Git repository. The
@@ -19,8 +19,8 @@ and installation checks required before publication.
 
 | Platform | Intended archive |
 |---|---|
-| Linux x86_64 musl | `tellurion-v0.5.0-x86_64-unknown-linux-musl.tar.gz` |
-| Windows x86_64 MSVC | `tellurion-v0.5.0-x86_64-pc-windows-msvc.zip` |
+| Linux x86_64 musl | `tellurion-v0.6.0-x86_64-unknown-linux-musl.tar.gz` |
+| Windows x86_64 MSVC | `tellurion-v0.6.0-x86_64-pc-windows-msvc.zip` |
 
 macOS Apple Silicon (`aarch64-apple-darwin`) is source-only for this release while its platform
 licensing evidence is reviewed.
@@ -37,14 +37,14 @@ On Windows without `shasum`, calculate the downloaded ZIP's hash in PowerShell
 and compare it with that file's entry in `SHA256SUMS`:
 
 ```powershell
-Get-FileHash .\tellurion-v0.5.0-x86_64-pc-windows-msvc.zip -Algorithm SHA256
+Get-FileHash .\tellurion-v0.6.0-x86_64-pc-windows-msvc.zip -Algorithm SHA256
 ```
 
 For a public release, also verify the GitHub artifact attestation against this
 repository. For example, the Linux archive is verified with:
 
 ```sh
-gh attestation verify tellurion-v0.5.0-x86_64-unknown-linux-musl.tar.gz \
+gh attestation verify tellurion-v0.6.0-x86_64-unknown-linux-musl.tar.gz \
   --repo ccancellieri/tellurion
 ```
 
@@ -54,7 +54,7 @@ extract them into a directory on your `PATH`. On Windows, extract the ZIP and
 add its directory to `PATH` before using `tellurion.exe`
 or `tellurion-ingest.exe`.
 
-These assets are intended for Tellurion 0.5.0 under `AGPL-3.0-only`. Review the
+These assets are intended for Tellurion 0.6.0 under `AGPL-3.0-only`. Review the
 [licensing guide](../licensing.md) before deployment or redistribution.
 
 Each native archive also contains the target-specific Rust dependency evidence
@@ -104,17 +104,17 @@ also requires authenticated scope isolation and persisted settings after restart
 ## Install with Cargo after registry publication
 
 After the approved crates.io publication, install the server and ingestion CLI from
-the locked 0.5.0 release with:
+the locked 0.6.0 release with:
 
 ```sh
-cargo +1.97.1 install tellurion --version '=0.5.0' --locked --features ui
-cargo +1.97.1 install tellurion-ingest --version '=0.5.0' --locked
+cargo +1.97.1 install tellurion --version '=0.6.0' --locked --features ui
+cargo +1.97.1 install tellurion-ingest --version '=0.6.0' --locked
 ```
 
 To embed the anonymous remote-source demo and its web interface in the server binary:
 
 ```sh
-cargo +1.97.1 install tellurion --version '=0.5.0' --locked \
+cargo +1.97.1 install tellurion --version '=0.6.0' --locked \
   --features public-demo,ui
 ```
 

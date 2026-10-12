@@ -5,15 +5,20 @@ import {
   publishDemoMap,
   resetDemoWorkflow,
   setDemoOpacity,
+  setDemoRasterProfile,
   setDemoVectorStyle,
+  sourceForDemoRasterProfile,
   startDemoInspection,
   isVectorDemoSource,
   type DemoWorkflow,
   type ConfiguredDemoWorkflow,
+  type DemoSourceProvenance,
   type InspectedDemoWorkflow,
   type MappedDemoWorkflow,
 } from '../lib/demo-source';
 import { deleteDemoSource, DemoSourceApiError, registerDemoSource } from '../lib/demo-source-api';
+import { validateStacAssetPreview } from '../lib/stac-api';
+import type { StacAssetPreviewResult } from '../lib/stac-preview-events';
 import {
   demoFixtures,
   demoFixtureInventoryError,
@@ -47,9 +52,11 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
   #alive = false;
   #connectionGeneration = 0;
   #discardGeneration = 0;
+  #inspectionGeneration = 0;
   #inspectionAbort: AbortController | null = null;
   #discarding = false;
   #discardError = '';
+  #workflowStatus = '';
   #expiredListener = (event: Event): void => this.#receiveExpiry(event);
 
   connectedCallback(): void {
@@ -62,6 +69,7 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
   disconnectedCallback(): void {
     this.#alive = false;
     this.#connectionGeneration += 1;
+    this.#inspectionGeneration += 1;
     this.#inspectionAbort?.abort();
     document.removeEventListener('tellurion-demo-source-expired', this.#expiredListener);
   }
@@ -81,6 +89,7 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
           <p>Tellurion validates a public HTTPS resource through bounded reads, then maps only its temporary same-origin tile route. No data is copied into this catalog workspace.</p>
         </header>
         <ol class="demo-source__stages" aria-label="Demo source journey">${stages}</ol>
+        <p class="demo-source__status${this.#workflowStatus ? '' : ' demo-source__status--empty'}" data-field="workflow-status" role="status" tabindex="-1">${escape(this.#workflowStatus)}</p>
         <div class="demo-source__body" data-field="body"></div>
       </section>
     `;
@@ -188,34 +197,90 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
       status.classList.remove('demo-source__status--error');
       status.textContent = 'Inspecting through the bounded source gateway…';
     }
-    const attempt = startDemoInspection(eligible.value);
-    const controller = new AbortController();
-    const generation = this.#connectionGeneration;
-    this.#inspectionAbort = controller;
-    try {
-      const source = await registerDemoSource(eligible.value, controller.signal);
-      if (!this.#alive || generation !== this.#connectionGeneration) {
-        void deleteDemoSource(source).catch(() => undefined);
-        return;
-      }
-      // Clear both the DOM control and the only workflow field that held it
-      // before rendering an opaque, server-returned inspection.
+    this.#workflowStatus = '';
+    const result = await this.#registerInspection(eligible.value, eligible.value, undefined, null);
+    if (result === 'accepted') {
+      // Clear the detached control too: no browser-owned copy survives the
+      // successful handoff into opaque source state.
       input.value = '';
+    }
+  }
+
+  async previewStacAsset(value: unknown): Promise<StacAssetPreviewResult> {
+    const descriptor = validateStacAssetPreview(value);
+    if (!descriptor) {
+      this.#workflowStatus = 'This STAC asset preview is no longer valid. Search again.';
+      this.#render();
+      this.#focusWorkflowStatus();
+      return 'invalid';
+    }
+    if (this.#state.phase === 'inspect' || this.#state.phase === 'configure' || this.#state.phase === 'map') {
+      this.#workflowStatus = 'Discard the current temporary source before previewing another STAC asset.';
+      this.#render();
+      this.#focusWorkflowStatus();
+      return 'busy';
+    }
+    const provenance: DemoSourceProvenance = {
+      itemId: descriptor.itemId,
+      collectionId: descriptor.collectionId,
+      assetKey: descriptor.assetKey,
+      assetLabel: descriptor.assetLabel,
+      mediaType: descriptor.mediaType,
+      roles: [...descriptor.roles],
+      itemHref: descriptor.itemHref,
+      assetDescription: descriptor.assetDescription,
+    };
+    this.#workflowStatus = `Inspecting STAC asset “${descriptor.assetLabel}” through the bounded source gateway…`;
+    this.#render();
+    this.#focusWorkflowStatus();
+    return this.#registerInspection(descriptor.url, '', descriptor.format, provenance);
+  }
+
+  async #registerInspection(
+    url: string,
+    rawUrlOnFailure: string,
+    format: import('../lib/demo-source-api').DemoSourceRegistrationFormat | undefined,
+    provenance: DemoSourceProvenance | null,
+  ): Promise<StacAssetPreviewResult> {
+    this.#inspectionAbort?.abort();
+    const controller = new AbortController();
+    const connectionGeneration = this.#connectionGeneration;
+    const inspectionGeneration = ++this.#inspectionGeneration;
+    this.#inspectionAbort = controller;
+    const attempt = startDemoInspection(rawUrlOnFailure, provenance);
+    try {
+      const source = format
+        ? await registerDemoSource(url, controller.signal, format)
+        : await registerDemoSource(url, controller.signal);
+      if (!this.#alive || connectionGeneration !== this.#connectionGeneration ||
+          inspectionGeneration !== this.#inspectionGeneration) {
+        await deleteDemoSource(source).catch(() => undefined);
+        return 'failed';
+      }
       const curated = demoFixtures.find((fixture) =>
-        isExecutableFixture(fixture) && fixture.url === eligible.value,
+        isExecutableFixture(fixture) && fixture.url === url,
       );
       this.#state = attempt.succeed(curated ? { ...source, attribution: curated.attribution } : source);
+      this.#workflowStatus = provenance ? 'STAC asset inspection complete.' : '';
       this.#render();
       this.querySelector<HTMLElement>('[data-field="inspection-title"]')?.focus();
+      return 'accepted';
     } catch (error) {
-      if (!this.#alive || generation !== this.#connectionGeneration) return;
+      if (!this.#alive || connectionGeneration !== this.#connectionGeneration ||
+          inspectionGeneration !== this.#inspectionGeneration) return 'failed';
       const statusCode = error instanceof DemoSourceApiError ? error.status : 0;
       this.#state = attempt.fail(statusCode || 503);
+      this.#workflowStatus = provenance ? 'The STAC asset was not accepted for temporary inspection.' : '';
       this.#render();
       this.querySelector<HTMLInputElement>('#demo-source-url')?.focus();
+      return 'failed';
     } finally {
       if (this.#inspectionAbort === controller) this.#inspectionAbort = null;
     }
+  }
+
+  #focusWorkflowStatus(): void {
+    this.querySelector<HTMLElement>('[data-field="workflow-status"]')?.focus();
   }
 
   #renderInspect(body: HTMLElement): void {
@@ -227,10 +292,13 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
         <h3 id="demo-source-inspection-title">A temporary source is ready.</h3>
         <dl>
           <div><dt>Format</dt><dd>${escape(source.format)}</dd></div><div><dt>Read mode</dt><dd>${escape(source.transport)}</dd></div><div><dt>Revision</dt><dd>${escape(source.revision)}</dd></div><div><dt>Lifetime</dt><dd>${remainingLifetime(source.limits.expires_in_seconds)}</dd></div>
-          <div><dt>Geometry / CRS</dt><dd>${source.geometryType ? `${escape(source.geometryType)} / EPSG:${source.srid}` : 'Server-validated tiled raster'}</dd></div><div><dt>Extent</dt><dd>${extentText(source.extent)}</dd></div>
+          <div><dt>Geometry / CRS</dt><dd>${source.geometryType ? `${escape(source.geometryType)} / EPSG:${source.srid}` : source.raster ? `Tiled raster / EPSG:${source.raster.epsg}` : 'Server-validated tiled raster'}</dd></div><div><dt>Extent</dt><dd>${extentText(source.extent, source.raster?.epsg ?? source.srid)}</dd></div>
+          ${source.raster ? `<div><dt>Raster layout</dt><dd>${escape(source.raster.layout.toUpperCase())} · ${source.raster.channelCount} channel${source.raster.channelCount === 1 ? '' : 's'} · ${source.raster.bitsPerSample}-bit</dd></div><div><dt>Native shape</dt><dd>${source.raster.shape[0].toLocaleString()} × ${source.raster.shape[1].toLocaleString()} px</dd></div><div><dt>Pixel size</dt><dd>${source.raster.pixelSize.map(formatRasterNumber).join(' × ')}°</dd></div><div><dt>Levels</dt><dd>${source.raster.levels.length} (${Math.max(0, source.raster.levels.length - 1)} overviews)</dd></div><div><dt>Nodata</dt><dd>${rasterNodataText(source.raster.nodata)}</dd></div>${source.raster.unit ? `<div><dt>Unit</dt><dd>${escape(source.raster.unit)}</dd></div>` : ''}` : ''}
           ${source.numberMatched === null ? '' : `<div><dt>Features</dt><dd>${source.numberMatched.toLocaleString()}</dd></div>`}
           ${source.properties.length ? `<div><dt>Fields</dt><dd>${escape(source.properties.join(', '))}</dd></div>` : ''}
         </dl>
+        ${state.provenance ? provenanceMarkup(state.provenance) : ''}
+        ${source.raster?.legend.length ? `<details class="demo-source__legend"><summary>Embedded palette · ${source.raster.legend.length} source entries</summary><ul>${source.raster.legend.map((entry) => `<li><span style="--legend-color: ${legendColor(entry.rgba)}"></span><code>${entry.value}</code></li>`).join('')}</ul></details>` : ''}
         <p class="demo-source__attribution">${escape(source.attribution)}</p>
         ${this.#discardError ? `<p class="demo-source__status demo-source__status--error" role="status">${escape(this.#discardError)}</p>` : ''}
         <div class="demo-source__actions"><button type="button" data-action="configure"${this.#discarding ? ' disabled' : ''}>Configure map</button><button type="button" class="demo-source__quiet" data-action="reset"${this.#discarding ? ' disabled' : ''}>${this.#discarding ? 'Discarding…' : 'Discard source'}</button></div>
@@ -241,18 +309,21 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
   #renderConfigure(body: HTMLElement): void {
     const state = this.#state as ConfiguredDemoWorkflow;
     const vector = isVectorDemoSource(state.source);
+    const raster = state.source.raster;
     const vectorControls = vector ? `
         <p>The inspected fields are metadata in this preview. The map applies a local display style to the server-advertised vector tiles; it does not change the source or tile payload.</p>
         <label for="demo-source-style">Map style</label>
         <select id="demo-source-style"><option value="survey-ink"${state.style === 'survey-ink' ? ' selected' : ''}>Survey ink</option><option value="coastline-signal"${state.style === 'coastline-signal' ? ' selected' : ''}>Coastline signal</option></select>
       ` : `
-        <p>This is the only server-validated render profile for this slice. Opacity changes the local map presentation; it does not edit the source or create a server-side style.</p>
+        <p>Choose from the render profiles supported by this source layout. Opacity changes the local map presentation; it does not edit the source or create a persistent style.</p>
+        <label for="demo-source-profile">Render profile</label>
+        <select id="demo-source-profile">${raster?.profiles.map((profile) => `<option value="${escapeAttribute(profile.id)}"${state.profile === profile.id ? ' selected' : ''}>${escape(profile.label)}</option>`).join('') ?? ''}</select>
         <label for="demo-source-opacity">Opacity <output data-field="opacity-value">${Math.round(state.opacity * 100)}%</output></label>
         <input id="demo-source-opacity" type="range" min="0" max="1" step="0.05" value="${state.opacity}" />
       `;
     body.innerHTML = `
       <section class="demo-source__configure" aria-labelledby="demo-source-configure-title">
-        <p class="demo-source__section-label">03 / Map setup</p><h3 id="demo-source-configure-title">${vector ? 'Vector presentation' : 'Categorical land-cover palette'}</h3>
+        <p class="demo-source__section-label">03 / Map setup</p><h3 id="demo-source-configure-title">${vector ? 'Vector presentation' : rasterProfileHeading(raster?.layout)}</h3>
         ${vectorControls}
         <p class="demo-source__cache"><strong>Runtime facts</strong> Source metadata and any bounded spool are scoped to the temporary session and revision. Tile responses are marked private, no-store; this public preview has no configurable tile cache.</p>
         <p class="demo-source__boundary">Write, indexing, reprojection, and persistent configuration controls are not available in this temporary preview.</p>
@@ -269,25 +340,31 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
       const selected = (event.currentTarget as HTMLSelectElement).value;
       this.#state = setDemoVectorStyle(this.#state, selected === 'coastline-signal' ? selected : 'survey-ink');
     });
+    body.querySelector<HTMLSelectElement>('#demo-source-profile')?.addEventListener('change', (event) => {
+      this.#state = setDemoRasterProfile(this.#state, (event.currentTarget as HTMLSelectElement).value);
+    });
     this.#attachActions(body);
   }
 
   #renderMap(body: HTMLElement): void {
     const state = this.#state as MappedDemoWorkflow;
     const source = state.source;
-    body.innerHTML = `<section class="demo-source__map-ready" aria-labelledby="demo-source-map-title"><p class="demo-source__section-label">04 / Map</p><h3 id="demo-source-map-title">Temporary layer opened in the catalog map.</h3><p>${escape(source.attribution)}</p><p>The layer uses the server-advertised, same-origin tile link and will disappear with this source session.</p>${this.#discardError ? `<p class="demo-source__status demo-source__status--error" role="status">${escape(this.#discardError)}</p>` : ''}<button type="button" class="demo-source__quiet" data-action="reset"${this.#discarding ? ' disabled' : ''}>${this.#discarding ? 'Removing…' : 'Remove temporary layer'}</button></section>`;
+    body.innerHTML = `<section class="demo-source__map-ready" aria-labelledby="demo-source-map-title"><p class="demo-source__section-label">04 / Map</p><h3 id="demo-source-map-title">Temporary layer opened in the catalog map.</h3>${state.provenance ? provenanceMarkup(state.provenance) : ''}<p>${escape(source.attribution)}</p><p>The layer uses the server-advertised, same-origin tile link and will disappear with this source session.</p>${this.#discardError ? `<p class="demo-source__status demo-source__status--error" role="status">${escape(this.#discardError)}</p>` : ''}<button type="button" class="demo-source__quiet" data-action="reset"${this.#discarding ? ' disabled' : ''}>${this.#discarding ? 'Removing…' : 'Remove temporary layer'}</button></section>`;
     this.#attachActions(body);
   }
 
   #attachActions(body: HTMLElement): void {
     body.querySelector<HTMLButtonElement>('[data-action="configure"]')?.addEventListener('click', () => {
       this.#state = configureDemoSource(this.#state);
+      this.#workflowStatus = '';
       this.#render();
     });
     body.querySelector<HTMLButtonElement>('[data-action="map"]')?.addEventListener('click', () => {
       const mapState = publishDemoMap(this.#state) as MappedDemoWorkflow;
       this.#state = mapState;
-      this.dispatchEvent(new CustomEvent('tellurion-demo-map', { bubbles: true, composed: true, detail: { source: mapState.source, opacity: mapState.opacity, style: mapState.style } }));
+      this.#workflowStatus = '';
+      const source = sourceForDemoRasterProfile(mapState.source, mapState.profile);
+      this.dispatchEvent(new CustomEvent('tellurion-demo-map', { bubbles: true, composed: true, detail: { source, opacity: mapState.opacity, style: mapState.style, profile: mapState.profile } }));
       this.#render();
     });
     body.querySelector<HTMLButtonElement>('[data-action="reset"]')?.addEventListener('click', () => {
@@ -310,6 +387,7 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
       this.#state = resetDemoWorkflow(this.#state);
       this.#discarding = false;
       this.#discardError = '';
+      this.#workflowStatus = '';
       if (this.#alive) {
         this.#render();
         this.querySelector<HTMLInputElement>('#demo-source-url')?.focus();
@@ -334,6 +412,7 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
     this.#discardGeneration += 1;
     this.#discarding = false;
     this.#discardError = '';
+    this.#workflowStatus = '';
     this.#state = resetDemoWorkflow(this.#state);
     if (this.#alive) {
       this.#render();
@@ -342,8 +421,48 @@ export class TellurionDemoSourceWorkflow extends ElementBase {
   }
 }
 
-function extentText(extent: [number, number, number, number] | null): string {
-  return extent ? `${extent.join(', ')} (reported CRS)` : 'Not reported';
+function extentText(
+  extent: [number, number, number, number] | null,
+  epsg: number | null,
+): string {
+  return extent ? `${extent.join(', ')} (${epsg === null ? 'reported CRS' : `EPSG:${epsg}`})` : 'Not reported';
+}
+
+function rasterProfileHeading(layout: string | undefined): string {
+  if (layout === 'palette') return 'Embedded palette';
+  if (layout === 'gray') return 'Grayscale rendering';
+  return 'Native color rendering';
+}
+
+function rasterNodataText(nodata: NonNullable<InspectedDemoWorkflow['source']['raster']>['nodata']): string {
+  if (nodata.state === 'value') return String(nodata.value);
+  return nodata.state === 'unsupported' ? 'Declared, unsupported' : 'Not declared';
+}
+
+function formatRasterNumber(value: number): string {
+  return value.toLocaleString(undefined, { maximumSignificantDigits: 8 });
+}
+
+function legendColor(rgba: [number, number, number, number]): string {
+  const [red, green, blue, alpha] = rgba;
+  return `rgb(${red} ${green} ${blue} / ${(alpha / 255).toFixed(3)})`;
+}
+
+function provenanceMarkup(provenance: DemoSourceProvenance): string {
+  const identity = [
+    provenance.collectionId ? `Collection ${provenance.collectionId}` : null,
+    `Item ${provenance.itemId}`,
+    `Asset ${provenance.assetKey}`,
+  ].filter(Boolean).join(' · ');
+  const metadata = [provenance.mediaType, provenance.roles.length ? `roles: ${provenance.roles.join(', ')}` : null]
+    .filter(Boolean).join(' · ');
+  const itemLink = provenance.itemHref
+    ? `<p><a href="${escapeAttribute(provenance.itemHref)}" target="_blank" rel="noopener noreferrer">Open source STAC Item</a></p>`
+    : '';
+  const statement = provenance.assetDescription
+    ? `<p><strong>Asset description (catalog supplied):</strong> ${escape(provenance.assetDescription)}</p>`
+    : '';
+  return `<aside class="demo-source__provenance" aria-label="STAC source context"><h4>STAC source context</h4><p>${escape(identity)}</p><p>${escape(provenance.assetLabel)}${metadata ? ` · ${escape(metadata)}` : ''}</p>${itemLink}${statement}</aside>`;
 }
 
 function remainingLifetime(seconds: number): string {

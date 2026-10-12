@@ -153,6 +153,27 @@ describe('ephemeral demo map handoff', () => {
     });
   });
 
+  it('keeps an advertised raster profile query and rejects an unadvertised one', () => {
+    const profiled: DemoSourceResponse = {
+      ...source,
+      links: {
+        ...source.links,
+        tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=viridis',
+        raster_profiles: [{
+          id: 'viridis',
+          tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=viridis',
+        }],
+      },
+    };
+    expect(demoRasterMapHandoff(profiled, 'https://tellurion.example')?.template).toBe(
+      'https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=viridis',
+    );
+    expect(demoRasterMapHandoff({
+      ...profiled,
+      links: { ...profiled.links, tile_template: profiled.links.tile_template!.replace('viridis', 'unknown') },
+    }, 'https://tellurion.example')).toBeNull();
+  });
+
   it('does not create a map source from an unadvertised external template', () => {
     expect(
       demoRasterMapHandoff(
@@ -170,6 +191,7 @@ describe('ephemeral demo map handoff', () => {
       ),
     ).toBeNull();
   });
+
 });
 
 describe('workspace preview state', () => {

@@ -18,10 +18,10 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 use uuid::Uuid;
 
-use tellurion_cog::CogDriverFactory;
+use tellurion_cog::{CogBandLayout, CogDriverFactory, CogInspection, CogNodata, CogRenderProfile};
 use tellurion_core::{
-    AppContext, CatalogSource, CollectionDecl, FeatureSource, ItemsQuery, RasterSource,
-    ServerConfig, TileCoord, TileSource,
+    AppContext, CatalogSource, CollectionDecl, ColorRamp, ColormapConf, FeatureSource, ItemsQuery,
+    RasterSource, ServerConfig, StorageDriver, TileCoord, TileSource,
 };
 use tellurion_geoparquet::{GeoparquetBackend, GeoparquetInput};
 use tellurion_http_source::{PublicHttpsGateway, RangeObject, SourceSession};
@@ -192,7 +192,52 @@ struct SourceMetadata {
     srid: Option<i32>,
     number_matched: Option<u64>,
     properties: Vec<String>,
-    attribution: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    raster: Option<RasterMetadata>,
+    attribution: String,
+}
+
+#[derive(Clone, Serialize)]
+struct RasterMetadata {
+    layout: &'static str,
+    channel_count: u8,
+    bits_per_sample: u8,
+    epsg: u32,
+    shape: [u32; 2],
+    pixel_size: [f64; 2],
+    levels: Vec<RasterLevelMetadata>,
+    nodata: RasterNodataMetadata,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    unit: Option<String>,
+    profiles: Vec<RasterProfileMetadata>,
+    default_profile: &'static str,
+    legend: Vec<RasterLegendEntry>,
+}
+
+#[derive(Clone, Serialize)]
+struct RasterLevelMetadata {
+    shape: [u32; 2],
+    tile_shape: [u32; 2],
+    pixel_size: [f64; 2],
+}
+
+#[derive(Clone, Serialize)]
+struct RasterNodataMetadata {
+    state: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    value: Option<u8>,
+}
+
+#[derive(Clone, Serialize)]
+struct RasterProfileMetadata {
+    id: &'static str,
+    label: &'static str,
+}
+
+#[derive(Clone, Serialize)]
+struct RasterLegendEntry {
+    value: u8,
+    rgba: [u8; 4],
 }
 
 #[derive(Deserialize)]
@@ -237,6 +282,14 @@ struct DemoLinks {
     mvt_tile_template: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tile_template: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    raster_profiles: Vec<DemoRasterProfileLink>,
+}
+
+#[derive(Serialize)]
+struct DemoRasterProfileLink {
+    id: &'static str,
+    tile_template: String,
 }
 
 impl DemoRegistry {
@@ -613,7 +666,8 @@ async fn inspect_vector(
             srid: physical.srid,
             number_matched,
             properties: attributes.into_iter().map(|column| column.name).collect(),
-            attribution: "Remote source supplied by this browser session",
+            raster: None,
+            attribution: "Remote source supplied by this browser session".to_owned(),
         },
     })
 }
@@ -640,7 +694,8 @@ fn normalize_crs84_extent(extent: [f64; 4]) -> Result<[f64; 4], ()> {
 }
 
 async fn inspect_cog(object: Arc<dyn RangeObject>) -> Result<DemoSource, ()> {
-    let driver = CogDriverFactory::new().build_range_object(Arc::clone(&object));
+    let driver = CogDriverFactory::new().build_inspectable_range_object(Arc::clone(&object));
+    let inspection = driver.inspection().await.map_err(|_| ())?;
     let catalog = driver.catalog_source();
     let mut physical = catalog.collections().await.map_err(|_| ())?;
     let physical = physical.pop().ok_or(())?;
@@ -677,9 +732,85 @@ async fn inspect_cog(object: Arc<dyn RangeObject>) -> Result<DemoSource, ()> {
             srid: None,
             number_matched: None,
             properties: Vec::new(),
-            attribution: "Remote source supplied by this browser session",
+            raster: Some(raster_metadata(inspection)),
+            attribution: "Remote source supplied by this browser session".to_owned(),
         },
     })
+}
+
+fn raster_metadata(inspection: CogInspection) -> RasterMetadata {
+    let layout = match inspection.layout {
+        CogBandLayout::Gray => "gray",
+        CogBandLayout::Rgb => "rgb",
+        CogBandLayout::Rgba => "rgba",
+        CogBandLayout::Palette => "palette",
+    };
+    let nodata = match inspection.nodata {
+        CogNodata::Absent => RasterNodataMetadata {
+            state: "absent",
+            value: None,
+        },
+        CogNodata::Value(value) => RasterNodataMetadata {
+            state: "value",
+            value: Some(value),
+        },
+        CogNodata::Unsupported => RasterNodataMetadata {
+            state: "unsupported",
+            value: None,
+        },
+    };
+    RasterMetadata {
+        layout,
+        channel_count: inspection.channel_count,
+        bits_per_sample: inspection.bits_per_sample,
+        epsg: inspection.epsg,
+        shape: [inspection.width, inspection.height],
+        pixel_size: inspection.pixel_size,
+        levels: inspection
+            .levels
+            .into_iter()
+            .map(|level| RasterLevelMetadata {
+                shape: [level.width, level.height],
+                tile_shape: [level.tile_width, level.tile_height],
+                pixel_size: level.pixel_size,
+            })
+            .collect(),
+        nodata,
+        unit: inspection.unit,
+        profiles: inspection
+            .profiles
+            .into_iter()
+            .map(raster_profile_metadata)
+            .collect(),
+        default_profile: raster_profile_id(inspection.default_profile),
+        legend: inspection
+            .palette
+            .into_iter()
+            .map(|entry| RasterLegendEntry {
+                value: entry.value,
+                rgba: entry.rgba,
+            })
+            .collect(),
+    }
+}
+
+fn raster_profile_id(profile: CogRenderProfile) -> &'static str {
+    match profile {
+        CogRenderProfile::NativeRgb => "native-rgb",
+        CogRenderProfile::Grayscale => "grayscale",
+        CogRenderProfile::Viridis => "viridis",
+        CogRenderProfile::EmbeddedPalette => "embedded-palette",
+    }
+}
+
+fn raster_profile_metadata(profile: CogRenderProfile) -> RasterProfileMetadata {
+    let (id, label) = match profile {
+        CogRenderProfile::NativeRgb => ("native-rgb", "Native color"),
+        CogRenderProfile::Grayscale => ("grayscale", "Grayscale"),
+        CogRenderProfile::Viridis => ("viridis", "Viridis"),
+        CogRenderProfile::EmbeddedPalette => ("embedded-palette", "Embedded palette"),
+    };
+    RasterProfileMetadata { id, label }
 }
 
 async fn get_source(
@@ -945,9 +1076,6 @@ async fn tile(
     let Some((session, source)) = registry.source_for_request(&headers, &source_id).await else {
         return private(StatusCode::NOT_FOUND.into_response());
     };
-    if raw_query.is_some_and(|query| !query.is_empty()) {
-        return private(StatusCode::BAD_REQUEST.into_response());
-    }
     let Ok(_permit) = acquire_operation(&session).await else {
         return private(StatusCode::TOO_MANY_REQUESTS.into_response());
     };
@@ -958,13 +1086,57 @@ async fn tile(
         if matches!(format, DemoTileFormat::Mvt) {
             return private(StatusCode::BAD_REQUEST.into_response());
         }
-        raster_tile_response(raster, &source.collection, coord).await
+        let Ok(collection) = raster_collection_for_profile(&source, raw_query.as_deref()) else {
+            return private(StatusCode::BAD_REQUEST.into_response());
+        };
+        raster_tile_response(raster, &collection, coord).await
     } else if let Some(tiles) = &source.tiles {
+        if raw_query.is_some_and(|query| !query.is_empty()) {
+            return private(StatusCode::BAD_REQUEST.into_response());
+        }
         vector_tile_response(tiles, &source.collection, coord, format).await
     } else {
         StatusCode::NOT_FOUND.into_response()
     };
     private(response)
+}
+
+fn raster_collection_for_profile(
+    source: &DemoSource,
+    raw_query: Option<&str>,
+) -> Result<CollectionDecl, ()> {
+    let raw = raw_query.ok_or(())?;
+    if raw.is_empty() || raw.contains('&') || raw.contains(';') {
+        return Err(());
+    }
+    let profile_id = raw.strip_prefix("profile=").ok_or(())?;
+    if profile_id.is_empty()
+        || !profile_id
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+    {
+        return Err(());
+    }
+    let raster = source.metadata.raster.as_ref().ok_or(())?;
+    if !raster
+        .profiles
+        .iter()
+        .any(|profile| profile.id == profile_id)
+    {
+        return Err(());
+    }
+
+    let mut collection = source.collection.clone();
+    collection.settings.colormap = match profile_id {
+        "native-rgb" | "grayscale" | "embedded-palette" => None,
+        "viridis" => Some(ColormapConf::Ramp {
+            ramp: ColorRamp::Viridis,
+            min: 0.0,
+            max: 255.0,
+        }),
+        _ => return Err(()),
+    };
+    Ok(collection)
 }
 
 async fn raster_tile_response(
@@ -1085,6 +1257,33 @@ fn source_response(
     let remaining = SESSION_TTL.saturating_sub(now.saturating_duration_since(created_at));
     let base = server.public_href(&format!("/demo/sources/{source_id}"));
     let vector = metadata.geometry_type.is_some();
+    let raster_profiles = metadata
+        .raster
+        .as_ref()
+        .map(|raster| {
+            raster
+                .profiles
+                .iter()
+                .map(|profile| DemoRasterProfileLink {
+                    id: profile.id,
+                    tile_template: format!(
+                        "{base}/tiles/WebMercatorQuad/{{z}}/{{y}}/{{x}}.png?profile={}",
+                        profile.id
+                    ),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let tile_template = metadata
+        .raster
+        .as_ref()
+        .map(|raster| {
+            format!(
+                "{base}/tiles/WebMercatorQuad/{{z}}/{{y}}/{{x}}.png?profile={}",
+                raster.default_profile
+            )
+        })
+        .or_else(|| vector.then(|| format!("{base}/tiles/WebMercatorQuad/{{z}}/{{y}}/{{x}}.png")));
     Json(SourceResponse {
         metadata: metadata.clone(),
         limits: DemoLimits {
@@ -1098,9 +1297,8 @@ fn source_response(
             item_template: vector.then(|| format!("{base}/items/{{featureId}}")),
             mvt_tile_template: vector
                 .then(|| format!("{base}/tiles/WebMercatorQuad/{{z}}/{{y}}/{{x}}.mvt")),
-            tile_template: Some(format!(
-                "{base}/tiles/WebMercatorQuad/{{z}}/{{y}}/{{x}}.png"
-            )),
+            tile_template,
+            raster_profiles,
         },
     })
     .into_response()
@@ -2084,6 +2282,36 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn cog_registration_advertises_source_derived_raster_metadata() {
+        let (app, _, _, _) = fixture_app();
+        let registered = register_fixture(&app, None).await;
+        let json: serde_json::Value = serde_json::from_str(&registered.json).unwrap();
+
+        assert_eq!(json["raster"]["layout"], "rgb");
+        assert_eq!(json["raster"]["channel_count"], 3);
+        assert_eq!(json["raster"]["bits_per_sample"], 8);
+        assert_eq!(json["raster"]["epsg"], 4326);
+        assert_eq!(json["raster"]["shape"], serde_json::json!([256, 256]));
+        assert_eq!(
+            json["raster"]["pixel_size"],
+            serde_json::json!([0.01, 0.01])
+        );
+        assert_eq!(json["raster"]["nodata"]["state"], "absent");
+        assert_eq!(json["raster"]["profiles"].as_array().unwrap().len(), 1);
+        assert_eq!(json["raster"]["profiles"][0]["id"], "native-rgb");
+        assert_eq!(json["raster"]["default_profile"], "native-rgb");
+        assert_eq!(json["raster"]["levels"].as_array().unwrap().len(), 2);
+        assert_eq!(json["raster"]["legend"], serde_json::json!([]));
+        assert_eq!(
+            json["links"]["tile_template"],
+            format!(
+                "/demo/sources/{}/tiles/WebMercatorQuad/{{z}}/{{y}}/{{x}}.png?profile=native-rgb",
+                registered.id
+            )
+        );
+    }
+
+    #[tokio::test]
     async fn registered_cog_tile_matches_the_driver_png_and_is_private() {
         let (app, registry, _, _) = fixture_app();
         let registered = register_fixture(&app, None).await;
@@ -2092,10 +2320,12 @@ mod tests {
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri(format!(
-                        "/demo/sources/{}/tiles/WebMercatorQuad/0/0/0.png",
-                        registered.id
-                    ))
+                    .uri(
+                        format!(
+                            "/demo/sources/{}/tiles/WebMercatorQuad/0/0/0.png",
+                            registered.id
+                        ) + "?profile=native-rgb",
+                    )
                     .header(header::COOKIE, cookie)
                     .body(Body::empty())
                     .unwrap(),
@@ -2142,16 +2372,42 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn fix_round_one_raster_tiles_refuse_every_query() {
+    async fn raster_tiles_accept_only_one_advertised_profile_query() {
         let (app, _, _, _) = fixture_app();
         let registered = register_fixture(&app, None).await;
         let cookie = registered.cookie.as_deref().unwrap();
         let locator = "https://example.com/secret/fixture.tif";
+        for query in [
+            "crs=EPSG%3A3857",
+            "profile=unknown",
+            "profile=native-rgb&profile=native-rgb",
+            "profile=native-rgb&extra=1",
+            "",
+        ] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(format!(
+                            "/demo/sources/{}/tiles/WebMercatorQuad/0/0/0.png?{query}",
+                            registered.id,
+                        ))
+                        .header(header::COOKIE, cookie)
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{query}");
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            assert!(!String::from_utf8_lossy(&body).contains(locator));
+        }
+
         let response = app
             .oneshot(
                 Request::builder()
                     .uri(format!(
-                        "/demo/sources/{}/tiles/WebMercatorQuad/0/0/0.png?crs=EPSG%3A3857",
+                        "/demo/sources/{}/tiles/WebMercatorQuad/0/0/0.png?profile=native-rgb",
                         registered.id
                     ))
                     .header(header::COOKIE, cookie)
@@ -2160,9 +2416,7 @@ mod tests {
             )
             .await
             .unwrap();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-        assert!(!String::from_utf8_lossy(&body).contains(locator));
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[tokio::test]
@@ -2280,7 +2534,7 @@ mod tests {
         let second = session.operations.clone().try_acquire_owned().unwrap();
         let request = Request::builder()
             .uri(format!(
-                "/demo/sources/{}/tiles/WebMercatorQuad/0/0/0.png",
+                "/demo/sources/{}/tiles/WebMercatorQuad/0/0/0.png?profile=native-rgb",
                 registered.id
             ))
             .header(header::COOKIE, cookie)

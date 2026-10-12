@@ -67,6 +67,36 @@ class NativeNoticesTests(unittest.TestCase):
         self.assertEqual("upstream-license.txt", files[0]["path"])
         self.assertTrue(files[0]["url"].startswith("https://raw.githubusercontent.com/example/runtime/"))
 
+    def test_pinned_fallback_selects_exact_identity_for_two_versions_of_one_crate(self):
+        metadata = self.metadata()
+        runtime = metadata["packages"][2]
+        (self.registry / "runtime" / "LICENSE").unlink()
+        path = self.fallback(metadata)
+
+        second_dir = self.registry / "runtime-v2"
+        second_dir.mkdir()
+        (second_dir / "Cargo.toml").write_text("[package]\nname='runtime'\nversion='2.0.0'\n")
+        (second_dir / ".cargo_vcs_info.json").write_text(json.dumps({"git": {"sha1": "b" * 40}}))
+        second = {**runtime, "id": "runtime-v2", "version": "2.0.0",
+                  "manifest_path": str(second_dir / "Cargo.toml")}
+        metadata["packages"].append(second)
+        metadata["resolve"]["nodes"].append({"id": "runtime-v2", "deps": []})
+        metadata["resolve"]["nodes"][0]["deps"].append(
+            {"pkg": "runtime-v2", "dep_kinds": [{"kind": None, "target": None}]})
+
+        data = json.loads(path.read_text())
+        second_entry = {**data["packages"][0], "version": "2.0.0", "revision": "b" * 40}
+        second_entry["files"] = [{**second_entry["files"][0],
+                                  "url": f"https://raw.githubusercontent.com/example/runtime/{'b' * 40}/LICENSE"}]
+        data["packages"].append(second_entry)
+        path.write_text(json.dumps(data))
+
+        manifest, text = module.generate(
+            metadata, self.root, ("tellurion", "tellurion-ingest"), fallbacks_path=path)
+        runtimes = [package for package in manifest["packages"] if package["name"] == "runtime"]
+        self.assertEqual(["1.0.0", "2.0.0"], [package["version"] for package in runtimes])
+        self.assertEqual(2, text.count("Reviewed upstream license"))
+
     def test_fallback_preserves_packaged_notice_without_license(self):
         metadata = self.metadata()
         (self.registry / "runtime" / "LICENSE").unlink()

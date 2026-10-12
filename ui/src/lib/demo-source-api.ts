@@ -1,5 +1,7 @@
 import { demoSourceSelfHref, validateDemoSourceResponse, type DemoSourceResponse } from './demo-source';
 
+export type DemoSourceRegistrationFormat = 'cog' | 'geoparquet' | 'shapefile-zip';
+
 export class DemoSourceApiError extends Error {
   readonly status: number;
 
@@ -29,12 +31,13 @@ async function readDemoResponse(response: Response): Promise<DemoSourceResponse>
 export async function registerDemoSource(
   url: string,
   signal?: AbortSignal,
+  format?: DemoSourceRegistrationFormat,
 ): Promise<DemoSourceResponse> {
   const response = await fetch('/demo/sources', {
     method: 'POST',
     credentials: 'include',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify(format ? { url, format } : { url }),
     signal,
   });
   return readDemoResponse(response);

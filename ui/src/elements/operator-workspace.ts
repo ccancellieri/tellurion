@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import '../operator-workspace.css';
 import {
   DEFAULT_CATALOG_ID,

@@ -1712,12 +1712,11 @@ mod tests {
 
     // --- OIDC (`#34`) ------------------------------------------------
     //
-    // These tests generate a fresh RSA keypair per test (never a checked-in
-    // fixture — see the module's own clean-room rule) and serve the JWKS
+    // These tests load immutable, test-only RSA keypairs and serve the JWKS
     // from a real local axum server, so `OidcValidator` exercises its own
     // HTTP fetch + JWKS parsing path exactly as it would against a real
-    // identity provider. `oidc_test_support` below hosts the shared
-    // scaffolding.
+    // identity provider. The second fixture preserves independent keys for
+    // multi-issuer, rotation and invalid-signature cases.
     mod oidc_test_support {
         use std::net::SocketAddr;
         use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1725,30 +1724,40 @@ mod tests {
         use axum::extract::State;
         use axum::response::Json;
         use axum::routing::get;
+        use base64::Engine;
         use jsonwebtoken::jwk::{Jwk, JwkSet};
         use jsonwebtoken::{Algorithm, EncodingKey, Header};
-        use rsa::pkcs1::EncodeRsaPrivateKey;
-        use rsa::RsaPrivateKey;
         use serde_json::json;
 
         use crate::config::{OidcClaimsConfig, OidcConfig};
 
-        /// A freshly generated RSA keypair plus the `EncodingKey`
-        /// `jsonwebtoken` needs to sign with it — generated in-process,
-        /// never loaded from a checked-in file.
+        /// A test-only RSA keypair plus the `EncodingKey` `jsonwebtoken`
+        /// needs to sign with it.
         pub struct TestKeyPair {
             pub encoding_key: EncodingKey,
         }
 
+        fn load_rsa_test_key(encoded: &str) -> EncodingKey {
+            let encoded: String = encoded.lines().collect();
+            let der = base64::engine::general_purpose::STANDARD
+                .decode(encoded)
+                .expect("decode the RSA test key");
+            EncodingKey::from_rsa_der(&der)
+        }
+
         pub fn generate_rsa_keypair() -> TestKeyPair {
-            let mut rng = rand::thread_rng();
-            let private_key =
-                RsaPrivateKey::new(&mut rng, 2048).expect("generate a 2048-bit RSA test key");
-            let der = private_key
-                .to_pkcs1_der()
-                .expect("encode the test private key as PKCS#1 DER");
             TestKeyPair {
-                encoding_key: EncodingKey::from_rsa_der(der.as_bytes()),
+                encoding_key: load_rsa_test_key(include_str!(
+                    "../tests/fixtures/oidc-rs256-private-1.der.b64"
+                )),
+            }
+        }
+
+        pub fn alternate_rsa_keypair() -> TestKeyPair {
+            TestKeyPair {
+                encoding_key: load_rsa_test_key(include_str!(
+                    "../tests/fixtures/oidc-rs256-private-2.der.b64"
+                )),
             }
         }
 
@@ -1953,7 +1962,7 @@ mod tests {
     #[tokio::test]
     async fn trusted_issuer_set_selects_the_exact_issuer_and_requires_sub() {
         let key_a = generate_rsa_keypair();
-        let key_b = generate_rsa_keypair();
+        let key_b = alternate_rsa_keypair();
         let idp_a = start_fake_idp(&key_a, "kid-a").await;
         let idp_b = start_fake_idp(&key_b, "kid-b").await;
         let issuers =
@@ -2006,7 +2015,7 @@ mod tests {
     #[tokio::test]
     async fn one_trusted_issuer_refreshes_its_rotated_key_after_ttl() {
         let first_key = generate_rsa_keypair();
-        let second_key = generate_rsa_keypair();
+        let second_key = alternate_rsa_keypair();
         let idp = start_fake_idp(&first_key, "kid-1").await;
         let mut config = oidc_config(&idp.issuer);
         config.jwks_ttl_s = 1;
@@ -2334,7 +2343,7 @@ mod tests {
     #[tokio::test]
     async fn an_oidc_token_with_a_bad_signature_is_rejected() {
         let key = generate_rsa_keypair();
-        let other_key = generate_rsa_keypair();
+        let other_key = alternate_rsa_keypair();
         let idp = start_fake_idp(&key, "test-kid").await;
         let validator = OidcValidator::new(oidc_config(&idp.issuer));
 

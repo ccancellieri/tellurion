@@ -200,9 +200,13 @@ def generate(metadata: dict, workspace: Path, roots: tuple[str, ...], *,
         try:
             files = _files(package)
             additions = []
-            for entry in fallback_entries:
-                if entry.get("name") == package["name"]:
-                    additions.extend(_fallback_files(package, entry, fallback_directory))
+            named_fallbacks = [entry for entry in fallback_entries if entry.get("name") == package["name"]]
+            exact_fallbacks = [entry for entry in named_fallbacks
+                               if (entry.get("version"), entry.get("source")) ==
+                               (package["version"], package["source"])]
+            candidates = exact_fallbacks or named_fallbacks[:1]
+            for entry in candidates:
+                additions.extend(_fallback_files(package, entry, fallback_directory))
             existing = {path: content for path, content in files}
             provenance = {}
             for relative, content, url in additions:

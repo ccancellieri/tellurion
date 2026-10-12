@@ -252,6 +252,16 @@
       "notice_file": "third-party-notices/fallbacks/isc-license.txt",
       "notice_sha256": "fdae6c34f05a02807b0dbecd2afcb9b9738df6fd6a12eae3ff9253a382a81acf",
       "attribution": ["Copyright Eemeli Aro"]
+    },
+    {
+      "name": "require-from-string",
+      "version": "2.0.2",
+      "source": "https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz",
+      "integrity": "sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==",
+      "package_json_sha256": "c0002f7d4c7d7e2a885cf0f97226344902417c3a0980f2beca41962d2bc1f6d8",
+      "notice_file": "third-party-notices/fallbacks/mit-license.txt",
+      "notice_sha256": "65cc0733d7f164a15ea6cb82cff26dc0dc7a5e580936450a9e290608df667913",
+      "attribution": ["Copyright (c) Vsevolod Strukchinsky (github.com/floatdrop)"]
     }
   ]
 }

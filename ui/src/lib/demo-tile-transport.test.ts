@@ -6,11 +6,15 @@ type ProtocolHandler = (
 ) => Promise<{ data: ArrayBuffer }>;
 
 const maplibre = vi.hoisted(() => ({
+  setWorkerUrl: vi.fn(),
   addProtocol: vi.fn((_name: string, _handler: ProtocolHandler) => undefined),
   removeProtocol: vi.fn((_name: string) => undefined),
 }));
 
-vi.mock('maplibre-gl', () => ({ default: maplibre }));
+vi.mock('maplibre-gl', () => maplibre);
+vi.mock('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url', () => ({
+  default: '/assets/maplibre-gl-worker-test.js',
+}));
 
 import { createDemoTileTransport } from './map';
 

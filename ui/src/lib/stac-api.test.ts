@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { discoverStac, fetchStacPage, stacSearchHref } from './stac-api';
+import { discoverStac, fetchStacPage, stacSearchHref, validateStacAssetPreview } from './stac-api';
 
 const origin = 'https://tellurion.example';
 const root = `${origin}/city/stac/catalogs/base`;
@@ -70,12 +70,14 @@ describe('STAC discovery and read-only search', () => {
     expect(page.truncated).toBe(true);
     expect(page.nextHref).toBe(`${origin}/advertised-search?token=opaque&limit=10`);
   });
-  it('omits unsafe asset navigation and does not pretend POST pagination is GET', async () => {
+  it('omits unsafe asset anchors while retaining explanatory rows and does not pretend POST pagination is GET', async () => {
     const fetcher = mockFetch({ type: 'FeatureCollection', features: [{ id: '<img src=x>', properties: { datetime: null, start_datetime: 'start', end_datetime: 'end' }, assets: { bad: { href: 'javascript:alert(1)' }, credentials: { href: 'https://user:secret@assets.example/x' }, good: { href: '/asset.tif' } } }], links: [{ rel: 'next', href: '/next', method: 'POST', body: {} }] });
     const page = await fetchStacPage(searchHref, origin);
     expect(page.items[0].id).toBe('<img src=x>');
     expect(page.items[0].time).toBe('start / end');
-    expect(page.items[0].assets).toEqual([{ title: 'good', href: `${origin}/asset.tif` }]);
+    expect(page.items[0].assets).toHaveLength(3);
+    expect(page.items[0].assets.slice(0, 2).every((asset) => asset.navigationHref === null && asset.preview.state === 'unavailable')).toBe(true);
+    expect(page.items[0].assets[2]).toMatchObject({ title: 'good', navigationHref: `${origin}/asset.tif`, preview: { state: 'eligible' } });
     expect(page.nextHref).toBeNull();
     expect(page.unsupportedNext).toBe(true);
     expect(fetcher).toHaveBeenCalledOnce();
@@ -92,7 +94,71 @@ describe('STAC discovery and read-only search', () => {
   it('resolves relative assets against the item self link when available', async () => {
     mockFetch({ type: 'FeatureCollection', features: [{ id: 'scene', links: [{ rel: 'self', href: 'https://assets.example/scenes/scene.json' }], assets: { image: { href: './image.tif' } } }] });
     const page = await fetchStacPage(searchHref, origin);
-    expect(page.items[0].assets[0].href).toBe('https://assets.example/scenes/image.tif');
+    expect(page.items[0].assets[0].navigationHref).toBe('https://assets.example/scenes/image.tif');
+  });
+  it.each([
+    ['https://assets.example/data.tif', undefined, 'cog'],
+    ['https://assets.example/data', 'image/tiff; application=geotiff; profile=cloud-optimized', 'cog'],
+    ['https://assets.example/data.parquet', undefined, 'geoparquet'],
+    ['https://assets.example/data', 'application/vnd.apache.parquet', 'geoparquet'],
+    ['https://assets.example/data.zip', 'application/zip', 'shapefile-zip'],
+  ])('classifies a supported candidate %s (%s)', async (href, type, format) => {
+    mockFetch({ type: 'FeatureCollection', features: [{
+      id: 'item-1', collection: 'source-collection',
+      links: [{ rel: 'self', href: '/items/item-1' }],
+      properties: { title: 'Published item' },
+      assets: { data: {
+        href, type, title: 'Primary data', roles: ['data', 'visual'],
+        description: 'Publisher supplied asset description',
+      } },
+    }] });
+    const page = await fetchStacPage(searchHref, origin);
+    const asset = page.items[0].assets[0];
+    expect(page.items[0]).toMatchObject({
+      id: 'item-1', title: 'Published item', collectionId: 'source-collection',
+      itemHref: `${origin}/items/item-1`,
+    });
+    expect(asset).toMatchObject({
+      key: 'data', title: 'Primary data', mediaType: type ?? null,
+      roles: ['data', 'visual'], navigationHref: href,
+      preview: { state: 'eligible', descriptor: {
+        url: href, format, itemId: 'item-1', collectionId: 'source-collection',
+        assetKey: 'data', assetLabel: 'Primary data', itemHref: `${origin}/items/item-1`,
+        assetDescription: 'Publisher supplied asset description',
+      } },
+    });
+    expect(validateStacAssetPreview(asset.preview.state === 'eligible' ? asset.preview.descriptor : null))
+      .toEqual(asset.preview.state === 'eligible' ? asset.preview.descriptor : null);
+  });
+  it.each([
+    ['https://assets.example/data.tif?signature=secret', 'image/tiff', 'unsigned HTTPS'],
+    ['http://assets.example/data.tif', 'image/tiff', 'unsigned HTTPS'],
+    ['https://user:secret@assets.example/data.tif', 'image/tiff', 'safe HTTP'],
+    ['https://assets.example/data.tif#part', 'image/tiff', 'safe HTTP'],
+    ['https://assets.example/data.tif', 'application/vnd.apache.parquet', 'different supported'],
+    ['https://assets.example/data.tif', 'application/octet-stream', 'not recognized'],
+    ['https://assets.example/data.pmtiles', 'image/tiff', 'not recognized'],
+  ])('retains an unavailable asset row for %s', async (href, type, reason) => {
+    mockFetch({ type: 'FeatureCollection', features: [{
+      id: 'item-1', properties: {}, assets: { unsafe: { href, type, title: '<script>asset</script>' } },
+    }] });
+    const asset = (await fetchStacPage(searchHref, origin)).items[0].assets[0];
+    expect(asset.title).toBe('<script>asset</script>');
+    expect(asset.preview).toMatchObject({ state: 'unavailable' });
+    if (asset.preview.state === 'unavailable') expect(asset.preview.reason).toContain(reason);
+  });
+  it('bounds roles and catalog text without requiring an asset description', async () => {
+    mockFetch({ type: 'FeatureCollection', features: [{
+      id: 'item', collection: 'x'.repeat(300), properties: { title: 't'.repeat(300) },
+      assets: {
+        plain: { href: 'https://assets.example/plain.parquet', roles: Array.from({ length: 20 }, (_, i) => `role-${i}`) },
+      },
+    }] });
+    const item = (await fetchStacPage(searchHref, origin)).items[0];
+    expect(item.title?.length).toBe(256);
+    expect(item.collectionId?.length).toBe(256);
+    expect(item.assets[0].roles).toHaveLength(8);
+    expect(item.assets[0].preview).toMatchObject({ state: 'eligible', descriptor: { assetDescription: null } });
   });
   it('aborts a request that exceeds the read deadline', async () => {
     vi.useFakeTimers();

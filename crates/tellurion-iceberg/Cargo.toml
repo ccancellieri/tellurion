@@ -33,7 +33,7 @@ geozero = { workspace = true, features = ["with-wkb", "with-geojson"] }
 # Glue). Neither crate declares any optional Cargo feature (both `[features]`
 # tables are empty upstream), so there is nothing to opt in or out of here.
 # Both pull their own arrow/parquet tree pinned to ^57.1 — a second,
-# separately compiled instance alongside this workspace's own parquet 59.1
+# separately compiled instance alongside this workspace's own parquet 59.x
 # (`tellurion-geoparquet`). Accepted duplicate-tree cost: unifying the two is
 # out of scope, and cargo happily resolves both side by side.
 iceberg = "0.9"

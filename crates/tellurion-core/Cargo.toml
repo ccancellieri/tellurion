@@ -124,12 +124,9 @@ httpdate = { workspace = true }
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 metrics-exporter-prometheus = { workspace = true }
-# Test-only RSA keypair generation for the OIDC validator's unit tests
-# (`auth.rs`) — never a production dependency. Pure Rust (RustCrypto), no
-# external `openssl`/`ssh-keygen` binary needed for a hermetic, reproducible
-# test run.
-rsa = "0.9"
-rand = "0.8"
+# OIDC tests use immutable, public test-only RSA fixtures so the suite stays
+# hermetic without a vulnerable runtime key-generation dependency.
+base64 = "0.22"
 axum = { workspace = true }
 futures = { workspace = true }
 # `FsObjectStore`'s own tests (`objectstore.rs`) exercise a real temp

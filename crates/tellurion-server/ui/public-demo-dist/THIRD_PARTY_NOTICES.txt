@@ -4,11 +4,11 @@ This file is generated from the locked production dependency union.
 Sections with `notice-origin: package:*` reproduce the source UTF-8 text unchanged.
 Sections with `notice-origin: reviewed-fallback` are pinned, privacy-safe curated
 notices. Each fallback identifies its provenance and any omission in its own text.
-package-lock-sha256: 5c9087b3f288fc56ccff0c6af9b052ce1e15a0ec2ff25faa1e854c351a1f376f
-production-package-count: 159
+package-lock-sha256: 24ba79daac9f0b1f00235754d3175340caf28436c6e079986e0d2cdfcd0058c2
+production-package-count: 191
 
 ==============================================================================
-package: @deck.gl/core@9.3.7
+package: @deck.gl/core@9.4.0
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -34,7 +34,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-package: @deck.gl/extensions@9.3.7
+package: @deck.gl/extensions@9.4.0
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -60,7 +60,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-package: @deck.gl/geo-layers@9.3.7
+package: @deck.gl/geo-layers@9.4.0
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -86,7 +86,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-package: @deck.gl/layers@9.3.7
+package: @deck.gl/layers@9.4.0
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -112,7 +112,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-package: @deck.gl/mapbox@9.3.7
+package: @deck.gl/maplibre@9.4.0
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -138,7 +138,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-package: @deck.gl/mesh-layers@9.3.7
+package: @deck.gl/mesh-layers@9.4.0
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -164,7 +164,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-package: @loaders.gl/3d-tiles@4.4.3
+package: @loaders.gl/3d-tiles@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -212,7 +212,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/compression@4.4.3
+package: @loaders.gl/compression@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -260,7 +260,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/core@4.4.3
+package: @loaders.gl/core@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -308,7 +308,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/crypto@4.4.3
+package: @loaders.gl/crypto@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -356,7 +356,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/draco@4.4.3
+package: @loaders.gl/draco@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -500,7 +500,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/gltf@4.4.3
+package: @loaders.gl/gltf@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -596,6 +596,150 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
+package: @loaders.gl/images@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/images@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/images@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
 package: @loaders.gl/loader-utils@4.4.3
 license-expression: MIT
 notice-origin: package:LICENSE
@@ -644,7 +788,439 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/math@4.4.3
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/loader-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/math@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -788,7 +1364,535 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
 package: @loaders.gl/schema-utils@4.4.3
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/schema-utils@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -884,7 +1988,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/textures@4.4.3
+package: @loaders.gl/textures@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -932,7 +2036,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/tiles@4.4.3
+package: @loaders.gl/tiles@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -1076,6 +2180,438 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
+package: @loaders.gl/worker-utils@4.5.4
+license-expression: MIT
+notice-origin: package:LICENSE
+
+loaders.gl is licensed under the MIT license
+
+Copyright (c) vis.gl contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+--- 
+
+Copyright (c) 2015 Uber Technologies, Inc.
+
+loaders.gl includes certain files from Cesium (https://github.com/AnalyticalGraphicsInc/cesium) 
+under the  Apache 2 License (found in the submodule: modules/3d-tiles):)
+
+Copyright 2011-2018 CesiumJS Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+
+
+==============================================================================
 package: @loaders.gl/xml@4.4.3
 license-expression: MIT
 notice-origin: package:LICENSE
@@ -1124,7 +2660,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @loaders.gl/zip@4.4.3
+package: @loaders.gl/zip@4.5.4
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -1172,7 +2708,7 @@ See the License for the specific language governing permissions and limitations 
 
 
 ==============================================================================
-package: @luma.gl/core@9.3.3
+package: @luma.gl/core@9.4.2
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -1189,6 +2725,11 @@ under MIT license. PhiloGL parts Copyright © 2013 Sencha Labs.
 This software includes adaptations of some postprocessing code from 
 THREE.js (https://github.com/mrdoob/three.js/) under MIT license. 
 THREE.js parts Copyright © 2010-2018 three.js authors. 
+
+This software includes adaptations of Gaussian-splat rendering and
+level-of-detail behavior from Spark (https://github.com/sparkjsdev/spark)
+under MIT license.
+Spark parts Copyright © 2025 WORLD LABS TECHNOLOGIES, INC.
 
 Additional attribution given in specific source files. 
 
@@ -1209,11 +2750,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
 
 
 ==============================================================================
-package: @luma.gl/engine@9.3.3
+package: @luma.gl/engine@9.4.2
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -1230,6 +2770,11 @@ under MIT license. PhiloGL parts Copyright © 2013 Sencha Labs.
 This software includes adaptations of some postprocessing code from 
 THREE.js (https://github.com/mrdoob/three.js/) under MIT license. 
 THREE.js parts Copyright © 2010-2018 three.js authors. 
+
+This software includes adaptations of Gaussian-splat rendering and
+level-of-detail behavior from Spark (https://github.com/sparkjsdev/spark)
+under MIT license.
+Spark parts Copyright © 2025 WORLD LABS TECHNOLOGIES, INC.
 
 Additional attribution given in specific source files. 
 
@@ -1250,11 +2795,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
 
 
 ==============================================================================
-package: @luma.gl/gltf@9.3.6
+package: @luma.gl/gltf@9.4.2
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -1271,6 +2815,11 @@ under MIT license. PhiloGL parts Copyright © 2013 Sencha Labs.
 This software includes adaptations of some postprocessing code from 
 THREE.js (https://github.com/mrdoob/three.js/) under MIT license. 
 THREE.js parts Copyright © 2010-2018 three.js authors. 
+
+This software includes adaptations of Gaussian-splat rendering and
+level-of-detail behavior from Spark (https://github.com/sparkjsdev/spark)
+under MIT license.
+Spark parts Copyright © 2025 WORLD LABS TECHNOLOGIES, INC.
 
 Additional attribution given in specific source files. 
 
@@ -1291,11 +2840,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
 
 
 ==============================================================================
-package: @luma.gl/shadertools@9.3.6
+package: @luma.gl/gpgpu@9.4.2
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -1312,6 +2860,11 @@ under MIT license. PhiloGL parts Copyright © 2013 Sencha Labs.
 This software includes adaptations of some postprocessing code from 
 THREE.js (https://github.com/mrdoob/three.js/) under MIT license. 
 THREE.js parts Copyright © 2010-2018 three.js authors. 
+
+This software includes adaptations of Gaussian-splat rendering and
+level-of-detail behavior from Spark (https://github.com/sparkjsdev/spark)
+under MIT license.
+Spark parts Copyright © 2025 WORLD LABS TECHNOLOGIES, INC.
 
 Additional attribution given in specific source files. 
 
@@ -1332,11 +2885,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
 
 
 ==============================================================================
-package: @luma.gl/webgl@9.3.6
+package: @luma.gl/shadertools@9.4.2
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -1353,6 +2905,11 @@ under MIT license. PhiloGL parts Copyright © 2013 Sencha Labs.
 This software includes adaptations of some postprocessing code from 
 THREE.js (https://github.com/mrdoob/three.js/) under MIT license. 
 THREE.js parts Copyright © 2010-2018 three.js authors. 
+
+This software includes adaptations of Gaussian-splat rendering and
+level-of-detail behavior from Spark (https://github.com/sparkjsdev/spark)
+under MIT license.
+Spark parts Copyright © 2025 WORLD LABS TECHNOLOGIES, INC.
 
 Additional attribution given in specific source files. 
 
@@ -1374,6 +2931,95 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
+
+==============================================================================
+package: @luma.gl/webgl@9.4.2
+license-expression: MIT
+notice-origin: package:LICENSE
+
+luma.gl is provided under the MIT license
+
+Copyright (c) 2020 vis.gl contributors
+
+This software includes parts initially developed by Uber and open sourced under MIT license.
+Copyright (c) 2015 Uber Technologies, Inc.
+
+This software includes parts of PhiloGL (https://github.com/philogb/philogl)
+under MIT license. PhiloGL parts Copyright © 2013 Sencha Labs.
+
+This software includes adaptations of some postprocessing code from 
+THREE.js (https://github.com/mrdoob/three.js/) under MIT license. 
+THREE.js parts Copyright © 2010-2018 three.js authors. 
+
+This software includes adaptations of Gaussian-splat rendering and
+level-of-detail behavior from Spark (https://github.com/sparkjsdev/spark)
+under MIT license.
+Spark parts Copyright © 2025 WORLD LABS TECHNOLOGIES, INC.
+
+Additional attribution given in specific source files. 
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+==============================================================================
+package: @luma.gl/webgpu@9.4.2
+license-expression: MIT
+notice-origin: package:LICENSE
+
+luma.gl is provided under the MIT license
+
+Copyright (c) 2020 vis.gl contributors
+
+This software includes parts initially developed by Uber and open sourced under MIT license.
+Copyright (c) 2015 Uber Technologies, Inc.
+
+This software includes parts of PhiloGL (https://github.com/philogb/philogl)
+under MIT license. PhiloGL parts Copyright © 2013 Sencha Labs.
+
+This software includes adaptations of some postprocessing code from 
+THREE.js (https://github.com/mrdoob/three.js/) under MIT license. 
+THREE.js parts Copyright © 2010-2018 three.js authors. 
+
+This software includes adaptations of Gaussian-splat rendering and
+level-of-detail behavior from Spark (https://github.com/sparkjsdev/spark)
+under MIT license.
+Spark parts Copyright © 2025 WORLD LABS TECHNOLOGIES, INC.
+
+Additional attribution given in specific source files. 
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 
 
 ==============================================================================
@@ -1523,41 +3169,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” 
 
 
 ==============================================================================
-package: @mapbox/unitbezier@0.0.1
-license-expression: BSD-2-Clause
-notice-origin: package:LICENSE
-
-BSD-2-Clause
-
-Copyright (C) 2008 Apple Inc. All Rights Reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
-EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-Ported from Webkit
-http://svn.webkit.org/repository/webkit/trunk/Source/WebCore/platform/graphics/UnitBezier.h
-
-
-==============================================================================
 package: @mapbox/unitbezier@1.0.0
 license-expression: BSD-2-Clause
 notice-origin: package:LICENSE
@@ -1628,7 +3239,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ==============================================================================
-package: @mapbox/vector-tile@2.0.5
+package: @mapbox/vector-tile@3.0.0
 license-expression: BSD-3-Clause
 notice-origin: package:LICENSE.txt
 
@@ -1662,29 +3273,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ==============================================================================
-package: @mapbox/whoots-js@3.1.0
-license-expression: ISC
-notice-origin: package:LICENSE.md
-
-ISC License
-
-Copyright (c) 2017, Mapbox
-
-Permission to use, copy, modify, and/or distribute this software for any purpose
-with or without fee is hereby granted, provided that the above copyright notice
-and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
-OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
-THIS SOFTWARE.
-
-
-==============================================================================
-package: @maplibre/geojson-vt@6.1.1
+package: @maplibre/geojson-vt@6.1.2
 license-expression: ISC
 notice-origin: package:LICENSE
 
@@ -1730,7 +3319,7 @@ THIS SOFTWARE.
 
 
 ==============================================================================
-package: @maplibre/maplibre-gl-style-spec@24.10.0
+package: @maplibre/maplibre-gl-style-spec@26.4.4
 license-expression: ISC
 notice-origin: package:LICENSE.txt
 
@@ -1853,7 +3442,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ==============================================================================
-package: @maplibre/mlt@1.1.12
+package: @maplibre/mlt@1.3.0
 license-expression: (MIT OR Apache-2.0)
 notice-origin: package:LICENSE.txt
 
@@ -2081,7 +3670,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -3565,7 +5154,39 @@ notice-origin: package:LICENSE
 
 
 ==============================================================================
-package: a5-js@0.7.3
+package: @webgpu/types@0.1.74
+license-expression: BSD-3-Clause
+notice-origin: package:LICENSE
+
+Copyright 2022 WebGPU Developers
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+   1. Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+
+   3. Neither the name of the copyright holder nor the names of its
+      contributors may be used to endorse or promote products derived from this
+      software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+==============================================================================
+package: a5-js@0.10.1
 license-expression: Apache-2.0
 notice-origin: package:LICENSE
 
@@ -4054,34 +5675,6 @@ The Apache Software Foundation (http://www.apache.org/).
 
 
 ==============================================================================
-package: argparse@1.0.10
-license-expression: MIT
-notice-origin: package:LICENSE
-
-(The MIT License)
-
-Copyright (C) 2012 by Vitaly Puzrin
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-
-==============================================================================
 package: array-back@6.2.3
 license-expression: MIT
 notice-origin: reviewed-fallback
@@ -4143,6 +5736,35 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+
+==============================================================================
+package: bidi-js@1.1.0
+license-expression: MIT
+notice-origin: package:LICENSE.txt
+
+Copyright (c) 2021 Jason Johnston
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ==============================================================================
@@ -4816,7 +6438,7 @@ THIS SOFTWARE.
 
 
 ==============================================================================
-package: earcut@3.2.3
+package: earcut@3.2.4
 license-expression: ISC
 notice-origin: package:LICENSE
 
@@ -5468,22 +7090,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 
 ==============================================================================
-package: image-size@0.7.5
-license-expression: MIT
-notice-origin: package:LICENSE
-
-The MIT License (MIT)
-
-Copyright © 2017 Aditya Yadav, http://netroy.in
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-==============================================================================
 package: immediate@3.0.6
 license-expression: MIT
 notice-origin: package:LICENSE.txt
@@ -5711,7 +7317,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-package: jszip@3.10.1
+package: jszip@3.10.2
 license-expression: (MIT OR GPL-3.0-or-later)
 notice-origin: package:LICENSE.markdown
 
@@ -6939,7 +8545,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 
 ==============================================================================
-package: maplibre-gl@5.24.0
+package: maplibre-gl@6.14.0
 license-expression: BSD-3-Clause
 notice-origin: package:LICENSE.txt
 
@@ -7096,6 +8702,34 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ==============================================================================
+package: meshoptimizer@1.3.0
+license-expression: MIT
+notice-origin: package:LICENSE.md
+
+MIT License
+
+Copyright (c) 2016-2026 Arseny Kapoulkine
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+==============================================================================
 package: minimist@1.2.8
 license-expression: MIT
 notice-origin: package:LICENSE
@@ -7121,7 +8755,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ==============================================================================
-package: mjolnir.js@3.0.1
+package: mjolnir.js@3.1.1
 license-expression: MIT
 notice-origin: package:LICENSE
 
@@ -7314,11 +8948,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ==============================================================================
-package: pbf@4.0.2
+package: pbf@5.1.2
 license-expression: BSD-3-Clause
 notice-origin: package:LICENSE
 
-Copyright (c) 2024, Mapbox
+Copyright (c) 2026, Mapbox
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -7533,6 +9167,42 @@ IN THE SOFTWARE.
 
 
 ==============================================================================
+package: require-from-string@2.0.2
+license-expression: MIT
+notice-origin: reviewed-fallback
+source: https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz
+
+Copyright (c) Vsevolod Strukchinsky (github.com/floatdrop)
+
+REVIEWED FALLBACK LICENSE TERMS
+
+The package-specific copyright attribution and source pin are recorded in the
+fallback manifest and rendered beside these terms. Contact addresses present
+only in the upstream notice are intentionally omitted from this public,
+curated fallback. This text is not represented as a verbatim upstream notice.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+==============================================================================
 package: resolve-protobuf-schema@2.1.0
 license-expression: MIT
 notice-origin: package:LICENSE
@@ -7641,37 +9311,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-
-==============================================================================
-package: sprintf-js@1.0.3
-license-expression: BSD-3-Clause
-notice-origin: package:LICENSE
-
-Copyright (c) 2007-2014, Alexandru Marasteanu <hello [at) alexei (dot] ro>
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-* Redistributions of source code must retain the above copyright
-  notice, this list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright
-  notice, this list of conditions and the following disclaimer in the
-  documentation and/or other materials provided with the distribution.
-* Neither the name of this software nor the names of its contributors may be
-  used to endorse or promote products derived from this software without
-  specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ==============================================================================
@@ -7809,34 +9448,6 @@ only in the upstream notice are intentionally omitted from this public,
 curated fallback. This text is not represented as a verbatim upstream notice.
 
 MIT License
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-==============================================================================
-package: texture-compressor@1.0.2
-license-expression: MIT
-notice-origin: package:LICENSE
-
-MIT License
-
-Copyright (c) 2019 Tim van Scherpenzeel
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

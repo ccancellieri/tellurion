@@ -28,7 +28,7 @@ vi.mock('../lib/demo-fixtures', () => ({
   vectorControlsForFixture: (fixture: { format?: string }) => fixture.format === 'geoparquet' || fixture.format === 'shapefile-zip',
 }));
 
-import { workflowProgress } from './demo-source-workflow';
+import { TellurionDemoSourceWorkflow, workflowProgress } from './demo-source-workflow';
 
 const source: DemoSourceResponse = {
   id: 'opaque-source',
@@ -48,7 +48,25 @@ const source: DemoSourceResponse = {
     tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png',
   },
 };
-
+const graySource: DemoSourceResponse = {
+  ...source,
+  raster: {
+    layout: 'gray', channelCount: 1, bitsPerSample: 8, epsg: 4326,
+    shape: [32, 32], pixelSize: [0.08, 0.08],
+    levels: [{ shape: [32, 32], tileShape: [16, 16], pixelSize: [0.08, 0.08] }],
+    nodata: { state: 'absent' }, unit: null, legend: [],
+    profiles: [{ id: 'grayscale', label: 'Grayscale' }, { id: 'viridis', label: 'Viridis' }],
+    defaultProfile: 'grayscale',
+  },
+  links: {
+    ...source.links,
+    tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=grayscale',
+    raster_profiles: [
+      { id: 'grayscale', tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=grayscale' },
+      { id: 'viridis', tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=viridis' },
+    ],
+  },
+};
 function deferred<T>(): {
   promise: Promise<T>;
   resolve: (value: T) => void;
@@ -63,8 +81,16 @@ function deferred<T>(): {
   return { promise, resolve, reject };
 }
 
-function mount(): HTMLElement {
-  const element = document.createElement('tellurion-demo-source-workflow');
+const stacPreview = {
+  url: 'https://assets.example/worldcover.tif', format: 'cog' as const,
+  itemId: 'worldcover-2021', collectionId: 'worldcover', assetKey: 'land-cover',
+  assetLabel: 'ESA WorldCover tile', mediaType: 'image/tiff', roles: ['data'],
+  itemHref: 'https://catalog.example/items/worldcover-2021',
+  assetDescription: 'Publisher supplied asset description',
+};
+
+function mount(): TellurionDemoSourceWorkflow {
+  const element = document.createElement('tellurion-demo-source-workflow') as TellurionDemoSourceWorkflow;
   document.body.append(element);
   return element;
 }
@@ -137,6 +163,124 @@ describe('demo source workflow presentation', () => {
     expect(element.querySelector('#demo-source-url')).not.toBeNull();
     expect(element.textContent).toContain('Three temporary sources per browser session');
     expect(api.remove).not.toHaveBeenCalled();
+  });
+
+  it('shows inspected grayscale facts and maps the selected finite profile', async () => {
+    api.register.mockResolvedValue(graySource);
+    const mapped = vi.fn();
+    const element = mount();
+    element.addEventListener('tellurion-demo-map', mapped, { once: true });
+
+    submit(element);
+    await settle();
+    expect(element.textContent).toContain('GRAY · 1 channel · 8-bit');
+    expect(element.textContent).toContain('Tiled raster / EPSG:4326');
+    expect(element.textContent).toContain('12, 39, 15, 42 (EPSG:4326)');
+    expect(element.textContent).toContain('32 × 32 px');
+    expect(element.textContent).toContain('Not declared');
+
+    element.querySelector<HTMLButtonElement>('[data-action="configure"]')!.click();
+    expect(element.textContent).toContain('Grayscale rendering');
+    const profile = element.querySelector<HTMLSelectElement>('#demo-source-profile')!;
+    expect([...profile.options].map((option) => option.value)).toEqual(['grayscale', 'viridis']);
+    profile.value = 'viridis';
+    profile.dispatchEvent(new Event('change'));
+    element.querySelector<HTMLButtonElement>('[data-action="map"]')!.click();
+
+    expect((mapped.mock.calls[0]![0] as CustomEvent).detail).toMatchObject({
+      profile: 'viridis',
+      source: { links: { tile_template: expect.stringContaining('profile=viridis') } },
+    });
+  });
+
+  it('registers a validated STAC asset only on explicit preview and keeps provenance separate', async () => {
+    api.register.mockResolvedValue(graySource);
+    const mapped = vi.fn();
+    const element = mount();
+    element.addEventListener('tellurion-demo-map', mapped, { once: true });
+
+    expect(api.register).not.toHaveBeenCalled();
+    await expect(element.previewStacAsset(stacPreview)).resolves.toBe('accepted');
+
+    expect(api.register).toHaveBeenCalledWith(stacPreview.url, expect.any(AbortSignal), 'cog');
+    expect(element.textContent).toContain('STAC source context');
+    expect(element.textContent).toContain('worldcover-2021');
+    expect(element.textContent).toContain('worldcover');
+    expect(element.textContent).toContain('land-cover');
+    expect(element.textContent).toContain('Asset description (catalog supplied)');
+    expect(element.textContent).toContain('Publisher supplied asset description');
+    expect(element.textContent).toContain('Verified attribution');
+    expect(element.innerHTML).not.toContain(stacPreview.url);
+
+    element.querySelector<HTMLButtonElement>('[data-action="configure"]')!.click();
+    const profile = element.querySelector<HTMLSelectElement>('#demo-source-profile')!;
+    profile.value = 'viridis';
+    profile.dispatchEvent(new Event('change'));
+    element.querySelector<HTMLButtonElement>('[data-action="map"]')!.click();
+    expect((mapped.mock.calls[0]![0] as CustomEvent).detail).toMatchObject({
+      profile: 'viridis',
+      source: { links: { tile_template: expect.stringContaining('profile=viridis') } },
+    });
+    expect(element.textContent).toContain('STAC source context');
+    expect(element.textContent).toContain('worldcover-2021');
+    expect(element.textContent).toContain('land-cover');
+  });
+
+  it('revalidates a STAC descriptor at the workflow boundary without echoing it', async () => {
+    const element = mount();
+    const unsafe = { ...stacPreview, url: 'https://assets.example/worldcover.tif?signature=secret' };
+    await expect(element.previewStacAsset(unsafe)).resolves.toBe('invalid');
+    expect(api.register).not.toHaveBeenCalled();
+    expect(element.textContent).toContain('no longer valid');
+    expect(element.textContent).not.toContain('signature=secret');
+  });
+
+  it('refuses to replace an active source until the existing discard action succeeds', async () => {
+    api.register.mockResolvedValue(source);
+    const element = mount();
+    submit(element);
+    await settle();
+    api.register.mockClear();
+
+    await expect(element.previewStacAsset(stacPreview)).resolves.toBe('busy');
+
+    expect(api.register).not.toHaveBeenCalled();
+    expect(api.remove).not.toHaveBeenCalled();
+    expect(element.textContent).toContain('Discard the current temporary source');
+    expect(element.textContent).toContain('A temporary source is ready');
+    expect(element.querySelector('[data-action="configure"]')).not.toBeNull();
+
+    element.querySelector<HTMLButtonElement>('[data-action="configure"]')!.click();
+    expect(element.textContent).not.toContain('Discard the current temporary source');
+  });
+
+  it('aborts superseded STAC inspection and deletes a late-created stale source', async () => {
+    const first = deferred<DemoSourceResponse>();
+    const current = { ...source, id: 'current-source', links: {
+      ...source.links,
+      self_href: '/demo/sources/current-source',
+      tile_template: '/demo/sources/current-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png',
+    } };
+    const stale = { ...source, id: 'stale-source', links: {
+      ...source.links,
+      self_href: '/demo/sources/stale-source',
+      tile_template: '/demo/sources/stale-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png',
+    } };
+    api.register.mockReturnValueOnce(first.promise).mockResolvedValueOnce(current);
+    api.remove.mockResolvedValue(undefined);
+    const element = mount();
+
+    const firstResult = element.previewStacAsset(stacPreview);
+    const firstSignal = api.register.mock.calls[0][1] as AbortSignal;
+    const secondResult = element.previewStacAsset({ ...stacPreview, assetKey: 'second' });
+    expect(firstSignal.aborted).toBe(true);
+    await expect(secondResult).resolves.toBe('accepted');
+    first.resolve(stale);
+    await expect(firstResult).resolves.toBe('failed');
+
+    expect(api.remove).toHaveBeenCalledWith(stale);
+    expect(element.textContent).toContain('Asset second');
+    expect(element.textContent).not.toContain('stale-source');
   });
 
   it.each([

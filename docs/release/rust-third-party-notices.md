@@ -3,6 +3,14 @@
 Tellurion source crates and prebuilt native archives have different notice
 boundaries.
 
+The 0.6.0 dependency audit reports no known vulnerabilities and has an empty
+ignore list. It also reports two unmaintained transitive packages:
+`paste` 1.0.15 (RUSTSEC-2024-0436) and `unsafe-libyaml` 0.2.11
+(RUSTSEC-2024-0449). They remain release limitations pending dependency-level
+replacement; the audit does not suppress either advisory. The resolved paths
+are `tellurion` → `tellurion-geoparquet` → `parquet` → `paste`, and the
+server/ingest configuration path through `serde_yaml` → `unsafe-libyaml`.
+
 `./scripts/check-crates-io-release-readiness.sh` checks that the generated UI
 third-party notice is present, contains no contact address, and is included in
 the `tellurion` source crate. It does not claim that the workspace's Rust
@@ -106,8 +114,9 @@ Cargo registry packages.
 ## Pinned upstream texts missing from crate archives
 
 `distribution/native-notices/fallbacks.json` supplies the upstream MIT and
-Apache texts for `geo` 0.29.3, `geo-traits` 0.3.0, `geo-types` 0.7.19,
-`geozero` 0.15.1, and `rstar` 0.12.2. Their registry archives do not contain
+Apache texts for `geo` 0.29.3 and 0.31.0, `geo-traits` 0.3.0, `geo-types` 0.7.19,
+`geozero` 0.15.1, and `rstar` 0.12.2, plus the MIT text for `i_overlay` 4.0.7.
+Their registry archives do not contain
 these files. Each entry binds the crate name, version, registry, license
 expression, repository, Cargo VCS commit, upstream URL, and SHA-256. Shared
 local texts are deduplicated only when their upstream bytes are identical.

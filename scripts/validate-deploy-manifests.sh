@@ -72,6 +72,12 @@ for required in \
     'COPY crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt /build/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt' \
     'npm run build:public-demo' \
     '--no-default-features --features public-demo,ui' \
+    'generate-native-third-party-notices.py' \
+    'RUST_THIRD_PARTY_NOTICES.json' \
+    'RUST_THIRD_PARTY_NOTICES.txt' \
+    'UI_THIRD_PARTY_NOTICES.txt' \
+    'COPYRIGHT-library.html' \
+    'SOURCE.txt' \
     'COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion' \
     'COPY docker/public-demo.render.yaml /etc/tellurion/public-demo.yaml' \
     'ENV TMPDIR=/var/lib/tellurion/tmp' \
@@ -106,6 +112,10 @@ for required_input in "$public_demo_config" "$public_demo_notice"; do
         fail=1
     fi
 done
+if ! grep -Fxq '!COPYRIGHT.md' .dockerignore; then
+    echo "FAIL $public_demo_dockerfile: COPYRIGHT.md is excluded from the Docker build context"
+    fail=1
+fi
 
 runtime_copies="$(awk '
     toupper($1) == "FROM" {
@@ -116,10 +126,13 @@ runtime_copies="$(awk '
 ' "$public_demo_dockerfile" | sort)"
 expected_runtime_copies="$(printf '%s\n' \
     'COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion' \
+    'COPY --from=rust-builder /build/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt /usr/share/licenses/tellurion/UI_THIRD_PARTY_NOTICES.txt' \
+    'COPY --from=rust-builder /build/license-evidence/ /usr/share/licenses/tellurion/' \
     'COPY docker/public-demo.render.yaml /etc/tellurion/public-demo.yaml' \
+    'COPY COPYRIGHT.md /usr/share/licenses/tellurion/COPYRIGHT.md' \
     'COPY LICENSE /usr/share/licenses/tellurion/LICENSE' | sort)"
 if [ "$runtime_copies" != "$expected_runtime_copies" ]; then
-    echo "FAIL $public_demo_dockerfile: runtime stage COPY inventory is not binary/config/licence only"
+    echo "FAIL $public_demo_dockerfile: runtime stage COPY inventory is not binary/config/licence evidence only"
     printf '%s\n' "$runtime_copies" | sed 's/^/      /'
     fail=1
 fi

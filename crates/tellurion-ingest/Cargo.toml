@@ -79,7 +79,7 @@ tellurion-postgis = { workspace = true }
 # geometry engine and no C binding. The PostGIS arm needs neither — it
 # simplifies in SQL, with `ST_SimplifyPreserveTopology`.
 geozero = { workspace = true, features = ["with-wkb", "with-geo"] }
-geo = "0.29"
+geo = "0.31"
 geo-types = "0.7"
 
 [dev-dependencies]

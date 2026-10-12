@@ -1,7 +1,7 @@
 # Public evaluation appliance. Render or another trusted builder may receive
 # the source build context, but the final image contains only the embedded UI,
 # the Tellurion server binary, the runtime configuration, CA certificates, and
-# the Tellurion licence text.
+# the applicable licence and source notices.
 
 FROM node:22-bookworm-slim AS ui-builder
 
@@ -19,6 +19,7 @@ FROM rust:1.97-bookworm AS rust-builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         pkg-config \
+        python3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -27,7 +28,31 @@ COPY --from=ui-builder /build/crates/tellurion-server/ui/public-demo-dist /build
 
 RUN cargo build --release --locked -p tellurion \
         --no-default-features --features public-demo,ui \
-    && strip target/release/tellurion
+    && strip target/release/tellurion \
+    && mkdir -p /build/license-evidence/rust-stdlib \
+    && notice_target="$(rustc -vV | sed -n 's/^host: //p')" \
+    && cargo fetch --locked --target "$notice_target" \
+    && cargo metadata --locked --offline --format-version 1 \
+        --filter-platform "$notice_target" --no-default-features \
+        --features tellurion/public-demo,tellurion/ui \
+        > /build/cargo-notice-metadata.json \
+    && python3 scripts/generate-native-third-party-notices.py \
+        --metadata /build/cargo-notice-metadata.json \
+        --target "$notice_target" \
+        --feature-profile 'server=no-default,public-demo,ui' \
+        --root tellurion \
+        --fallbacks distribution/native-notices/fallbacks.json \
+        --workspace /build \
+        --manifest /build/license-evidence/RUST_THIRD_PARTY_NOTICES.json \
+        --text /build/license-evidence/RUST_THIRD_PARTY_NOTICES.txt \
+    && rustup component add rust-docs \
+    && rust_doc="$(rustc --print sysroot)/share/doc/rust" \
+    && cp "$rust_doc/COPYRIGHT.html" "$rust_doc/COPYRIGHT-library.html" \
+        /build/license-evidence/rust-stdlib/ \
+    && cp -R "$rust_doc/licenses" /build/license-evidence/rust-stdlib/ \
+    && rustc -vV > /build/license-evidence/RUST_BUILD_INFO.txt \
+    && printf '%s\n' 'Tellurion 0.6.0 source: https://github.com/ccancellieri/tellurion/tree/v0.6.0' \
+        > /build/license-evidence/SOURCE.txt
 
 FROM debian:bookworm-slim AS runtime
 
@@ -39,6 +64,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=rust-builder /build/target/release/tellurion /usr/local/bin/tellurion
 COPY docker/public-demo.render.yaml /etc/tellurion/public-demo.yaml
 COPY LICENSE /usr/share/licenses/tellurion/LICENSE
+COPY COPYRIGHT.md /usr/share/licenses/tellurion/COPYRIGHT.md
+COPY --from=rust-builder /build/crates/tellurion-server/ui/THIRD_PARTY_NOTICES.txt /usr/share/licenses/tellurion/UI_THIRD_PARTY_NOTICES.txt
+COPY --from=rust-builder /build/license-evidence/ /usr/share/licenses/tellurion/
 
 RUN mkdir -p /var/lib/tellurion/tmp/archive-roots \
     && chgrp -R 0 /var/lib/tellurion \

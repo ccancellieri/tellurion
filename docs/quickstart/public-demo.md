@@ -18,6 +18,11 @@ object lengths, strong ETags, extents, and tested views live in
 [`demo/sources/public-examples.yaml`](../../demo/sources/public-examples.yaml).
 Candidate formats shown in the interface are not executable.
 
+Pasted addresses are informational until **Inspect source** is selected. A
+successful inspection creates only a temporary browser-session capability; it
+does not add the object to a tenant or catalog. Supported STAC COG assets use
+the same flow only after an explicit **Preview in COG Explorer** action.
+
 For new showcase datasets and visual acceptance, follow the
 [demo evidence and dataset selection guidelines](../demo/demo-guidelines.md).
 
@@ -32,6 +37,8 @@ For new showcase datasets and visual acceptance, follow the
   the lifetime remaining in that shared session.
 - Rendered responses are private and `no-store`. This preview does not expose a
   configurable tile cache.
+- Remote PMTiles inspection is deferred. The opt-in PMTiles storage driver
+  continues to read local archives through its memory-mapped backend.
 
 GeoParquet remains range-native. A Shapefile archive is necessarily copied to
 a private temporary directory first; compressed size, expanded size, member
@@ -106,7 +113,8 @@ The repository-root [`render.yaml`](../../render.yaml) owns one service,
 `/readyz`, and waits for repository checks to pass before an automatic deploy.
 It declares no database, disk, secret, environment group, or pre-deploy hook.
 The final image contains only the Tellurion server, stateless configuration,
-licence text, CA certificates, and the embedded public UI.
+Tellurion and dependency licence evidence, CA certificates, and the embedded
+public UI.
 
 In Render:
 

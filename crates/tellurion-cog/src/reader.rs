@@ -63,7 +63,7 @@ use std::path::PathBuf;
 use flate2::read::ZlibDecoder;
 use tiff::decoder::{ChunkType, Decoder, DecodingResult};
 use tiff::tags::Tag;
-use tiff::ColorType;
+use tiff::{ColorType, TiffError, TiffFormatError};
 
 use crate::colormap::ResolvedColormap;
 use crate::error::{CogError, Result};
@@ -375,6 +375,14 @@ pub struct CogMeta {
     /// "georeferencing tags read once" contract this struct's other fields
     /// already follow.
     pub embedded_colormap: Option<ResolvedColormap>,
+    pub nodata: Nodata,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Nodata {
+    Absent,
+    Value(u8),
+    Unsupported,
 }
 
 /// The physical collection name this driver reports for `source` — a local
@@ -496,6 +504,22 @@ pub fn open(source: &CogSource) -> Result<CogMeta> {
     } else {
         None
     };
+    let nodata = match decoder.get_tag_ascii_string(Tag::GdalNodata) {
+        Ok(raw) => raw
+            .trim_matches('\0')
+            .trim()
+            .parse::<u8>()
+            .map(Nodata::Value)
+            .unwrap_or(Nodata::Unsupported),
+        Err(TiffError::FormatError(TiffFormatError::RequiredTagNotFound(Tag::GdalNodata))) => {
+            Nodata::Absent
+        }
+        Err(error) => {
+            return Err(CogError::Decode(format!(
+                "failed to read the GDAL_NODATA tag: {error}"
+            )))
+        }
+    };
 
     let pixel_scale = decoder
         .get_tag_f64_vec(Tag::ModelPixelScaleTag)
@@ -556,6 +580,7 @@ pub fn open(source: &CogSource) -> Result<CogMeta> {
         extent_crs84,
         logical_name,
         embedded_colormap,
+        nodata,
     })
 }
 
@@ -573,7 +598,15 @@ pub fn open(source: &CogSource) -> Result<CogMeta> {
 /// this still falls back to a plain widen in that case rather than panic,
 /// since a pure function should never assume a caller's own invariant
 /// holds.
-fn pixel_rgba(bands: Bands, colormap: Option<&ResolvedColormap>, sample: &[u8]) -> [u8; 4] {
+fn pixel_rgba(
+    bands: Bands,
+    colormap: Option<&ResolvedColormap>,
+    nodata: Option<u8>,
+    sample: &[u8],
+) -> [u8; 4] {
+    if nodata.is_some_and(|value| sample.iter().all(|sample| *sample == value)) {
+        return [0, 0, 0, 0];
+    }
     match (bands, colormap) {
         (Bands::Gray, Some(cmap)) | (Bands::Palette, Some(cmap)) => cmap.apply(sample[0]),
         _ => bands.widen_to_rgba(sample),
@@ -604,6 +637,7 @@ pub fn read_window(
     bands: Bands,
     window: PixelWindow,
     colormap: Option<&ResolvedColormap>,
+    nodata: Option<u8>,
 ) -> Result<Vec<u8>> {
     let operation = OperationContext::new();
     let mut decoder = open_decoder(source, operation.clone())?;
@@ -726,7 +760,7 @@ pub fn read_window(
                     let Some(sample) = bytes.get(src_off..src_off + src_channels) else {
                         continue;
                     };
-                    let rgba = pixel_rgba(bands, colormap, sample);
+                    let rgba = pixel_rgba(bands, colormap, nodata, sample);
                     let dst_x = src_x - window.x0;
                     let dst_y = src_y - window.y0;
                     let dst_off = (dst_y as usize * out_w as usize + dst_x as usize) * 4;
@@ -825,19 +859,31 @@ mod tests {
     #[test]
     fn pixel_rgba_uses_the_colormap_for_gray_samples_when_one_is_configured() {
         let cmap = colormap();
-        assert_eq!(pixel_rgba(Bands::Gray, Some(&cmap), &[0]), [1, 2, 3, 4]);
+        assert_eq!(
+            pixel_rgba(Bands::Gray, Some(&cmap), None, &[0]),
+            [1, 2, 3, 4]
+        );
     }
 
     #[test]
     fn pixel_rgba_falls_back_to_a_plain_widen_when_no_colormap_is_configured() {
-        assert_eq!(pixel_rgba(Bands::Gray, None, &[100]), [100, 100, 100, 255]);
+        assert_eq!(
+            pixel_rgba(Bands::Gray, None, None, &[100]),
+            [100, 100, 100, 255]
+        );
+    }
+
+    #[test]
+    fn pixel_rgba_makes_a_declared_gray_nodata_sample_transparent() {
+        assert_eq!(pixel_rgba(Bands::Gray, None, Some(0), &[0]), [0, 0, 0, 0]);
+        assert_eq!(pixel_rgba(Bands::Gray, None, Some(0), &[1]), [1, 1, 1, 255]);
     }
 
     #[test]
     fn pixel_rgba_ignores_a_colormap_for_non_gray_bands() {
         let cmap = colormap();
         assert_eq!(
-            pixel_rgba(Bands::Rgb, Some(&cmap), &[10, 20, 30]),
+            pixel_rgba(Bands::Rgb, Some(&cmap), None, &[10, 20, 30]),
             [10, 20, 30, 255]
         );
     }
@@ -851,12 +897,18 @@ mod tests {
     #[test]
     fn pixel_rgba_uses_the_colormap_for_palette_samples_when_one_is_configured() {
         let cmap = colormap();
-        assert_eq!(pixel_rgba(Bands::Palette, Some(&cmap), &[0]), [1, 2, 3, 4]);
+        assert_eq!(
+            pixel_rgba(Bands::Palette, Some(&cmap), None, &[0]),
+            [1, 2, 3, 4]
+        );
     }
 
     #[test]
     fn pixel_rgba_falls_back_to_a_plain_widen_for_palette_with_no_resolved_colormap() {
-        assert_eq!(pixel_rgba(Bands::Palette, None, &[42]), [42, 42, 42, 255]);
+        assert_eq!(
+            pixel_rgba(Bands::Palette, None, None, &[42]),
+            [42, 42, 42, 255]
+        );
     }
 
     // -- `read_raw_chunk` bounding (a hostile or corrupt TileByteCounts/

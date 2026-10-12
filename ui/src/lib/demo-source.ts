@@ -2,6 +2,36 @@ export type DemoSourceFormat = 'tiled-geotiff' | 'geoparquet' | 'shapefile-zip';
 export type DemoSourceTransport = 'range-native' | 'bounded-zip-spool';
 export type DemoVectorStyle = 'survey-ink' | 'coastline-signal';
 
+export interface DemoSourceProvenance {
+  itemId: string;
+  collectionId: string | null;
+  assetKey: string;
+  assetLabel: string;
+  mediaType: string | null;
+  roles: string[];
+  itemHref: string | null;
+  assetDescription: string | null;
+}
+
+export interface DemoRasterMetadata {
+  layout: 'gray' | 'rgb' | 'rgba' | 'palette';
+  channelCount: number;
+  bitsPerSample: 8;
+  epsg: 4326;
+  shape: [number, number];
+  pixelSize: [number, number];
+  levels: Array<{
+    shape: [number, number];
+    tileShape: [number, number];
+    pixelSize: [number, number];
+  }>;
+  nodata: { state: 'absent' | 'unsupported' } | { state: 'value'; value: number };
+  unit: string | null;
+  profiles: Array<{ id: string; label: string }>;
+  defaultProfile: string;
+  legend: Array<{ value: number; rgba: [number, number, number, number] }>;
+}
+
 export interface DemoSourceResponse {
   id: string;
   format: DemoSourceFormat;
@@ -13,6 +43,7 @@ export interface DemoSourceResponse {
   srid: number | null;
   numberMatched: number | null;
   properties: string[];
+  raster?: DemoRasterMetadata;
   attribution: string;
   limits: {
     expires_in_seconds: number;
@@ -24,15 +55,16 @@ export interface DemoSourceResponse {
     items_href?: string;
     item_template?: string;
     mvt_tile_template?: string;
-    tile_template: string;
+    tile_template?: string;
+    raster_profiles?: Array<{ id: string; tile_template: string }>;
   };
 }
 
 export type DemoWorkflow =
   | { phase: 'choose'; rawUrl: string }
-  | { phase: 'inspect'; source: DemoSourceResponse; opacity: number; style: DemoVectorStyle }
-  | { phase: 'configure'; source: DemoSourceResponse; opacity: number; style: DemoVectorStyle }
-  | { phase: 'map'; source: DemoSourceResponse; opacity: number; style: DemoVectorStyle }
+  | { phase: 'inspect'; source: DemoSourceResponse; opacity: number; style: DemoVectorStyle; profile: string | null; provenance: DemoSourceProvenance | null }
+  | { phase: 'configure'; source: DemoSourceResponse; opacity: number; style: DemoVectorStyle; profile: string | null; provenance: DemoSourceProvenance | null }
+  | { phase: 'map'; source: DemoSourceResponse; opacity: number; style: DemoVectorStyle; profile: string | null; provenance: DemoSourceProvenance | null }
   | { phase: 'error'; rawUrl: string; message: string };
 
 export type InspectedDemoWorkflow = Extract<DemoWorkflow, { phase: 'inspect' }>;
@@ -49,6 +81,9 @@ const SOURCE_ID = /^[A-Za-z0-9_-]+$/;
 const MAX_SOURCE_ID_LENGTH = 128;
 const MAX_ATTRIBUTION_LENGTH = 1024;
 const MAX_PROPERTIES = 64;
+const MAX_RASTER_LEVELS = 64;
+const MAX_RASTER_PROFILES = 4;
+const MAX_RASTER_LEGEND_ENTRIES = 256;
 
 /** This is an early, conservative browser hint. The server remains the only
  * authority that resolves hosts and permits a remote request. */
@@ -79,7 +114,7 @@ export function isVectorDemoSource(source: DemoSourceResponse): boolean {
   return source.format === 'geoparquet' || source.format === 'shapefile-zip';
 }
 
-export function startDemoInspection(rawUrl: string): {
+export function startDemoInspection(rawUrl: string, provenance: DemoSourceProvenance | null = null): {
   succeed: (source: DemoSourceResponse) => InspectedDemoWorkflow;
   fail: (status: number) => FailedDemoWorkflow;
 } {
@@ -91,6 +126,8 @@ export function startDemoInspection(rawUrl: string): {
       source,
       opacity: 1,
       style: 'survey-ink',
+      profile: source.raster?.defaultProfile ?? null,
+      provenance,
     }),
     fail: (status) => ({
       phase: 'error',
@@ -115,6 +152,19 @@ export function setDemoVectorStyle(state: DemoWorkflow, style: DemoVectorStyle):
   return { ...state, style };
 }
 
+export function setDemoRasterProfile(state: DemoWorkflow, profile: string): DemoWorkflow {
+  if (state.phase !== 'configure' || !state.source.raster) return state;
+  return state.source.raster.profiles.some((candidate) => candidate.id === profile)
+    ? { ...state, profile }
+    : state;
+}
+
+export function sourceForDemoRasterProfile(source: DemoSourceResponse, profile: string | null): DemoSourceResponse {
+  if (!source.raster || !profile) return source;
+  const link = source.links.raster_profiles?.find((candidate) => candidate.id === profile);
+  return link ? { ...source, links: { ...source.links, tile_template: link.tile_template } } : source;
+}
+
 export function publishDemoMap(state: DemoWorkflow): MappedDemoWorkflow {
   if (state.phase !== 'inspect' && state.phase !== 'configure') {
     throw new Error('Inspect a source before opening its map.');
@@ -133,6 +183,7 @@ export function demoTileTemplateFromAdvertisedLink(
   origin: string,
   expectedSourceId?: string,
   extension: 'png' | 'mvt' = 'png',
+  expectedProfile?: string,
 ): string | null {
   if (typeof href !== 'string' || href.length > MAX_DEMO_URL_LENGTH) return null;
   try {
@@ -154,7 +205,7 @@ export function demoTileTemplateFromAdvertisedLink(
       url.origin !== expectedOrigin ||
       url.username ||
       url.password ||
-      url.search ||
+      (expectedProfile === undefined ? !!url.search : url.searchParams.size !== 1 || url.searchParams.get('profile') !== expectedProfile) ||
       url.hash ||
       !match ||
       (expectedSourceId !== undefined && match[1] !== expectedSourceId)
@@ -215,6 +266,77 @@ function propertyNames(value: unknown): value is string[] {
     new Set(value).size === value.length;
 }
 
+function positivePair(value: unknown): value is [number, number] {
+  return Array.isArray(value) && value.length === 2 &&
+    value.every((item) => typeof item === 'number' && Number.isFinite(item) && item > 0);
+}
+
+function byte(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 255;
+}
+
+function validateRasterMetadata(value: unknown): DemoRasterMetadata | null {
+  if (!value || typeof value !== 'object') return null;
+  const raster = value as Record<string, unknown>;
+  const layout = raster.layout;
+  const expectedChannels = layout === 'gray' || layout === 'palette' ? 1 : layout === 'rgb' ? 3 : layout === 'rgba' ? 4 : 0;
+  if (!expectedChannels || raster.channel_count !== expectedChannels || raster.bits_per_sample !== 8 || raster.epsg !== 4326 ||
+      !positivePair(raster.shape) || !raster.shape.every(Number.isInteger) || !positivePair(raster.pixel_size)) return null;
+  if (!Array.isArray(raster.levels) || raster.levels.length < 1 || raster.levels.length > MAX_RASTER_LEVELS) return null;
+  const levels = raster.levels.map((value) => {
+    if (!value || typeof value !== 'object') return null;
+    const level = value as Record<string, unknown>;
+    if (!positivePair(level.shape) || !level.shape.every(Number.isInteger) ||
+        !positivePair(level.tile_shape) || !level.tile_shape.every(Number.isInteger) || !positivePair(level.pixel_size)) return null;
+    return { shape: [...level.shape] as [number, number], tileShape: [...level.tile_shape] as [number, number], pixelSize: [...level.pixel_size] as [number, number] };
+  });
+  if (levels.some((level) => !level)) return null;
+  if (!raster.nodata || typeof raster.nodata !== 'object') return null;
+  const rawNodata = raster.nodata as Record<string, unknown>;
+  const nodata: DemoRasterMetadata['nodata'] | null = rawNodata.state === 'value' && byte(rawNodata.value)
+    ? { state: 'value', value: rawNodata.value }
+    : (rawNodata.state === 'absent' || rawNodata.state === 'unsupported') && rawNodata.value === undefined
+      ? { state: rawNodata.state }
+      : null;
+  if (!nodata || (raster.unit !== undefined && (typeof raster.unit !== 'string' || !raster.unit.trim() || raster.unit.length > 128))) return null;
+  if (!Array.isArray(raster.profiles) || raster.profiles.length < 1 || raster.profiles.length > MAX_RASTER_PROFILES) return null;
+  const profiles = raster.profiles.map((value) => {
+    if (!value || typeof value !== 'object') return null;
+    const profile = value as Record<string, unknown>;
+    return typeof profile.id === 'string' && /^[a-z0-9-]+$/.test(profile.id) && profile.id.length <= 32 &&
+      typeof profile.label === 'string' && !!profile.label.trim() && profile.label.length <= 64
+      ? { id: profile.id, label: profile.label }
+      : null;
+  });
+  if (profiles.some((profile) => !profile) || new Set(profiles.map((profile) => profile!.id)).size !== profiles.length ||
+      typeof raster.default_profile !== 'string' || !profiles.some((profile) => profile!.id === raster.default_profile)) return null;
+  const expectedProfiles = layout === 'gray'
+    ? ['grayscale', 'viridis']
+    : layout === 'palette'
+      ? ['embedded-palette']
+      : ['native-rgb'];
+  if (profiles.length !== expectedProfiles.length ||
+      profiles.some((profile, index) => profile!.id !== expectedProfiles[index]) ||
+      raster.default_profile !== expectedProfiles[0] ||
+      ((layout === 'rgb' || layout === 'rgba') && nodata.state === 'value')) return null;
+  if (!Array.isArray(raster.legend) || raster.legend.length > MAX_RASTER_LEGEND_ENTRIES) return null;
+  const legend = raster.legend.map((value) => {
+    if (!value || typeof value !== 'object') return null;
+    const entry = value as Record<string, unknown>;
+    return byte(entry.value) && Array.isArray(entry.rgba) && entry.rgba.length === 4 && entry.rgba.every(byte)
+      ? { value: entry.value, rgba: [...entry.rgba] as [number, number, number, number] }
+      : null;
+  });
+  if (legend.some((entry) => !entry) || new Set(legend.map((entry) => entry!.value)).size !== legend.length ||
+      (layout === 'palette' ? legend.length !== 256 || legend.some((entry, index) => entry!.value !== index) : legend.length !== 0)) return null;
+  return {
+    layout: layout as DemoRasterMetadata['layout'], channelCount: expectedChannels, bitsPerSample: 8, epsg: 4326,
+    shape: [...raster.shape] as [number, number], pixelSize: [...raster.pixel_size] as [number, number],
+    levels: levels as DemoRasterMetadata['levels'], nodata, unit: typeof raster.unit === 'string' ? raster.unit : null,
+    profiles: profiles as DemoRasterMetadata['profiles'], defaultProfile: raster.default_profile, legend: legend as DemoRasterMetadata['legend'],
+  };
+}
+
 /** Validates the entire public-demo DTO before it can reach UI state. The
  * response id and every server route form one inseparable capability. */
 export function validateDemoSourceResponse(value: unknown, origin: string): DemoSourceResponse | null {
@@ -227,7 +349,7 @@ export function validateDemoSourceResponse(value: unknown, origin: string): Demo
     (response.transport !== 'range-native' && response.transport !== 'bounded-zip-spool') ||
     response.revision !== 'strong' || response.capability_state !== 'ready' ||
     typeof response.attribution !== 'string' || !response.attribution.trim() ||
-    response.attribution.length > MAX_ATTRIBUTION_LENGTH || !isExtent(response.extent) ||
+    response.attribution.length > MAX_ATTRIBUTION_LENGTH || /[<>\u0000-\u001f\u007f]/.test(response.attribution) || !isExtent(response.extent) ||
     !response.limits || typeof response.limits !== 'object' || !response.links || typeof response.links !== 'object'
   ) return null;
   const limits = response.limits as Record<string, unknown>;
@@ -238,23 +360,38 @@ export function validateDemoSourceResponse(value: unknown, origin: string): Demo
   ) return null;
   const links = response.links as Record<string, unknown>;
   const selfHref = sameOriginExactRoute(links.self_href, origin, `/demo/sources/${id}`);
-  const pngTemplate = demoTileTemplateFromAdvertisedLink(links.tile_template as string, origin, id, 'png');
-  if (!selfHref || !pngTemplate) return null;
+  if (!selfHref) return null;
 
   const vector = response.format === 'geoparquet' || response.format === 'shapefile-zip';
   const expectedTransport = response.format === 'shapefile-zip' ? 'bounded-zip-spool' : 'range-native';
   if (response.transport !== expectedTransport || !propertyNames(response.properties)) return null;
   if (!vector) {
-    if (response.geometry_type !== null || response.srid !== null || response.number_matched !== null || response.properties.length !== 0) return null;
+    const raster = validateRasterMetadata(response.raster);
+    if (!raster || response.geometry_type !== null || response.srid !== null || response.number_matched !== null || response.properties.length !== 0 ||
+        !Array.isArray(links.raster_profiles) || links.raster_profiles.length !== raster.profiles.length) return null;
+    const profileLinks = links.raster_profiles.map((value) => {
+      if (!value || typeof value !== 'object') return null;
+      const link = value as Record<string, unknown>;
+      const profile = raster.profiles.find((candidate) => candidate.id === link.id);
+      const tileTemplate = profile
+        ? demoTileTemplateFromAdvertisedLink(link.tile_template as string, origin, id, 'png', profile.id)
+        : null;
+      return profile && tileTemplate ? { id: profile.id, tile_template: tileTemplate } : null;
+    });
+    if (profileLinks.some((link) => !link) || new Set(profileLinks.map((link) => link!.id)).size !== raster.profiles.length) return null;
+    const pngTemplate = demoTileTemplateFromAdvertisedLink(links.tile_template as string, origin, id, 'png', raster.defaultProfile);
+    const defaultLink = profileLinks.find((link) => link!.id === raster.defaultProfile);
+    if (!pngTemplate || defaultLink?.tile_template !== pngTemplate) return null;
     return {
       id, format: response.format, transport: response.transport, revision: 'strong', capability_state: 'ready',
       extent: response.extent, geometryType: null, srid: null, numberMatched: null, properties: [],
-      attribution: response.attribution,
+      raster, attribution: response.attribution,
       limits: limits as DemoSourceResponse['limits'],
-      links: { self_href: selfHref, tile_template: pngTemplate },
+      links: { self_href: selfHref, tile_template: pngTemplate, raster_profiles: profileLinks as NonNullable<DemoSourceResponse['links']['raster_profiles']> },
     };
   }
   if (
+    response.raster !== undefined || links.raster_profiles !== undefined ||
     typeof response.geometry_type !== 'string' || !response.geometry_type.trim() || response.geometry_type.length > 128 ||
     response.srid !== 4326 || !Number.isInteger(response.number_matched) || (response.number_matched as number) < 0 ||
     !response.extent
@@ -262,7 +399,8 @@ export function validateDemoSourceResponse(value: unknown, origin: string): Demo
   const itemsHref = sameOriginExactRoute(links.items_href, origin, `/demo/sources/${id}/items`);
   const itemTemplate = sameOriginItemTemplate(links.item_template, origin, id);
   const mvtTemplate = demoTileTemplateFromAdvertisedLink(links.mvt_tile_template as string, origin, id, 'mvt');
-  if (!itemsHref || !itemTemplate || !mvtTemplate) return null;
+  const pngTemplate = demoTileTemplateFromAdvertisedLink(links.tile_template as string, origin, id, 'png');
+  if (!itemsHref || !itemTemplate || !mvtTemplate || !pngTemplate) return null;
   return {
     id, format: response.format, transport: response.transport, revision: 'strong', capability_state: 'ready',
     extent: response.extent as [number, number, number, number], geometryType: response.geometry_type, srid: 4326,

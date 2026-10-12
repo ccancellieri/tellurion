@@ -371,12 +371,12 @@ fn simplify_in_storage_units(
     use geo_types::Geometry;
     let area_epsilon = tolerance * tolerance;
     match geometry {
-        Geometry::LineString(g) => Geometry::LineString(g.simplify_vw_preserve(&area_epsilon)),
+        Geometry::LineString(g) => Geometry::LineString(g.simplify_vw_preserve(area_epsilon)),
         Geometry::MultiLineString(g) => {
-            Geometry::MultiLineString(g.simplify_vw_preserve(&area_epsilon))
+            Geometry::MultiLineString(g.simplify_vw_preserve(area_epsilon))
         }
-        Geometry::Polygon(g) => Geometry::Polygon(g.simplify_vw_preserve(&area_epsilon)),
-        Geometry::MultiPolygon(g) => Geometry::MultiPolygon(g.simplify_vw_preserve(&area_epsilon)),
+        Geometry::Polygon(g) => Geometry::Polygon(g.simplify_vw_preserve(area_epsilon)),
+        Geometry::MultiPolygon(g) => Geometry::MultiPolygon(g.simplify_vw_preserve(area_epsilon)),
         // `geo` implements `SimplifyVwPreserve` for the four line/area
         // types above and nothing else, so a collection recurses into its
         // members one at a time rather than reaching for a second

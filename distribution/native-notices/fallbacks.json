@@ -22,6 +22,26 @@
       ]
     },
     {
+      "name": "geo",
+      "version": "0.31.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/georust/geo",
+      "revision": "daf0515b0317b93480020a8cfb1dc7b46a4526ad",
+      "license_expression": "MIT OR Apache-2.0",
+      "files": [
+        {
+          "path": "georust-MIT.txt",
+          "sha256": "2f8267b247fd81e9555a2e196e119a5b341bcae21011cd93985c312f1312f727",
+          "url": "https://raw.githubusercontent.com/georust/geo/daf0515b0317b93480020a8cfb1dc7b46a4526ad/LICENSE-MIT"
+        },
+        {
+          "path": "georust-APACHE.txt",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "url": "https://raw.githubusercontent.com/georust/geo/daf0515b0317b93480020a8cfb1dc7b46a4526ad/LICENSE-APACHE"
+        }
+      ]
+    },
+    {
       "name": "geo-traits",
       "version": "0.3.0",
       "source": "registry+https://github.com/rust-lang/crates.io-index",
@@ -98,6 +118,36 @@
           "path": "georust-APACHE.txt",
           "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
           "url": "https://raw.githubusercontent.com/georust/rstar/c8c5bf9e41468281d030869d409e3f67f1aaf5b7/LICENSE-APACHE"
+        }
+      ]
+    },
+    {
+      "name": "i_overlay",
+      "version": "4.0.7",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/iShape-Rust/iOverlay",
+      "revision": "a071220dfc6095edb82426b880a4019db3ea67b5",
+      "license_expression": "MIT",
+      "files": [
+        {
+          "path": "ioverlay-MIT.txt",
+          "sha256": "260cc580f53a756821a0f35475e2cd6da790f8fed0efc058252fe1bed8f2689e",
+          "url": "https://raw.githubusercontent.com/iShape-Rust/iOverlay/a071220dfc6095edb82426b880a4019db3ea67b5/LICENSE"
+        }
+      ]
+    },
+    {
+      "name": "flatbuffers",
+      "version": "25.12.19",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/google/flatbuffers",
+      "revision": "7e163021e59cca4f8e1e35a7c828b5c6b7915953",
+      "license_expression": "Apache-2.0",
+      "files": [
+        {
+          "path": "flatbuffers-25.12.19-APACHE.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "url": "https://raw.githubusercontent.com/google/flatbuffers/7e163021e59cca4f8e1e35a7c828b5c6b7915953/LICENSE"
         }
       ]
     }

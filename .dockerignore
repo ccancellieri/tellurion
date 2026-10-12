@@ -4,5 +4,6 @@
 /demo/gallery
 .?*
 *.md
+!COPYRIGHT.md
 docs
 deploy

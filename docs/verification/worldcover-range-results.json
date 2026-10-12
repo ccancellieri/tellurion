@@ -1,0 +1,200 @@
+{
+  "inspection": {
+    "epsg": 4326,
+    "extent_crs84": [
+      12.0,
+      39.0,
+      15.0,
+      42.0
+    ],
+    "layout": "palette",
+    "levels": [
+      {
+        "pixel_size": [
+          8.333333333333333e-05,
+          8.333333333333333e-05
+        ],
+        "shape": [
+          36000,
+          36000
+        ],
+        "tile_shape": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "pixel_size": [
+          0.00016666666666666666,
+          0.00016666666666666666
+        ],
+        "shape": [
+          18000,
+          18000
+        ],
+        "tile_shape": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "pixel_size": [
+          0.0003333333333333333,
+          0.0003333333333333333
+        ],
+        "shape": [
+          9000,
+          9000
+        ],
+        "tile_shape": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "pixel_size": [
+          0.0006666666666666666,
+          0.0006666666666666666
+        ],
+        "shape": [
+          4500,
+          4500
+        ],
+        "tile_shape": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "pixel_size": [
+          0.0013333333333333333,
+          0.0013333333333333333
+        ],
+        "shape": [
+          2250,
+          2250
+        ],
+        "tile_shape": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "pixel_size": [
+          0.0026666666666666666,
+          0.0026666666666666666
+        ],
+        "shape": [
+          1125,
+          1125
+        ],
+        "tile_shape": [
+          1024,
+          1024
+        ]
+      },
+      {
+        "pixel_size": [
+          0.005338078291814947,
+          0.005338078291814947
+        ],
+        "shape": [
+          562,
+          562
+        ],
+        "tile_shape": [
+          1024,
+          1024
+        ]
+      }
+    ],
+    "nodata": {
+      "state": "value",
+      "value": 0
+    },
+    "palette_entries": 256,
+    "pixel_size": [
+      8.333333333333333e-05,
+      8.333333333333333e-05
+    ],
+    "profiles": [
+      "embedded-palette"
+    ],
+    "range_delta": {
+      "bytes": 65536,
+      "requests": 1
+    },
+    "shape": [
+      36000,
+      36000
+    ],
+    "unit": null
+  },
+  "registration_probe_not_counted_by_delegate": true,
+  "transport": "PublicHttpsGateway::new / ReqwestExecutor",
+  "recorded_on": "2026-10-12",
+  "source_length": 41236803,
+  "tiles": [
+    {
+      "nontransparent_pixels": 47182,
+      "range_delta": {
+        "bytes": 131072,
+        "requests": 2
+      },
+      "x": 8806,
+      "y": 6172,
+      "z": 14
+    },
+    {
+      "nontransparent_pixels": 52625,
+      "range_delta": {
+        "bytes": 349694,
+        "requests": 4
+      },
+      "x": 550,
+      "y": 385,
+      "z": 10
+    },
+    {
+      "nontransparent_pixels": 28948,
+      "range_delta": {
+        "bytes": 131072,
+        "requests": 2
+      },
+      "x": 137,
+      "y": 96,
+      "z": 8
+    },
+    {
+      "nontransparent_pixels": 52625,
+      "range_delta": {
+        "bytes": 349694,
+        "requests": 4
+      },
+      "x": 550,
+      "y": 385,
+      "z": 10
+    },
+    {
+      "nontransparent_pixels": 1558,
+      "range_delta": {
+        "bytes": 131072,
+        "requests": 2
+      },
+      "x": 136,
+      "y": 96,
+      "z": 8
+    },
+    {
+      "nontransparent_pixels": 99,
+      "range_delta": {
+        "bytes": 131072,
+        "requests": 2
+      },
+      "x": 137,
+      "y": 97,
+      "z": 8
+    }
+  ],
+  "measurement_boundary": "Driver RangeObject calls after source registration; excludes gateway registration probe, browser requests and end-to-end latency."
+}

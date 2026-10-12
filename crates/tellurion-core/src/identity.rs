@@ -132,10 +132,9 @@ impl From<OidcError> for IdentityError {
 
 #[cfg(test)]
 mod tests {
+    use base64::Engine;
     use jsonwebtoken::jwk::Jwk;
     use jsonwebtoken::{Algorithm, EncodingKey, Header};
-    use rsa::pkcs1::EncodeRsaPrivateKey;
-    use rsa::RsaPrivateKey;
     use serde_json::json;
 
     use super::*;
@@ -143,10 +142,13 @@ mod tests {
 
     #[tokio::test]
     async fn browser_id_token_requires_client_audience_and_exact_string_nonce() {
-        let mut rng = rand::thread_rng();
-        let private_key = RsaPrivateKey::new(&mut rng, 2_048).unwrap();
-        let der = private_key.to_pkcs1_der().unwrap();
-        let encoding_key = EncodingKey::from_rsa_der(der.as_bytes());
+        let encoded_key: String = include_str!("../tests/fixtures/oidc-rs256-private-1.der.b64")
+            .lines()
+            .collect();
+        let der = base64::engine::general_purpose::STANDARD
+            .decode(encoded_key)
+            .expect("decode the RSA test key");
+        let encoding_key = EncodingKey::from_rsa_der(&der);
         let mut jwk = Jwk::from_encoding_key(&encoding_key, Algorithm::RS256).unwrap();
         jwk.common.key_id = Some("identity-kid".to_string());
 

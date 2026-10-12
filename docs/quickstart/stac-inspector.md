@@ -31,8 +31,24 @@ queries may return an error rather than fabricated results.
 
 Each result shows an item ID, its time or time interval, and navigable HTTP(S)
 asset links. Assets open separately and may require their own authentication.
-No asset is fetched until you choose a link. This is metadata inspection, not an
-automatic raster preview or a map-layer creation workflow.
+Browsing results does not fetch an asset. A supported public COG can be sent to
+the temporary COG Explorer only by selecting its explicit preview action; the
+asset is not persisted or added to a catalog. Unsupported formats remain
+metadata-only.
+
+The preview action is available only when the server exposes the opt-in
+`public-demo` temporary-source routes. Default native binaries do not expose
+those anonymous routes; the inspector then explains that preview is unavailable
+and does not request the asset. For source development, run the Vite operator UI
+with `TELLURION_APP_ORIGIN` set to the origin of a server built with
+`cargo build -p tellurion --features public-demo,ui`, which retains the default
+catalog drivers. A custom minimal build must keep the deployment's required
+drivers as well as `public-demo,ui` (for example `postgis,cog,public-demo,ui`).
+The separately compiled public-demo UI is the anonymous showcase shell rather
+than this operator console.
+
+The [STAC and COG reproducibility case study](https://ccancellieri.github.io/writing/stac-cog-reproducible-maps/)
+describes the provenance and verification workflow behind the public example.
 
 **Next page** follows the server's advertised GET link, preserving its opaque
 query parameters. Each page replaces the previous results, rather than growing

@@ -43,11 +43,8 @@ demo-data/
 .worktrees/
 .superpowers/
 
-# Reviewed, portable development guidance is intentionally versioned.
-!/AGENTS.md
-!/.agents/
-/.agents/*
-!/.agents/skills/
-/.agents/skills/*
-!/.agents/skills/tellurion-development/
-!/.agents/skills/tellurion-development/**
+# Local development context must not enter public exports.
+AGENTS.md
+.agents/
+.codex/
+.Codex/

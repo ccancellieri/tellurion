@@ -6,7 +6,9 @@ import { mountControlWorkspace, workspaceModeFor } from './elements/control-shel
 import { thirdPartyNoticesLink } from './legal';
 import { mountPublicDemoShell } from './public-demo-shell';
 import { StacLaneDiscovery } from './stac-lane';
+import { connectStacPreviewWorkflow, demoSourcePreviewAvailable } from './lib/stac-preview-workflow';
 import type { TellurionStacPanel } from './elements/stac-panel';
+import type { TellurionDemoSourceWorkflow } from './elements/demo-source-workflow';
 
 function mountOperatorConsole(): void {
 
@@ -28,7 +30,8 @@ document.body.replaceChildren(
 
 const main = document.querySelector('main');
 if (!main) throw new Error('application shell is missing its main region');
-main.append(document.createElement('tellurion-demo-source-workflow'));
+const demoSourceWorkflow = document.createElement('tellurion-demo-source-workflow') as TellurionDemoSourceWorkflow;
+main.append(demoSourceWorkflow);
 main.append(document.createElement('tellurion-operator-workspace'));
 
 const lab = document.createElement('details');
@@ -46,6 +49,7 @@ lab.innerHTML = `
   </div>
   <p class="protocol-lab__status" data-field="protocol-status" role="status"></p>
   <p class="protocol-lab__status" data-field="stac-discovery-status" role="status"></p>
+  <p class="protocol-lab__status" data-field="stac-preview-status" role="status"></p>
   <section id="features-panel" role="tabpanel" aria-labelledby="features-tab"></section>
   <section id="vector-panel" role="tabpanel" aria-labelledby="vector-tab" hidden>
     <p class="protocol-lab__note">MVT is a diagnostic lane: a collection’s advertised links may not identify a stable source-layer name, external ID, or PMTiles source.</p>
@@ -56,6 +60,14 @@ lab.innerHTML = `
   <section id="stac-panel" role="tabpanel" aria-labelledby="stac-tab" hidden></section>
 `;
 main.append(lab);
+const stacPreviewAvailability = demoSourcePreviewAvailable().then((available) => {
+  const status = lab.querySelector<HTMLElement>('[data-field="stac-preview-status"]')!;
+  status.textContent = available
+    ? ''
+    : 'Temporary-source STAC preview is unavailable on this server. The public-demo server feature is required.';
+  if (available) connectStacPreviewWorkflow(lab, demoSourceWorkflow);
+  return available;
+});
 
 const protocolTabs = Array.from(lab.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
 const mountedProtocolPanels = new Set<string>();
@@ -113,6 +125,7 @@ async function importProtocolPanel(tabId: string): Promise<void> {
       if (tabId === 'stac') {
         if (!stacDiscovery.endpoint) { setProtocolStatus(''); return; }
         (element as TellurionStacPanel).endpoint = stacDiscovery.endpoint;
+        (element as TellurionStacPanel).previewAvailable = await stacPreviewAvailability;
       }
       panel.append(element);
       mountedProtocolPanels.add(tabId);

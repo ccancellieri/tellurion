@@ -20,11 +20,19 @@ const response: DemoSourceResponse = {
   srid: null,
   numberMatched: null,
   properties: [],
+  raster: {
+    layout: 'rgb', channelCount: 3, bitsPerSample: 8, epsg: 4326,
+    shape: [256, 256], pixelSize: [0.01, 0.01],
+    levels: [{ shape: [256, 256], tileShape: [128, 128], pixelSize: [0.01, 0.01] }],
+    nodata: { state: 'absent' }, unit: null,
+    profiles: [{ id: 'native-rgb', label: 'Native color' }], defaultProfile: 'native-rgb', legend: [],
+  },
   attribution: 'Verified source attribution',
   limits: { expires_in_seconds: 900, max_live_sources: 3, max_concurrent_operations: 2 },
   links: {
     self_href: '/demo/sources/opaque-source',
-    tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png',
+    tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=native-rgb',
+    raster_profiles: [{ id: 'native-rgb', tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=native-rgb' }],
   },
 };
 
@@ -39,6 +47,13 @@ const wireResponse = {
   srid: null,
   number_matched: null,
   properties: [],
+  raster: {
+    layout: 'rgb', channel_count: 3, bits_per_sample: 8, epsg: 4326,
+    shape: [256, 256], pixel_size: [0.01, 0.01],
+    levels: [{ shape: [256, 256], tile_shape: [128, 128], pixel_size: [0.01, 0.01] }],
+    nodata: { state: 'absent' },
+    profiles: [{ id: 'native-rgb', label: 'Native color' }], default_profile: 'native-rgb', legend: [],
+  },
   attribution: response.attribution,
   limits: response.limits,
   links: response.links,
@@ -95,8 +110,8 @@ describe('demo workflow state', () => {
 describe('server-advertised tile handoff', () => {
   it('accepts only a same-origin demo tile template supplied by the server', () => {
     expect(
-      demoTileTemplateFromAdvertisedLink(response.links.tile_template, 'https://tellurion.example'),
-    ).toBe('https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png');
+      demoTileTemplateFromAdvertisedLink(response.links.tile_template!, 'https://tellurion.example', 'opaque-source', 'png', 'native-rgb'),
+    ).toBe('https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=native-rgb');
   });
 
   it('rejects external and altered non-demo templates instead of rebuilding them', () => {
@@ -121,7 +136,7 @@ describe('server response binding', () => {
       id: 'opaque-source',
       links: {
         self_href: 'https://tellurion.example/demo/sources/opaque-source',
-        tile_template: 'https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png',
+        tile_template: 'https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=native-rgb',
       },
     });
   });
@@ -168,9 +183,26 @@ describe('server response binding', () => {
     ).toBeNull();
   });
 
+  it('rejects raster profiles that do not match the inspected band layout', () => {
+    expect(validateDemoSourceResponse({
+      ...wireResponse,
+      raster: {
+        ...wireResponse.raster,
+        profiles: [{ id: 'viridis', label: 'Viridis' }],
+        default_profile: 'viridis',
+      },
+      links: {
+        ...wireResponse.links,
+        tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=viridis',
+        raster_profiles: [{ id: 'viridis', tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=viridis' }],
+      },
+    }, 'https://tellurion.example')).toBeNull();
+  });
+
   it('admits a same-origin vector response with inspectable metadata and an advertised MVT route', () => {
     const vector = {
       ...wireResponse,
+      raster: undefined,
       format: 'geoparquet',
       geometry_type: 'Polygon',
       srid: 4326,
@@ -198,6 +230,7 @@ describe('server response binding', () => {
   it('refuses a vector response without its metadata or same-origin MVT capability', () => {
     const vector = {
       ...wireResponse,
+      raster: undefined,
       format: 'shapefile-zip',
       transport: 'bounded-zip-spool',
       geometry_type: 'LineString',

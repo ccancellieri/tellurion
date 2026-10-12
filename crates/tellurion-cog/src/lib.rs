@@ -56,7 +56,10 @@ mod tiff_write;
 mod tiling;
 
 pub use author::{author_cog, AuthorOptions, AuthorReport, ResampleMode};
-pub use driver::CogDriverFactory;
+pub use driver::{
+    CogBandLayout, CogDriver, CogDriverFactory, CogInspection, CogLevelInspection, CogNodata,
+    CogPaletteEntry, CogRenderProfile,
+};
 pub use error::CogError;
 pub use manifest::{
     author_mosaic_manifest, ManifestSource, MosaicAuthorReport, MosaicManifest, MANIFEST_VERSION,

@@ -2,9 +2,45 @@ import { DEFAULT_CATALOG_ID, DEFAULT_TENANT_ID } from './api';
 
 export interface StacEndpoint { tenantId: string; catalogId: string; searchHref: string }
 export interface StacFilters { collections?: string; ids?: string; datetime?: string }
-export interface StacItem { id: string; time: string; assets: { title: string; href: string }[] }
+export type StacAssetPreviewFormat = 'cog' | 'geoparquet' | 'shapefile-zip';
+export interface StacAssetPreview {
+  url: string;
+  format: StacAssetPreviewFormat;
+  itemId: string;
+  collectionId: string | null;
+  assetKey: string;
+  assetLabel: string;
+  mediaType: string | null;
+  roles: string[];
+  itemHref: string | null;
+  assetDescription: string | null;
+}
+export type StacAssetPreviewDecision =
+  | { state: 'eligible'; descriptor: StacAssetPreview }
+  | { state: 'unavailable'; reason: string };
+export interface StacAsset {
+  key: string;
+  title: string;
+  navigationHref: string | null;
+  mediaType: string | null;
+  roles: string[];
+  preview: StacAssetPreviewDecision;
+}
+export interface StacItem {
+  id: string;
+  title: string | null;
+  collectionId: string | null;
+  itemHref: string | null;
+  time: string;
+  assets: StacAsset[];
+}
 export interface StacPage { items: StacItem[]; nextHref: string | null; unsupportedNext: boolean; truncated: boolean }
 type Document = Record<string, unknown>;
+
+const MAX_LABEL_LENGTH = 256;
+const MAX_ATTRIBUTION_LENGTH = 1024;
+const MAX_PREVIEW_ROLES = 8;
+const MAX_ROLE_LENGTH = 128;
 
 function record(value: unknown): value is Document {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -26,6 +62,99 @@ function safeHref(value: unknown, base: string, origin?: string): string | null 
     if (origin && url.origin !== new URL(origin).origin) return null;
     return url.href;
   } catch { return null; }
+}
+
+function previewFormatFromMediaType(value: string): StacAssetPreviewFormat | null {
+  const base = value.toLowerCase().split(';', 1)[0].trim();
+  if (['image/tiff', 'image/geotiff', 'application/geotiff'].includes(base)) return 'cog';
+  if (['application/vnd.apache.parquet', 'application/x-parquet'].includes(base)) return 'geoparquet';
+  if (['application/zip', 'application/x-zip-compressed'].includes(base)) return 'shapefile-zip';
+  return null;
+}
+
+function previewFormatFromPath(url: URL): StacAssetPreviewFormat | null {
+  const path = url.pathname.toLowerCase();
+  if (path.endsWith('.tif') || path.endsWith('.tiff')) return 'cog';
+  if (path.endsWith('.parquet')) return 'geoparquet';
+  if (path.endsWith('.zip')) return 'shapefile-zip';
+  return null;
+}
+
+function strictPreviewUrl(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && (!url.port || url.port === '443') &&
+      !url.username && !url.password && !url.search && !url.hash
+      ? url
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function previewDecision(
+  navigationHref: string | null,
+  mediaType: string | null,
+  descriptor: Omit<StacAssetPreview, 'url' | 'format'>,
+): StacAssetPreviewDecision {
+  if (!navigationHref) {
+    return { state: 'unavailable', reason: 'Preview requires a safe HTTP(S) asset address without credentials or a fragment.' };
+  }
+  const previewUrl = strictPreviewUrl(navigationHref);
+  if (!previewUrl) {
+    return { state: 'unavailable', reason: 'Preview requires an unsigned HTTPS URL on port 443 without credentials or a fragment.' };
+  }
+  if (previewUrl.pathname.toLowerCase().endsWith('.pmtiles') ||
+      mediaType?.toLowerCase().split(';', 1)[0].trim() === 'application/vnd.pmtiles') {
+    return { state: 'unavailable', reason: 'Preview is unavailable because the asset format is not recognized.' };
+  }
+  const mediaFormat = mediaType === null ? null : previewFormatFromMediaType(mediaType);
+  const extensionFormat = previewFormatFromPath(previewUrl);
+  if (mediaType !== null && mediaFormat === null) {
+    return { state: 'unavailable', reason: 'Preview is unavailable because the supplied media type is not recognized.' };
+  }
+  if (mediaFormat && extensionFormat && mediaFormat !== extensionFormat) {
+    return { state: 'unavailable', reason: 'Media type and file extension identify different supported formats.' };
+  }
+  const format = mediaFormat ?? extensionFormat;
+  if (!format) {
+    return { state: 'unavailable', reason: 'Preview is unavailable because the asset format is not recognized.' };
+  }
+  return { state: 'eligible', descriptor: { ...descriptor, url: previewUrl.href, format } };
+}
+
+export function validateStacAssetPreview(value: unknown): StacAssetPreview | null {
+  if (!record(value)) return null;
+  const url = typeof value.url === 'string' ? strictPreviewUrl(value.url) : null;
+  const format = value.format;
+  const mediaType = value.mediaType;
+  const itemHref = value.itemHref;
+  const assetDescription = value.assetDescription;
+  if (!url || (format !== 'cog' && format !== 'geoparquet' && format !== 'shapefile-zip') ||
+      typeof value.itemId !== 'string' || !value.itemId.trim() || value.itemId.length > MAX_LABEL_LENGTH ||
+      (value.collectionId !== null && (typeof value.collectionId !== 'string' || !value.collectionId.trim() || value.collectionId.length > MAX_LABEL_LENGTH)) ||
+      typeof value.assetKey !== 'string' || !value.assetKey.trim() || value.assetKey.length > MAX_LABEL_LENGTH ||
+      typeof value.assetLabel !== 'string' || !value.assetLabel.trim() || value.assetLabel.length > MAX_LABEL_LENGTH ||
+      (mediaType !== null && (typeof mediaType !== 'string' || !mediaType.trim() || mediaType.length > MAX_LABEL_LENGTH)) ||
+      !Array.isArray(value.roles) || value.roles.length > MAX_PREVIEW_ROLES ||
+      !value.roles.every((role) => typeof role === 'string' && !!role.trim() && role.length <= MAX_ROLE_LENGTH) ||
+      (itemHref !== null && safeHref(itemHref, url.href) !== itemHref) ||
+      (assetDescription !== null && (typeof assetDescription !== 'string' || !assetDescription.trim() || assetDescription.length > MAX_ATTRIBUTION_LENGTH))) {
+    return null;
+  }
+  const classified = previewDecision(url.href, mediaType as string | null, {
+    itemId: value.itemId,
+    collectionId: value.collectionId as string | null,
+    assetKey: value.assetKey,
+    assetLabel: value.assetLabel,
+    mediaType: mediaType as string | null,
+    roles: [...value.roles] as string[],
+    itemHref: itemHref as string | null,
+    assetDescription: assetDescription as string | null,
+  });
+  return classified.state === 'eligible' && classified.descriptor.format === format
+    ? classified.descriptor
+    : null;
 }
 
 function links(document: Document): Document[] {
@@ -130,20 +259,30 @@ export async function fetchStacPage(href: string, origin: string, signal?: Abort
     throw new Error('Invalid STAC item page');
   }
   let truncated = document.features.length > 10;
-  const boundedText = (value: unknown, fallback: string): string => {
+  const boundedText = (value: unknown, fallback: string, maxLength = MAX_LABEL_LENGTH): string => {
     const text = typeof value === 'string' || typeof value === 'number' ? String(value) : fallback;
-    if (text.length <= 256) return text;
+    if (text.length <= maxLength) return text;
     truncated = true;
-    return `${text.slice(0, 256)}…`;
+    return `${text.slice(0, maxLength - 1)}…`;
   };
   const items = document.features.slice(0, 10).map((feature): StacItem => {
     const properties = record(feature.properties) ? feature.properties : {};
+    const id = (typeof feature.id === 'string' || typeof feature.id === 'number') && String(feature.id).trim()
+      ? boundedText(feature.id, 'ID not provided')
+      : 'ID not provided';
+    const title = typeof properties.title === 'string' && properties.title.trim()
+      ? boundedText(properties.title, '')
+      : null;
+    const collectionId = typeof feature.collection === 'string' && feature.collection.trim()
+      ? boundedText(feature.collection, '')
+      : null;
     const time = typeof properties.datetime === 'string' ? boundedText(properties.datetime, '')
       : typeof properties.start_datetime === 'string' && typeof properties.end_datetime === 'string'
         ? `${boundedText(properties.start_datetime, '')} / ${boundedText(properties.end_datetime, '')}` : 'Time not provided';
     const assets: StacItem['assets'] = [];
     const self = links(feature).find((link) => link.rel === 'self');
-    const assetBase = (self ? safeHref(self.href, href) : null) ?? href;
+    const itemHref = self ? safeHref(self.href, href) : null;
+    const assetBase = itemHref ?? href;
     if (record(feature.assets)) {
       let inspected = 0;
       for (const name in feature.assets) {
@@ -151,11 +290,31 @@ export async function fetchStacPage(href: string, origin: string, signal?: Abort
         if (inspected++ === 16) { truncated = true; break; }
         const asset = feature.assets[name];
         if (!record(asset)) continue;
-        const assetHref = safeHref(asset.href, assetBase);
-        if (assetHref) assets.push({ title: boundedText(asset.title, boundedText(name, 'Asset')), href: assetHref });
+        const key = name.trim() ? boundedText(name, 'Asset') : 'Asset';
+        const mediaType = typeof asset.type === 'string' && asset.type.trim()
+          ? boundedText(asset.type, '')
+          : null;
+        const roles = Array.isArray(asset.roles)
+          ? asset.roles.filter((role): role is string => typeof role === 'string' && !!role.trim())
+            .slice(0, MAX_PREVIEW_ROLES).map((role) => boundedText(role, '', MAX_ROLE_LENGTH))
+          : [];
+        if (Array.isArray(asset.roles) && asset.roles.length > MAX_PREVIEW_ROLES) truncated = true;
+        const title = boundedText(asset.title, key);
+        const navigationHref = safeHref(asset.href, assetBase);
+        const assetDescription = typeof asset.description === 'string' && asset.description.trim()
+          ? boundedText(asset.description, '', MAX_ATTRIBUTION_LENGTH)
+          : null;
+        const descriptor = {
+          itemId: id, collectionId, assetKey: key, assetLabel: title, mediaType, roles,
+          itemHref, assetDescription,
+        };
+        assets.push({
+          key, title, navigationHref, mediaType, roles,
+          preview: previewDecision(navigationHref, mediaType, descriptor),
+        });
       }
     }
-    return { id: boundedText(feature.id, 'ID not provided'), time, assets };
+    return { id, title, collectionId, itemHref, time, assets };
   });
   const nextLinks = links(document).filter((link) => link.rel === 'next');
   const nextHref = nextLinks.map((link) => getLink(link, href, origin)).find((value) => value !== null) ?? null;

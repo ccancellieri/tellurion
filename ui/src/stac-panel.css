@@ -13,5 +13,9 @@
 .stac-inspector label { max-width: 100%; }
 .stac-inspector [data-field="results"] { padding-left: 1.5rem; }
 .stac-inspector [data-field="results"] > li { padding: 0.75rem 0; border-top: 1px solid var(--border); }
+.stac-inspector [data-field="results"] ul { display: grid; gap: 0.45rem; margin: 0.55rem 0 0; padding-left: 1.2rem; }
+.stac-inspector [data-field="results"] ul li { padding: 0.45rem; background: color-mix(in srgb, var(--surface) 88%, var(--border)); }
+.stac-inspector [data-field="results"] ul p { margin: 0.25rem 0 0; font-size: 0.78rem; }
+.stac-inspector [data-action="preview-asset"] { margin-top: 0.45rem; }
 .stac-inspector h3 { font-size: 1rem; margin: 0 0 0.3rem; }
 .stac-inspector :is(button, input, a):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }

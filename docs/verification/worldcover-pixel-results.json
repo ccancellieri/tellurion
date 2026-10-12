@@ -1,0 +1,194 @@
+{
+  "oracle": "GDAL 3.12.1 explicit overview extraction plus independent destination-pixel-center/source-floor sampling",
+  "source_shape": [
+    36000,
+    36000
+  ],
+  "source_extent_crs84": [
+    12.0,
+    39.0,
+    15.0,
+    42.0
+  ],
+  "destination_shape": [
+    256,
+    256
+  ],
+  "selected_levels": [
+    {
+      "level_shape": [
+        36000,
+        36000
+      ],
+      "gdal_overview_ordinal": "NONE",
+      "extract_command_without_source_or_destination": "gdal_translate -ovr NONE -srcwin 17894 17834 265 201 -outsize 265 201 -r nearest",
+      "extract_shape": [
+        265,
+        201
+      ],
+      "array_origin_in_selected_level": [
+        17894,
+        17834
+      ],
+      "class_array_sha256": "9befdd4f08f0d0cab32bfcfa3924d3bb660a031cf77dbf92a44b94eb71912edb",
+      "nodata": 0
+    },
+    {
+      "level_shape": [
+        2250,
+        2250
+      ],
+      "gdal_overview_ordinal": 3,
+      "extract_command_without_source_or_destination": "gdal_translate -ovr 3 -srcwin 0 0 36000 36000 -outsize 2250 2250 -r nearest",
+      "extract_shape": [
+        2250,
+        2250
+      ],
+      "array_origin_in_selected_level": [
+        0,
+        0
+      ],
+      "class_array_sha256": "db61342e748bf3f243ddfe8e1b6aa91105f1beec0fe03c9b9afbef18977dd12e",
+      "nodata": 0
+    },
+    {
+      "level_shape": [
+        562,
+        562
+      ],
+      "gdal_overview_ordinal": 5,
+      "extract_command_without_source_or_destination": "gdal_translate -ovr 5 -srcwin 0 0 36000 36000 -outsize 562 562 -r nearest",
+      "extract_shape": [
+        562,
+        562
+      ],
+      "array_origin_in_selected_level": [
+        0,
+        0
+      ],
+      "class_array_sha256": "72b993ceb560346e8ec39854afd829cc40afc82aaeac23a15851fe1a0121c3cc",
+      "nodata": 0
+    }
+  ],
+  "tiles": [
+    {
+      "z": 14,
+      "x": 8806,
+      "y": 6172,
+      "selected_level_shape": [
+        36000,
+        36000
+      ],
+      "gdal_overview_ordinal": "NONE",
+      "tellurion_planned_source_window_xyxy": [
+        17894,
+        17834,
+        18159,
+        18035
+      ],
+      "exact_rgba_pixels": 65536,
+      "rgba_mismatch_pixels": 0,
+      "alpha_mismatch_pixels": 0,
+      "oracle_nontransparent_pixels": 47182,
+      "tellurion_nontransparent_pixels": 47182,
+      "oracle_rgba_sha256": "6a89d5be29c0768d8257c327fd739d04f4d651e92823fada76e8b2d344f9a7fa",
+      "tellurion_rgba_sha256": "6a89d5be29c0768d8257c327fd739d04f4d651e92823fada76e8b2d344f9a7fa"
+    },
+    {
+      "z": 10,
+      "x": 550,
+      "y": 385,
+      "selected_level_shape": [
+        2250,
+        2250
+      ],
+      "gdal_overview_ordinal": 3,
+      "tellurion_planned_source_window_xyxy": [
+        1019,
+        964,
+        1284,
+        1165
+      ],
+      "exact_rgba_pixels": 65536,
+      "rgba_mismatch_pixels": 0,
+      "alpha_mismatch_pixels": 0,
+      "oracle_nontransparent_pixels": 52625,
+      "tellurion_nontransparent_pixels": 52625,
+      "oracle_rgba_sha256": "f8c6aa375e09a71f4aea536ed42071b9cccae7f765e0c1d3dfff9ba9fabe215b",
+      "tellurion_rgba_sha256": "f8c6aa375e09a71f4aea536ed42071b9cccae7f765e0c1d3dfff9ba9fabe215b"
+    },
+    {
+      "z": 8,
+      "x": 137,
+      "y": 96,
+      "selected_level_shape": [
+        562,
+        562
+      ],
+      "gdal_overview_ordinal": 5,
+      "tellurion_planned_source_window_xyxy": [
+        122,
+        191,
+        387,
+        392
+      ],
+      "exact_rgba_pixels": 65536,
+      "rgba_mismatch_pixels": 0,
+      "alpha_mismatch_pixels": 0,
+      "oracle_nontransparent_pixels": 28948,
+      "tellurion_nontransparent_pixels": 28948,
+      "oracle_rgba_sha256": "43c8d9ee86a6d81bd160c521c3f8b303d230e11d12171f6b03d351b8f280b5fb",
+      "tellurion_rgba_sha256": "43c8d9ee86a6d81bd160c521c3f8b303d230e11d12171f6b03d351b8f280b5fb"
+    },
+    {
+      "z": 8,
+      "x": 136,
+      "y": 96,
+      "selected_level_shape": [
+        562,
+        562
+      ],
+      "gdal_overview_ordinal": 5,
+      "tellurion_planned_source_window_xyxy": [
+        0,
+        191,
+        123,
+        392
+      ],
+      "exact_rgba_pixels": 65536,
+      "rgba_mismatch_pixels": 0,
+      "alpha_mismatch_pixels": 0,
+      "oracle_nontransparent_pixels": 1558,
+      "tellurion_nontransparent_pixels": 1558,
+      "oracle_rgba_sha256": "adc7b9f93cfeaf846291d13b74781e4fcb42cc1437a4167b9004344703b5faf6",
+      "tellurion_rgba_sha256": "adc7b9f93cfeaf846291d13b74781e4fcb42cc1437a4167b9004344703b5faf6"
+    },
+    {
+      "z": 8,
+      "x": 137,
+      "y": 97,
+      "selected_level_shape": [
+        562,
+        562
+      ],
+      "gdal_overview_ordinal": 5,
+      "tellurion_planned_source_window_xyxy": [
+        122,
+        391,
+        387,
+        562
+      ],
+      "exact_rgba_pixels": 65536,
+      "rgba_mismatch_pixels": 0,
+      "alpha_mismatch_pixels": 0,
+      "oracle_nontransparent_pixels": 99,
+      "tellurion_nontransparent_pixels": 99,
+      "oracle_rgba_sha256": "df57dede0658da25a5e59d3c8bfb5a3618b5b0d2781cade35f6cda0147f42fef",
+      "tellurion_rgba_sha256": "df57dede0658da25a5e59d3c8bfb5a3618b5b0d2781cade35f6cda0147f42fef"
+    }
+  ],
+  "all_rgba_pixels_exact": true,
+  "all_alpha_pixels_exact": true,
+  "recorded_on": "2026-10-12",
+  "scope": "Historical bounded validation preceding final release packaging; not a production benchmark."
+}

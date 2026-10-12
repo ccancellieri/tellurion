@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import {
   DEFAULT_CATALOG_ID,
   DEFAULT_TENANT_ID,
