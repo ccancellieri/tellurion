@@ -24,6 +24,12 @@ printf '%s\n' "$output" | grep -F "$manual_tool" >/dev/null || {
     exit 1
 }
 
+manual_verification='verify-worldcover-cog.py               manual     developer tool; run outside ordinary CI'
+printf '%s\n' "$output" | grep -F "$manual_verification" >/dev/null || {
+    echo "FAIL: WorldCover oracle was not classified as owner-run verification" >&2
+    exit 1
+}
+
 printf '%s\n' "$output" | grep -E '^generate-native-third-party-notices\.py[[:space:]]+yes[[:space:]]+via test_native_third_party_notices\.py$' >/dev/null || {
     echo "FAIL: native notice generator was not classified through its hosted tests" >&2
     exit 1

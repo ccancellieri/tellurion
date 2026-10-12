@@ -304,10 +304,11 @@ MANUAL_PUBLICATION_GATES=(
     "extract-disclosure-zip.py"
     "snapshot-publication-state.sh"
 )
-# This starts a local demo server and Vite UI. It is intentionally outside
-# ordinary CI, but remains visible to the audit as a developer tool.
+# These developer tools require a local server or external verification inputs.
+# They remain visible to the audit outside ordinary CI.
 MANUAL_DEVELOPER_TOOLS=(
     "run-local.sh"
+    "verify-worldcover-cog.py"
 )
 
 workflow_executes_data_input() {
