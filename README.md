@@ -46,6 +46,8 @@ search index).
 
 For read-only catalog exploration in the operator UI, see the
 [STAC search inspector guide](docs/quickstart/stac-inspector.md).
+For the boundaries between STAC discovery, rendering, harvesting and portable
+metadata export, see the [STAC data workflows guide](docs/quickstart/stac-data-workflows.md).
 
 One command provisions a `.gpkg` file, seeds it with ~500 deterministic synthetic
 features, and serves it — no database service, no container runtime, and no network
