@@ -42,6 +42,32 @@ afterEach(() => {
 });
 
 describe('MapLibre public-demo tile transport', () => {
+  it('forwards the selected advertised profile through the real dispatcher', async () => {
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(new Uint8Array([1]), { status: 200, headers: { 'Content-Type': 'image/png' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const transport = createDemoTileTransport();
+    try {
+      const handler = maplibre.addProtocol.mock.calls[0][1] as ProtocolHandler;
+      const template = transport.activate(
+        'opaque-source',
+        ORIGIN,
+        `${ORIGIN}/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=embedded-palette`,
+        2,
+        'embedded-palette',
+      );
+
+      expect(template).not.toBeNull();
+      await handler({ url: tile(template!, 0) }, new AbortController());
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${ORIGIN}/demo/sources/opaque-source/tiles/WebMercatorQuad/0/0/0.png?profile=embedded-palette`,
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    } finally {
+      transport.destroy();
+    }
+  });
+
   it('keeps one dispatcher working until the last of two transports is destroyed', async () => {
     const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
       new Response(new Uint8Array([1]), { status: 200, headers: { 'Content-Type': 'image/png' } }));

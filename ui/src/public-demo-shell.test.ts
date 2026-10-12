@@ -28,7 +28,7 @@ describe('public demo shell', () => {
       document.querySelectorAll<HTMLAnchorElement>('.public-demo-shell__resources a'),
     );
     expect(onwardLinks.map((link) => link.href)).toEqual([
-      'https://ccancellieri.github.io/tellurion/releases/v0.5.0/',
+      'https://github.com/ccancellieri/tellurion/releases/tag/v0.6.1',
       'https://ccancellieri.github.io/tellurion/',
       'https://github.com/ccancellieri/tellurion/issues/new?template=evaluation.yml',
     ]);

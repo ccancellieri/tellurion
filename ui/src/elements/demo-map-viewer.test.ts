@@ -193,7 +193,7 @@ describe('fit active source extent', () => {
   it('uses validated active handoff bounds rather than source metadata or a pending source', () => {
     const element = mount();
     vi.mocked(demoRasterMapHandoff).mockReturnValueOnce({ sourceId: 'demo-source-opaque-source', layerId: 'demo-layer-opaque-source',
-      template: '/demo/tiles.png', attribution: 'Verified attribution', extent: [1, 2, 3, 4] });
+      template: '/demo/tiles.png', attribution: 'Verified attribution', extent: [1, 2, 3, 4], profile: null });
     open();
     map.isStyleLoaded.mockReturnValue(false);
     open({ ...source, id: 'pending', extent: [20, 30, 40, 50] });
@@ -401,6 +401,7 @@ describe('temporary demo map viewer', () => {
       location.origin,
       'https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png',
       2,
+      undefined,
     );
     expect(tileTransport.activate.mock.invocationCallOrder[0]).toBeLessThan(
       map.addSource.mock.invocationCallOrder[0],

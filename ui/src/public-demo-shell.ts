@@ -31,7 +31,7 @@ export function mountPublicDemoShell(root: HTMLElement): void {
       <ul>
         <li>
           <span class="public-demo-shell__resource-mark public-demo-shell__resource-mark--source" aria-hidden="true"></span>
-          <a href="https://ccancellieri.github.io/tellurion/releases/v0.5.0/" target="_blank" rel="noopener noreferrer">Install Tellurion</a>
+          <a href="https://github.com/ccancellieri/tellurion/releases/tag/v0.6.1" target="_blank" rel="noopener noreferrer">Install Tellurion</a>
         </li>
         <li>
           <span class="public-demo-shell__resource-mark public-demo-shell__resource-mark--demo" aria-hidden="true"></span>

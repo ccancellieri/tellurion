@@ -150,6 +150,7 @@ describe('ephemeral demo map handoff', () => {
       template: 'https://tellurion.example/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png',
       extent: source.extent,
       attribution: 'Verified attribution',
+      profile: null,
     });
   });
 

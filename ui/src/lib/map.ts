@@ -67,6 +67,7 @@ export interface DemoRasterMapHandoff {
   template: string;
   extent: [number, number, number, number] | null;
   attribution: string;
+  profile: string | null;
 }
 
 export interface DemoVectorMapHandoff {
@@ -110,6 +111,7 @@ export interface DemoTileTransport {
     origin: string,
     httpsTemplate: string,
     maxConcurrentOperations?: number,
+    profile?: string,
   ): string | null;
   clear(): void;
   destroy(): void;
@@ -140,8 +142,8 @@ export function createDemoTileTransport(): DemoTileTransport {
   }
   let destroyed = false;
   return {
-    activate: (sourceId, origin, template, limit) =>
-      destroyed ? null : protocol.activate(sourceId, origin, template, limit),
+    activate: (sourceId, origin, template, limit, profile) =>
+      destroyed ? null : protocol.activate(sourceId, origin, template, limit, profile),
     clear: () => {
       if (!destroyed) protocol.clear();
     },
@@ -205,6 +207,7 @@ export function demoRasterMapHandoff(
     template,
     extent: source.extent,
     attribution: source.attribution,
+    profile: selectedProfile ?? null,
   };
 }
 

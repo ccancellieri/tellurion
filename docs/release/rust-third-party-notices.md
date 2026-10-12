@@ -3,7 +3,7 @@
 Tellurion source crates and prebuilt native archives have different notice
 boundaries.
 
-The 0.6.0 dependency audit reports no known vulnerabilities and has an empty
+The 0.6.1 dependency audit reports no known vulnerabilities and has an empty
 ignore list. It also reports two unmaintained transitive packages:
 `paste` 1.0.15 (RUSTSEC-2024-0436) and `unsafe-libyaml` 0.2.11
 (RUSTSEC-2024-0449). They remain release limitations pending dependency-level

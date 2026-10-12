@@ -16,6 +16,13 @@ repository.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-12
+
+### Fixed
+
+- The public COG preview now preserves an advertised raster profile through its
+  bounded same-origin tile transport, so palette sources open on the map.
+
 ## [0.6.0] - 2026-10-12
 
 ### Added

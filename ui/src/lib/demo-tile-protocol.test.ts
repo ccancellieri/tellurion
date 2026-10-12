@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DemoTileProtocol } from './demo-tile-protocol';
+import { demoRasterMapHandoff } from './map';
+import type { DemoSourceResponse } from './demo-source';
 
 const ORIGIN = 'https://tellurion.example';
 
@@ -43,6 +45,80 @@ function tile(template: string, column: number): string {
 }
 
 describe('public-demo raster tile protocol', () => {
+  it('carries an advertised raster profile from the map handoff to HTTPS', async () => {
+    const source: DemoSourceResponse = {
+      id: 'opaque-source',
+      format: 'tiled-geotiff',
+      transport: 'range-native',
+      revision: 'strong',
+      capability_state: 'ready',
+      extent: [12, 39, 15, 42],
+      geometryType: null,
+      srid: null,
+      numberMatched: null,
+      properties: [],
+      raster: {
+        layout: 'palette', channelCount: 1, bitsPerSample: 8, epsg: 4326,
+        shape: [1, 1], pixelSize: [1, 1],
+        levels: [{ shape: [1, 1], tileShape: [1, 1], pixelSize: [1, 1] }],
+        nodata: { state: 'absent' }, unit: null,
+        profiles: [{ id: 'embedded-palette', label: 'Embedded palette' }],
+        defaultProfile: 'embedded-palette', legend: [],
+      },
+      attribution: 'Verified attribution',
+      limits: { expires_in_seconds: 900, max_live_sources: 3, max_concurrent_operations: 2 },
+      links: {
+        self_href: '/demo/sources/opaque-source',
+        tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=embedded-palette',
+        raster_profiles: [{
+          id: 'embedded-palette',
+          tile_template: '/demo/sources/opaque-source/tiles/WebMercatorQuad/{z}/{y}/{x}.png?profile=embedded-palette',
+        }],
+      },
+    };
+    const handoff = demoRasterMapHandoff(source, ORIGIN);
+    expect(handoff).not.toBeNull();
+    const requested: string[] = [];
+    const protocol = new DemoTileProtocol(async (url) => {
+      requested.push(url);
+      return new ArrayBuffer(1);
+    });
+    const template = protocol.activate(
+      source.id,
+      ORIGIN,
+      handoff!.template,
+      source.limits.max_concurrent_operations,
+      handoff!.profile ?? undefined,
+    );
+
+    expect(template).not.toBeNull();
+    await protocol.load(tile(template!, 0), new AbortController().signal);
+    expect(requested).toEqual([
+      `${ORIGIN}/demo/sources/opaque-source/tiles/WebMercatorQuad/0/0/0.png?profile=embedded-palette`,
+    ]);
+
+    const activeTile = tile(template!, 1);
+    for (const invalid of [
+      activeTile.replace('embedded-palette', 'viridis'),
+      `${activeTile}&profile=embedded-palette`,
+      `${activeTile}&extra=true`,
+      activeTile.replace('/opaque-source/', '/other-source/'),
+    ]) {
+      await expect(protocol.load(invalid, new AbortController().signal))
+        .rejects.toThrow('outside the active demo source');
+    }
+
+    expect(protocol.activate(
+      source.id,
+      ORIGIN,
+      handoff!.template,
+      source.limits.max_concurrent_operations,
+      handoff!.profile ?? undefined,
+    )).not.toBeNull();
+    await expect(protocol.load(activeTile, new AbortController().signal))
+      .rejects.toThrow('outside the active demo source');
+  });
+
   it('keeps an advertised tile burst at two active operations', async () => {
     const loader = pendingLoader();
     const protocol = new DemoTileProtocol(loader.load);

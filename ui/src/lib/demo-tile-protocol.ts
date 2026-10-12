@@ -2,6 +2,7 @@ export const DEMO_TILE_PROTOCOL = 'tellurion-demo';
 
 const DEFAULT_MAX_CONCURRENT_OPERATIONS = 2;
 const SOURCE_ID = /^[A-Za-z0-9_-]+$/;
+const RASTER_PROFILE = /^[a-z0-9-]{1,32}$/;
 const PROTOCOL_SCOPE = /^\/(map-[1-9][0-9]*)\//;
 let nextProtocolScope = 0;
 
@@ -36,7 +37,7 @@ export function demoTileProtocolScope(protocolUrl: string): string | null {
     const url = new URL(protocolUrl);
     if (
       url.protocol !== `${DEMO_TILE_PROTOCOL}:` || url.host || url.username ||
-      url.password || url.search || url.hash
+      url.password || url.hash
     ) return null;
     return url.pathname.match(PROTOCOL_SCOPE)?.[1] ?? null;
   } catch {
@@ -64,6 +65,7 @@ export class DemoTileProtocol {
   #limit = DEFAULT_MAX_CONCURRENT_OPERATIONS;
   #origin: string | null = null;
   #sourceId: string | null = null;
+  #profile: string | null = null;
   #pending: QueuedTile[] = [];
   #running = new Set<QueuedTile>();
 
@@ -76,6 +78,7 @@ export class DemoTileProtocol {
     origin: string,
     httpsTemplate: string,
     maxConcurrentOperations?: number,
+    profile?: string,
   ): string | null {
     this.clear();
     if (!SOURCE_ID.test(sourceId)) return null;
@@ -86,11 +89,14 @@ export class DemoTileProtocol {
       return null;
     }
     const path = `/demo/sources/${sourceId}/tiles/WebMercatorQuad/{z}/{y}/{x}.png`;
-    if (httpsTemplate !== `${canonicalOrigin}${path}`) return null;
+    const search = profile === undefined ? '' : `?profile=${profile}`;
+    if ((profile !== undefined && !RASTER_PROFILE.test(profile)) ||
+        httpsTemplate !== `${canonicalOrigin}${path}${search}`) return null;
     this.#sourceId = sourceId;
     this.#origin = canonicalOrigin;
+    this.#profile = profile ?? null;
     this.#limit = operationLimit(maxConcurrentOperations);
-    return `${DEMO_TILE_PROTOCOL}:///${this.scopeId}/${this.#generation}${path}`;
+    return `${DEMO_TILE_PROTOCOL}:///${this.scopeId}/${this.#generation}${path}${search}`;
   }
 
   load(protocolUrl: string, signal: AbortSignal): Promise<ArrayBuffer> {
@@ -119,6 +125,7 @@ export class DemoTileProtocol {
     this.#generation += 1;
     this.#origin = null;
     this.#sourceId = null;
+    this.#profile = null;
     for (const tile of this.#pending.splice(0)) this.#reject(tile, cancelled());
     for (const tile of [...this.#running]) {
       this.#running.delete(tile);
@@ -138,9 +145,12 @@ export class DemoTileProtocol {
       );
       if (
         url.protocol !== `${DEMO_TILE_PROTOCOL}:` || url.host || url.username ||
-        url.password || url.search || url.hash || !route.test(url.pathname)
+        url.password || url.hash || !route.test(url.pathname) ||
+        (this.#profile === null
+          ? !!url.search
+          : url.searchParams.size !== 1 || url.searchParams.get('profile') !== this.#profile)
       ) return null;
-      return `${this.#origin}${url.pathname.slice(activationPrefix.length)}`;
+      return `${this.#origin}${url.pathname.slice(activationPrefix.length)}${url.search}`;
     } catch {
       return null;
     }

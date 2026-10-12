@@ -168,6 +168,7 @@ export class TellurionDemoMapViewer extends ElementBase {
       location.origin,
       handoff.template,
       source.limits.max_concurrent_operations,
+      handoff.profile ?? undefined,
     );
     if (!tileTemplate) return;
     map.addSource(handoff.sourceId, { type: 'raster', tiles: [tileTemplate], tileSize: 256, minzoom: 0, maxzoom: 22 });

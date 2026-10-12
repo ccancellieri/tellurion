@@ -51,7 +51,7 @@ RUN cargo build --release --locked -p tellurion \
         /build/license-evidence/rust-stdlib/ \
     && cp -R "$rust_doc/licenses" /build/license-evidence/rust-stdlib/ \
     && rustc -vV > /build/license-evidence/RUST_BUILD_INFO.txt \
-    && printf '%s\n' 'Tellurion 0.6.0 source: https://github.com/ccancellieri/tellurion/tree/v0.6.0' \
+    && printf '%s\n' 'Tellurion 0.6.1 source: https://github.com/ccancellieri/tellurion/tree/v0.6.1' \
         > /build/license-evidence/SOURCE.txt
 
 FROM debian:bookworm-slim AS runtime

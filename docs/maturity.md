@@ -1,6 +1,6 @@
-# Tellurion 0.6.0 maturity
+# Tellurion 0.6.1 maturity
 
-Tellurion 0.6.0 is a self-hosted distribution with the preview areas listed below. This page
+Tellurion 0.6.1 is a self-hosted distribution with the preview areas listed below. This page
 separates demonstrated capabilities from preview work so an evaluator can choose an
 appropriate path without inferring a hosted service or production commitment.
 
