@@ -2,6 +2,7 @@
 """Dependency-free structural and local-link checks for the static site."""
 
 from html.parser import HTMLParser
+import json
 from pathlib import Path
 import re
 from urllib.parse import unquote, urlsplit
@@ -113,12 +114,30 @@ def main() -> None:
     checker = "https://github.com/ccancellieri/tellurion/blob/main/scripts/check-gallery.sh"
     if checker not in readme:
         failures.append("README.md: missing canonical gallery checker link")
-    if not (ROOT.parents[1] / "scripts" / "check-gallery.sh").is_file():
+    publication = ROOT / "publication.json"
+    exported = False
+    if publication.is_file():
+        try:
+            metadata = json.loads(publication.read_text(encoding="utf-8"))
+            exported = (
+                isinstance(metadata, dict)
+                and metadata.get("source_repository") == "https://github.com/ccancellieri/tellurion"
+                and metadata.get("source_directory") == "demo/gallery"
+                and isinstance(metadata.get("source_commit"), str)
+                and re.fullmatch(r"[0-9a-f]{40}", metadata["source_commit"]) is not None
+            )
+        except (ValueError, OSError):
+            pass
+        if not exported:
+            failures.append("publication.json: invalid gallery export metadata")
+    if not exported and not (ROOT.parents[1] / "scripts" / "check-gallery.sh").is_file():
         failures.append("README.md: gallery checker link targets missing file")
 
     if failures:
         raise SystemExit("\n".join(failures))
     print("static site links and semantics: ok")
+    if exported:
+        print("Exported gallery: repository-only checker is outside this validation scope")
 
 
 if __name__ == "__main__":
