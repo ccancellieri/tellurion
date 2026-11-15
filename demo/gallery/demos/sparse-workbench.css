@@ -1,0 +1,47 @@
+/* Sparse irregular datacube workbench (demos/stac/#sparse-cubes-workbench). */
+.sw { --nominal:#8ab4ff; --hit:#75e6c4; --miss:rgba(155,181,172,.28); --warn:#f5bd67; }
+.sw .sw-lede { max-width: 72ch; color: var(--muted); line-height: 1.6; }
+.sw .sw-lede strong { color: var(--ink); }
+.sw .sw-sets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0; }
+.sw .sw-set { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: rgba(117,230,196,.04); }
+.sw .sw-set h3 { margin: 0 0 6px; font-size: 1rem; }
+.sw .sw-set p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+.sw .sw-set .sym { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--mint); }
+.sw .sw-backend { border-left: 3px solid var(--line); padding: 10px 14px; margin: 14px 0 6px; font-size: .9rem; color: var(--muted); background: rgba(255,255,255,.02); }
+.sw .sw-backend[data-state="ok"] { border-color: var(--hit); }
+.sw .sw-backend[data-state="missing"], .sw .sw-backend[data-state="down"] { border-color: var(--warn); }
+.sw .sw-act { margin-top: 26px; }
+.sw .sw-act > h3 { margin: 0 0 4px; font-size: 1.1rem; }
+.sw .sw-act > p { margin: 0 0 12px; color: var(--muted); font-size: .92rem; max-width: 80ch; }
+.sw .sw-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.sw .sw-card { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: rgba(8,24,20,.6); }
+.sw .sw-card[aria-current="true"] { border-color: var(--mint); box-shadow: 0 0 0 1px var(--mint) inset; }
+.sw .sw-card h4 { margin: 0; font-size: .98rem; line-height: 1.35; }
+.sw .sw-card .q { margin: 0; color: var(--ink); font-size: .9rem; line-height: 1.45; }
+.sw .sw-card .why { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.45; }
+.sw .sw-card .expect { margin: 0; font-size: .84rem; color: var(--muted); }
+.sw .sw-card .expect b { color: var(--ink); font-weight: 600; }
+.sw .sw-card code.req { display: block; font-size: .74rem; color: var(--muted); word-break: break-all; background: rgba(0,0,0,.25); padding: 6px 8px; border-radius: 6px; }
+.sw .sw-card .run { margin-top: auto; align-self: flex-start; }
+.sw .badge { display: inline-block; font-size: .7rem; letter-spacing: .03em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; width: fit-content; }
+.sw .badge.std { color: var(--hit); }
+.sw .badge.composed { color: var(--nominal); }
+.sw .badge.proposed { color: var(--warn); }
+.sw .sw-result { margin-top: 22px; border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.sw .sw-result h3 { margin: 0 0 6px; font-size: 1rem; }
+.sw .sw-status { margin: 0 0 10px; font-size: .88rem; color: var(--muted); word-break: break-all; }
+.sw .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.sw .chip { min-width: 108px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--miss); color: var(--muted); font-size: .8rem; line-height: 1.35; }
+.sw .chip b { display: block; font-size: .9rem; color: inherit; }
+.sw .chip.nominal { border-color: var(--nominal); color: var(--nominal); }
+.sw .chip.hit { border-color: var(--hit); color: var(--hit); background: rgba(117,230,196,.08); }
+.sw .chip.miss { border-style: dashed; opacity: .75; }
+.sw .sw-summary { margin: 0 0 10px; font-size: .92rem; }
+.sw .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); margin-bottom: 8px; }
+.sw .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid; }
+.sw .legend .l-nominal::before { border-color: var(--nominal); }
+.sw .legend .l-hit::before { border-color: var(--hit); background: rgba(117,230,196,.3); }
+.sw .legend .l-miss::before { border-color: var(--miss); border-style: dashed; }
+.sw details summary { cursor: pointer; color: var(--muted); font-size: .85rem; }
+.sw pre.raw { max-height: 22rem; overflow: auto; padding: .9rem; background: #0f172a; color: #e2e8f0; border-radius: 6px; font-size: .78rem; white-space: pre-wrap; }
+.sw .sw-notes { margin-top: 18px; font-size: .86rem; color: var(--muted); line-height: 1.55; }

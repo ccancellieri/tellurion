@@ -2183,13 +2183,17 @@ stop_server
 # `curl` with an `Authorization: Bearer` header -- the first authenticated
 # assertions in this script, so the two helpers live here with the phase that
 # needs them rather than in the shared helper block above.
+# `--path-as-is`: newer curl releases (the Ubuntu 26 runner image) collapse
+# percent-encoded dot segments such as `%2e%2e` before sending, which turns the
+# traversal probe in phase 21 into a request for the parent path and makes the
+# assertion test curl instead of the server. Send the path byte-for-byte.
 bearer_status_of() {
-  curl -s -o /dev/null -w '%{http_code}' \
+  curl -s --path-as-is -o /dev/null -w '%{http_code}' \
     -H "Authorization: Bearer $2" "http://127.0.0.1:$SMOKE_PORT$1"
 }
 
 bearer_body_of() {
-  out=$(curl -s -w '\n%{http_code}' -H "Authorization: Bearer $2" \
+  out=$(curl -s --path-as-is -w '\n%{http_code}' -H "Authorization: Bearer $2" \
     "http://127.0.0.1:$SMOKE_PORT$1")
   code=$(printf '%s' "$out" | tail -n 1)
   [ "$code" = "200" ] || fail "GET $1 (with credential) returned $code, expected 200"
