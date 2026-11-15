@@ -373,7 +373,7 @@ In `pentadal_sparse_granules`, January 2021 contains:
 > 3. **Subsetting & Spatiotemporal `INTERSECTS` Filtering belong in Standard OGC API – EDR `/items` + CQL2 + `CoverageJSON`:**
 >    - Rather than burdening STAC or creating new non-standard endpoints, actual multi-item slice extraction runs on **OGC API – EDR Part 1 v1.1** (`CoverageJSON` with explicit `t.bounds` and `null` gap filling), while sparsity interrogation uses **standard EDR `GET /collections/{cid}/items`** (`OGC 19-086r6` Section 8.9) paired with **OGC API – Features Part 3 / CQL2 (`OGC 21-065r2`)** `filter=S_INTERSECTS(geom, POLYGON((...)))` (or classic ECQL `INTERSECTS(...)`) and `&f=CoverageJSON` to return a compact **CoverageJSON `Domain`** (`OGC 21-069`) whose `axes.t` reports strictly the populated slices $S(\text{AOI}, \Delta t) \subsetneq D$.
 >
-> Full live walkthrough across Pentadal COG, Dekadal COG, GeoZarr, and GeoPackage is documented here: [`docs/EDR_SPARSE_TILE_CUBES_PROPOSAL.md`](https://github.com/ccancellieri/ogc-dimensions/blob/main/docs/EDR_SPARSE_TILE_CUBES_PROPOSAL.md). Happy to align on a minimal PR for `size` + UAD `definition`/`variableType` if useful!
+> Full live walkthrough across Pentadal COG, Dekadal COG, GeoZarr, and GeoPackage is documented here: [`docs/standards/ogc-edr-sparse-tile-cubes.md`](https://github.com/ccancellieri/tellurion/blob/main/docs/standards/ogc-edr-sparse-tile-cubes.md). Happy to align on a minimal PR for `size` + UAD `definition`/`variableType` if useful!
 
 ### 6.2 OGC EDR / CQL2 Best-Practice Profile Note (Zero Non-Standard Endpoints)
 

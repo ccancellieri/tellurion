@@ -34,4 +34,4 @@ This exact wire pattern scales cleanly to **serverless cloud-bucket Spatial Data
 
 ## Live Verification in Tellurion
 
-Try the live UAD (`dekadal-2021`, `pentadal-2021`) and CQL2 `S_INTERSECTS` + `CoverageJSON Domain` queries directly in the interactive [STAC & Sparse Datacube Workbench](../../demos/stac/#sparse-cubes-workbench) backed by `https://tellurion-stac-harvest-demo.onrender.com`, and read the formal change proposal in [`docs/EDR_SPARSE_TILE_CUBES_PROPOSAL.md`](https://github.com/ccancellieri/ogc-dimensions/blob/main/docs/EDR_SPARSE_TILE_CUBES_PROPOSAL.md).
+Try the live UAD (`dekadal-2021`, `pentadal-2021`) and CQL2 `S_INTERSECTS` + `CoverageJSON Domain` queries directly in the interactive [STAC & Sparse Datacube Workbench](../../demos/stac/#sparse-cubes-workbench) backed by `https://tellurion-stac-harvest-demo.onrender.com`, and read the canonical change proposal in [`docs/standards/ogc-edr-sparse-tile-cubes.md`](https://github.com/ccancellieri/tellurion/blob/main/docs/standards/ogc-edr-sparse-tile-cubes.md).
