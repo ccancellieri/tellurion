@@ -13,8 +13,6 @@ Operational climate and agricultural platforms ingest **hundreds of thousands of
 
 Unlike monolithic **GeoZarr** stores that embed coordinate arrays (`coords`) inside one archive, multi-file COG cubes exhibit high **spatiotemporal sparsity**: for a given Area of Interest ($\text{AOI}$), many theoretical calendar slices contain *no granule* due to cloud masking, swath gaps, late ingestion, or regional footprints.
 
-This proposal composes **100% standard OGC and STAC primitives** — with *zero* custom endpoints — across two cleanly separated layers *(prior discussion tracked in [`stac-extensions/datacube#36`](https://github.com/stac-extensions/datacube/issues/36))*:
-
 | Layer | Standards & Extensions | Core Mechanism |
 | :--- | :--- | :--- |
 | **1. Nominal Grammar ($D$)**<br>*Calendar structure & dimension members* | **STAC Datacube** + **Collection `links`** + **OGC API – Common Part 2 UAD** (`OGC 20-024`) | • Minimal `count` on `cube:dimensions` ([`#40`](https://github.com/stac-extensions/datacube/pull/40), resolving [`#31`](https://github.com/stac-extensions/datacube/issues/31))<br>• External dimension endpoints via `links` (`rel: "dimension"`, [`#41`](https://github.com/stac-extensions/datacube/issues/41)); `scale_type` in `snake_case` ([`#42`](https://github.com/stac-extensions/datacube/issues/42))<br>• `GET /dimensions/{id}/items?datetime=...` or CQL2 `T_INTERSECTS(...)` (e.g., `2021-01-12` $\rightarrow$ `2021-01-P3`) |
