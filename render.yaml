@@ -49,6 +49,8 @@ services:
         - demo/gallery/data/stac/esa-worldcover
         - demo/gallery/data/stac/esa-worldcover-italy
         - demo/gallery/deploy/render/build_stac_italy.py
+        - demo/gallery/deploy/render/build_sparse_gpkg.py
+        - demo/gallery/deploy/render/build_zarr_demo.py
         - demo/gallery/dist/tellurion-v0.5.0-rc.1-source-02e855affea9.zip
   - type: web
     name: tellurion-zarr-demo

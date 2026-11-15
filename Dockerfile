@@ -14,7 +14,7 @@ ENV SOURCE_ARCHIVE=tellurion-v0.5.0-rc.1-source-02e855affea9.zip
 COPY dist/tellurion-v0.5.0-rc.1-source-02e855affea9.zip /build/tellurion-v0.5.0-rc.1-source-02e855affea9.zip
 
 RUN printf '%s  %s\n' \
-      '21c243fc5164c2561a142b47c7a4cce1b7f1e0f29e74daab68275e81704b20d0' \
+      '06cd99a2f2fb27730b1094cbdead3e8f3c256d4abbcf900c6eb593c79c882b10' \
       "${SOURCE_ARCHIVE}" > source.sha256 \
     && sha256sum -c source.sha256 \
     && unzip -q "${SOURCE_ARCHIVE}"

@@ -17,9 +17,17 @@ storages:
   - id: harvested_italy_mosaic
     driver: cog-mosaic
     url_env: TELLURION_COG_MOSAIC_MANIFEST
+  - id: zarr_t0
+    driver: zarr
+    url_env: TELLURION_ZARR_T0_PATH
 
 tenants:
   - id: public
+
+settings:
+  protocols:
+    records: enabled
+    edr: enabled
 
 catalogs:
   - id: default
@@ -108,3 +116,75 @@ collections:
             type: application/geo+json
             title: Pinned GISCO Italy selection boundary
             roles: [metadata]
+        cube_dimensions:
+          time:
+            type: temporal
+            description: Dekadal calendar domain (36 periods/year) linked via OGC API Common Part 2 UAD
+            extent: ["2021-01-01T00:00:00Z", "2021-12-31T23:59:59Z"]
+            size: 36
+            definition: "https://tellurion-stac-harvest-demo.onrender.com/public/records/catalogs/default/dimensions/dekadal-2021"
+            variableType: categoricalOrdinal
+
+  - id: fao_chirps_pentadal_2021_italy
+    catalog: default
+    storage: harvested_items
+    routing:
+      features: harvested_items
+      tiles: harvested_cog
+    table: pentadal_sparse_granules
+    geometry: geom
+    datetime: start_datetime
+    tiles:
+      minzoom: 0
+      maxzoom: 12
+      caps: {}
+    settings:
+      stac:
+        license: CC-BY-4.0
+        keywords: [FAO, CHIRPS, pentadal, COG, sparse, EDR, CQL2, CoverageJSON]
+        cube_dimensions:
+          time:
+            type: temporal
+            description: Irregular pentadal calendar domain (72 monthly pentads/year, P6=26..EOM) linked via OGC API Common Part 2 UAD
+            extent: ["2021-01-01T00:00:00Z", "2021-12-31T23:59:59Z"]
+            size: 72
+            definition: "https://tellurion-stac-harvest-demo.onrender.com/public/records/catalogs/default/dimensions/pentadal-2021"
+            variableType: categoricalOrdinal
+
+  - id: dekadal_sparse_granules
+    catalog: default
+    storage: harvested_items
+    routing:
+      features: harvested_items
+      tiles: harvested_cog
+    table: dekadal_sparse_granules
+    geometry: geom
+    datetime: start_datetime
+    tiles:
+      minzoom: 0
+      maxzoom: 12
+      caps: {}
+    settings:
+      stac:
+        license: CC-BY-4.0
+        keywords: [FAO, ASIS, dekadal, COG, sparse, EDR, CQL2]
+        cube_dimensions:
+          time:
+            type: temporal
+            description: Irregular dekadal calendar domain (36 monthly dekads/year, D3=21..EOM) linked via OGC API Common Part 2 UAD
+            extent: ["2021-01-01T00:00:00Z", "2021-12-31T23:59:59Z"]
+            size: 36
+            definition: "https://tellurion-stac-harvest-demo.onrender.com/public/records/catalogs/default/dimensions/dekadal-2021"
+            variableType: categoricalOrdinal
+
+  - id: sample_zarr_t0
+    catalog: default
+    storage: zarr_t0
+    tiles:
+      minzoom: 0
+      maxzoom: 12
+      caps: {}
+    settings:
+      stac:
+        license: CC-BY-4.0
+        keywords: [GeoZarr, Zarr, dense, comparison]

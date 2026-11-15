@@ -41,7 +41,7 @@ require_file "$ENGINE_SOURCE"
 require_text Dockerfile.stac-harvest 'ARG TELLURION_VERSION=v0.5.0-rc.1'
 require_text Dockerfile.stac-harvest 'ARG TELLURION_REVISION=02e855affea9'
 require_text Dockerfile.stac-harvest 'tellurion-v0.5.0-rc.1-source-02e855affea9.zip'
-require_text Dockerfile.stac-harvest '21c243fc5164c2561a142b47c7a4cce1b7f1e0f29e74daab68275e81704b20d0'
+require_text Dockerfile.stac-harvest '06cd99a2f2fb27730b1094cbdead3e8f3c256d4abbcf900c6eb593c79c882b10'
 require_text Dockerfile.stac-harvest 'sha256sum -c'
 require_text Dockerfile.stac-harvest '/app/licenses/THIRD_PARTY_NOTICES.json'
 require_text Dockerfile.stac-harvest '/app/licenses/THIRD_PARTY_NOTICES.txt'
@@ -130,7 +130,7 @@ for asset in source_cog source_snapshot provenance_manifest; do
   require_text deploy/render/stac-harvest.yaml "$asset"
 done
 
-expected_source_hash='21c243fc5164c2561a142b47c7a4cce1b7f1e0f29e74daab68275e81704b20d0'
+expected_source_hash='06cd99a2f2fb27730b1094cbdead3e8f3c256d4abbcf900c6eb593c79c882b10'
 actual_source_hash=$(sha256sum "$ENGINE_SOURCE" | awk '{print $1}')
 test "$actual_source_hash" = "$expected_source_hash" || {
   printf 'the STAC source archive hash does not match the checked-in build pin\n' >&2
