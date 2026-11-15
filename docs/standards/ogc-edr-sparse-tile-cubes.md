@@ -1,45 +1,40 @@
 # OGC API – EDR Sparse Tile Cubes, STAC UAD Linkage, and Spatiotemporal Filtering (`CQL2` / `INTERSECTS`)
 
-**Status:** Evolved Community & SWG Proposal (`ogc-dimensions` withdrawn as formal proposal)  
-**Date:** November 2026  
-**Author:** Carlo Cancellieri — [ccancellieri.github.io](https://ccancellieri.github.io/)  
+**Status:** Community & SWG Proposal *(background tracked in [`stac-extensions/datacube#36`](https://github.com/stac-extensions/datacube/issues/36))*  
+**Date:** November 2026 &middot; **Author:** Carlo Cancellieri ([ccancellieri.github.io](https://ccancellieri.github.io/))  
 **Reference Implementations:** [Tellurion (Rust)](https://github.com/ccancellieri/tellurion) &middot; [GeoID / DynaStore (Python)](https://github.com/un-fao/geoid)  
-**Reproducible Gallery & Public Demo:** [Tellurion Demos Portal](https://ccancellieri.github.io/tellurion-demos/) &middot; [Live STAC & Sparse Datacube Workbench](https://ccancellieri.github.io/tellurion-demos/demos/stac/) &middot; [Render Live Service](https://tellurion-stac-harvest-demo.onrender.com/public/records/catalogs/default/dimensions/dekadal-2021)
+**Live Demos:** [Tellurion Demos Portal](https://ccancellieri.github.io/tellurion-demos/) &middot; [Sparse Datacube Workbench](https://ccancellieri.github.io/tellurion-demos/demos/stac/) &middot; [Render Live Service](https://tellurion-stac-harvest-demo.onrender.com/public/records/catalogs/default/dimensions/dekadal-2021)
 
 ---
 
 ## Executive Summary
 
-Operational climate and agricultural platforms ingest **hundreds of thousands of sparse, file-per-granule Cloud-Optimized GeoTIFFs (COGs)** on **non-Gregorian calendars** — notably **pentadal** (72 periods/year in month-aligned CHIRPS/FAO systems, 73 periods/year in annual GPCP/NOAA systems) and **dekadal** (36 periods/year in FAO ASIS and FEWS NET). Unlike monolithic **GeoZarr** stores that embed coordinate arrays (`coords`) inside one archive, multi-file COG cubes cannot store coordinates in a single binary and exhibit high **spatiotemporal sparsity**: for a given Area of Interest ($\text{AOI}$), many theoretical calendar slices contain no granule due to cloud masking, swath gaps, late ingestion, or regional footprints.
+Operational climate and agricultural platforms ingest **hundreds of thousands of sparse, file-per-granule Cloud-Optimized GeoTIFFs (COGs)** on *non-Gregorian calendars* — notably **pentadal** (`72` periods/year in month-aligned CHIRPS/FAO systems; `73` periods/year in annual GPCP/NOAA systems) and **dekadal** (`36` periods/year in FAO ASIS and FEWS NET).
 
-Following community feedback on [`stac-extensions/datacube#36`](https://github.com/stac-extensions/datacube/issues/36) (`@fmigneault`) and [`#31`](https://github.com/stac-extensions/datacube/issues/31) (`@m-mohr`), we leave the standalone *OGC API – Dimensions* repository as a **withdrawn formal proposal** and replace all bespoke endpoints with a pure-standards two-layer architecture:
+Unlike monolithic **GeoZarr** stores that embed coordinate arrays (`coords`) inside one archive, multi-file COG cubes exhibit high **spatiotemporal sparsity**: for a given Area of Interest ($\text{AOI}$), many theoretical calendar slices contain *no granule* due to cloud masking, swath gaps, late ingestion, or regional footprints.
 
-| Concern | Standards & Extensions | Key Endpoints / Mechanisms |
+This proposal composes **100% standard OGC and STAC primitives** — with *zero* custom endpoints — across two cleanly separated layers *(prior discussion tracked in [`stac-extensions/datacube#36`](https://github.com/stac-extensions/datacube/issues/36))*:
+
+| Layer | Standards & Extensions | Core Mechanism |
 | :--- | :--- | :--- |
-| **1. Nominal Grammar ($D$)**<br>*Calendar structure & dimension members* | **STAC Datacube** + **Collection `links`** + **OGC API – Common Part 2 UAD** (`OGC 20-024`) | • Minimal `count` on `cube:dimensions` ([`#40`](https://github.com/stac-extensions/datacube/pull/40), resolving `#31`)<br>• External dimension endpoints via `links` (`rel: "dimension"`, [`#41`](https://github.com/stac-extensions/datacube/issues/41)); `scale_type` in `snake_case` ([`#42`](https://github.com/stac-extensions/datacube/issues/42))<br>• `GET /dimensions/{id}/items?datetime=...` or CQL2 `T_INTERSECTS(...)` (e.g., `2021-01-12` $\rightarrow$ `2021-01-P3`) |
+| **1. Nominal Grammar ($D$)**<br>*Calendar structure & dimension members* | **STAC Datacube** + **Collection `links`** + **OGC API – Common Part 2 UAD** (`OGC 20-024`) | • Minimal `count` on `cube:dimensions` ([`#40`](https://github.com/stac-extensions/datacube/pull/40), resolving [`#31`](https://github.com/stac-extensions/datacube/issues/31))<br>• External dimension endpoints via `links` (`rel: "dimension"`, [`#41`](https://github.com/stac-extensions/datacube/issues/41)); `scale_type` in `snake_case` ([`#42`](https://github.com/stac-extensions/datacube/issues/42))<br>• `GET /dimensions/{id}/items?datetime=...` or CQL2 `T_INTERSECTS(...)` (e.g., `2021-01-12` $\rightarrow$ `2021-01-P3`) |
 | **2. Populated Support ($S(\text{AOI}, \Delta t) \subsetneq D$)**<br>*Sparse slice discovery & raster extraction* | **OGC API – EDR Part 1 v1.1** (`OGC 19-086r6`) + **CQL2** (`OGC 21-065r2`) + **CoverageJSON** (`OGC 21-069`) | • **Discovery:** `GET /collections/{cid}/items?filter=S_INTERSECTS(...)&f=CoverageJSON` (`Domain` with populated `axes.t`)<br>• **Extraction:** `/cube`, `/area`, `/position` returning `CoverageJSON` with explicit temporal `bounds` and `null`-filled gaps |
 
 ---
 
-## 1. The FAO Operational Use Case & Why Standalone `ogc-dimensions` Was Retired
+## 1. Operational Use Case: Irregular Calendars & Sparse COG Archives
 
-### Historical Context (FAO Agro-Informatics & ASIS / CHIRPS Workflows)
-*(Note: The earlier `data.review.fao.org` review sandbox cited in April 2026 drafts is decommissioned and retained here strictly as historical context; live verification now runs on [Tellurion](https://github.com/ccancellieri/tellurion).)*
+Large-scale agro-climatic monitoring catalogs routinely manage two structural realities:
 
-Large-scale operational monitoring catalogs routinely manage:
-- **Sub-monthly irregular calendars**:
-  - **Dekadal (`36/year`)**: Days `1–10` (`D1`), `11–20` (`D2`), and `21–EOM` (`D3`, 8–11 days).
-  - **Pentadal monthly-aligned (`72/year`, CHIRPS / CDT / FAO)**: 6 pentads per month (`P1`..`P5` = 5 days each; `P6` = `26–EOM`, varying between 3 days in non-leap February and 6 days in 31-day months).
-  - **Pentadal annual-aligned (`73/year`, GPCP / NOAA)**: 73 consecutive 5-day slices from January 1 (`P73` = 5 or 6 days).
-- **Hundreds of thousands of independent COG granules**: Each `(time_slice, spatial_tile)` is stored as its own COG (e.g., S3 object or regional mosaic) and indexed by spatial footprint (`Polygon`) + temporal bounds (`[start_datetime, end_datetime]`) in a relational/GeoPackage catalog.
+- **Sub-monthly irregular calendars:**
+  - **Dekadal (`36/year`):** Days `1–10` (`D1`), `11–20` (`D2`), and `21–EOM` (`D3`, `8–11` days).
+  - **Pentadal, monthly-aligned (`72/year`, CHIRPS / CDT / FAO):** `6` pentads per month (`P1`..`P5` = `5` days each; `P6` = `26–EOM`, ranging from `3` days in non-leap February to `6` days in 31-day months).
+  - **Pentadal, annual-aligned (`73/year`, GPCP / NOAA):** `73` consecutive `5`-day slices from January 1 (`P73` = `5` or `6` days).
+- **Hundreds of thousands of independent COG granules:**
+  - Each `(time_slice, spatial_tile)` is stored as its own COG (e.g., S3 object or regional mosaic).
+  - Each granule is indexed by **spatial footprint** (`Polygon`) and **temporal bounds** (`[start_datetime, end_datetime]`) in a relational/GeoPackage or STAC/GeoParquet catalog.
 
-### Why Standalone Paginated `ogc-dimensions` Was Withdrawn
-While the standalone `ogc-dimensions` Records pagination spec solved calendar enumeration ($D$), community feedback (`@fmigneault` on `stac-extensions/datacube#36`) rightly pointed out that:
-1. Embedding custom `provider` schemas and re-inventing pagination envelopes inside STAC `cube:dimensions` adds unnecessary boilerplate when STAC `count` (`#40`) + Collection `links` (`#41`) can cleanly reference an external **OGC API – Common Part 2 UAD** dimension resource (`/dimensions/{id}`) without breaking self-description or overlapping with `reference_system` / `definition` (observed-property concept URI).
-2. Replacing bespoke endpoints with standard **`GET /dimensions/{id}/items?datetime=...`** and CQL2 **`?filter=T_INTERSECTS(...)`** keeps the domain API minimal and standard-compliant.
-3. Even with perfect enumeration of $D$, **listing all theoretical timestamps $D$ does not tell an analytical client or Web UI which spatiotemporal slices actually contain COG data in a user's $\text{AOI}$!** That lookup ($S \subsetneq D$) is a **spatiotemporal `intersects` filtering concern** best solved using **standard EDR `/collections/{cid}/items` + OGC Features Part 3 CQL2 (`S_INTERSECTS` / `INTERSECTS`) + `CoverageJSON` (`Domain`)**, without inventing custom endpoints.
-
-Consequently, `ogc-dimensions` stays archived with a *withdrawn formal proposal* notice and further development on `ogc-dimensions/reference-implementation/` is discontinued; the calendar domain rules (`dekadal-2021`, `pentadal-2021`, `dekadal-2000-2026`, `pentadal-2000-2026`) and `?datetime=` / CQL2 filtering live in `tellurion-records` (`dimensions.rs`), while all extraction and CQL2-filtered `/items` resolution live in `tellurion-edr`.
+*Note:* The evolution from standalone dimension pagination to this composed OGC/STAC pattern is tracked in [`stac-extensions/datacube#36`](https://github.com/stac-extensions/datacube/issues/36). In the reference implementation ([Tellurion](https://github.com/ccancellieri/tellurion)), calendar grammars (`dekadal-*`, `pentadal-*`) live in `tellurion-records`, while sparse extraction and CQL2-filtered `/items` resolution live in `tellurion-edr`.
 
 ---
 
@@ -133,12 +128,14 @@ GET /collections/{collectionId}/items/{itemId}
 
 Clients can inspect populated slices using plain GeoJSON features, or request `f=CoverageJSON` on the exact same `/items` URL to skip empty windows (`axes.t.values == []`), identify valid pentad/dekad IDs, and issue `/cube` or `/area` solely on populated periods.
 
-### 4.3 Multi-Item Sparse Assembly Rules (Resolving DynaStore / GeoID Gaps)
-In `crates/tellurion-edr/src/sparse.rs`, Tellurion resolves four known limitations identified in the reference Python GeoID/DynaStore audit:
-1. **No `limit=1` truncation:** Queries up to `1000` intersecting index features across the full `datetime` interval rather than stopping after a single STAC Item.
-2. **Spatial + geometric `intersects` filtering:** Pushes `bbox` down to the GeoPackage R-tree (`rtree_<table>_geom`) and evaluates exact `geo::Intersects` against CQL2 `S_INTERSECTS` / ECQL `INTERSECTS` / `coords` / `intersects`.
-3. **Intra-slice spatial masking (`matched_bbox`) + exact Area/Radius polygon masking:** For partial granules covering only part of an AOI (such as `2021-01-P3`), pixels outside the intersecting `granule_bbox` (and outside non-rectangular `area` polygons or `radius` circles) are set to `null` inside the CoverageJSON `NdArray`.
-4. **Irregular interval preservation:** Populates `domain.axes.t.bounds` alongside `domain.axes.t.values` so downstream consumers can verify variable-length slices (`P6` = 6 days, `D3` = 8–11 days).
+### 4.3 Multi-Item Sparse Assembly Rules
+
+In `crates/tellurion-edr/src/sparse.rs`, sparse raster assembly follows four rules:
+
+1. **Full-window index scan (no `limit=1` truncation):** Queries up to `1000` intersecting index features across the full `datetime` interval rather than stopping after a single STAC Item.
+2. **Spatial + geometric `intersects` filtering:** Pushes `bbox` down to the GeoPackage R-tree (`rtree_<table>_geom`) and evaluates exact `geo::Intersects` against CQL2 `S_INTERSECTS`, ECQL `INTERSECTS`, `coords`, and `intersects`.
+3. **Intra-slice spatial & polygon masking:** For partial granules covering only part of an $\text{AOI}$ (e.g., `2021-01-P3`), pixels outside `matched_bbox` — and outside non-rectangular `area` polygons or `radius` circles — are set to `null` inside the CoverageJSON `NdArray`.
+4. **Irregular interval preservation:** Populates `domain.axes.t.bounds` alongside `domain.axes.t.values` so clients can verify variable-length slices (`P6` = `3–6` days, `D3` = `8–11` days).
 
 ### 4.4 Web UI Discovery Workflow: Populated Slices in Massive Sparse Cubes
 
@@ -368,30 +365,18 @@ In `pentadal_sparse_granules`, January 2021 contains:
 
 ---
 
-## 6. Ready-to-Post Community & SWG Drafts
+## 6. Standards Profile & Tracked Issues
 
-### 6.1 Follow-up Comment Draft for `stac-extensions/datacube#36` (and `#31`)
+### 6.1 OGC EDR / CQL2 Best-Practice Profile (Zero Custom Endpoints)
 
-> Thanks again `@fmigneault` and `@m-mohr` for the thorough architectural feedback.
->
-> After testing the end-to-end pattern against real Cloud-Optimized GeoTIFF, GeoZarr v2, and GeoPackage deployments in **Tellurion** (and building on our earlier GeoID/FAO operational experience), we are leaving the standalone *OGC API – Dimensions* repository with a **withdrawn formal proposal** notice and dropping custom pagination/inverse endpoints in favor of a 100% standard composition:
->
-> 1. **STAC `cube:dimensions` stays minimal (aligned with `#31`, `#40`, `#41`, `#42`):**
->    - Scope PR `#40` to optional `count` (`integer >= 0`) on Dimension Objects, resolving `#31`.
->    - Keep external dimension member endpoints in STAC `links` (`#41`, e.g., to `/dimensions/pentadal-2021`, queried via standard `/items?datetime=...` or CQL2 `T_INTERSECTS(...)`) rather than overloading `definition` inside `cube:dimensions`, and discuss `scale_type` (`snake_case`, `#42`) separately from `cube:variables`.
->    - No `provider` object and no custom pagination schema inside STAC Datacube.
->
-> 2. **Why `coords`-embedded GeoZarr differs from Multi-File Sparse COG Tile Cubes:**
->    - Single-store **GeoZarr** archives can naturally embed 1D `coords` arrays.
->    - Multi-file **Pentadal (`72/yr`) and Dekadal (`36/yr`) COG tile cubes** (hundreds of thousands of independent GeoTIFF granules per product) cannot embed global coordinate arrays in any single file, and frequently suffer from heavy spatiotemporal sparsity (missing granules, partial cloud-free tiles).
->
-> 3. **Subsetting & Spatiotemporal `INTERSECTS` Filtering belong in Standard OGC API – EDR `/items` + CQL2 + `CoverageJSON`:**
->    - Rather than burdening STAC or creating new non-standard endpoints, actual multi-item slice extraction runs on **OGC API – EDR Part 1 v1.1** (`CoverageJSON` with explicit `t.bounds` and `null` gap filling), while sparsity interrogation uses **standard EDR `GET /collections/{cid}/items`** (`OGC 19-086r6` Section 8.9) paired with **OGC API – Features Part 3 / CQL2 (`OGC 21-065r2`)** `filter=S_INTERSECTS(geom, POLYGON((...)))` (or classic ECQL `INTERSECTS(...)`) and `&f=CoverageJSON` to return a compact **CoverageJSON `Domain`** (`OGC 21-069`) whose `axes.t` reports strictly the populated slices $S(\text{AOI}, \Delta t) \subsetneq D$.
->
-> Full live walkthrough across Pentadal COG, Dekadal COG, GeoZarr, and GeoPackage is documented here: [`docs/standards/ogc-edr-sparse-tile-cubes.md`](https://github.com/ccancellieri/tellurion/blob/main/docs/standards/ogc-edr-sparse-tile-cubes.md). See also [`stac-extensions/datacube#40`](https://github.com/stac-extensions/datacube/pull/40), [`#41`](https://github.com/stac-extensions/datacube/issues/41), [`#42`](https://github.com/stac-extensions/datacube/issues/42), and [`opengeospatial/ogcapi-environmental-data-retrieval#716`](https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/issues/716).
+- **Composed Standards:** OGC API – EDR Part 1 v1.1 (`OGC 19-086r6` §8.9 `/req/edr/rc-items`) + OGC API – Features Part 3 Filter (`OGC 19-079r2`) + CQL2 (`OGC 21-065r2`) + CoverageJSON (`OGC 21-069`) + OGC API – Common Part 2 UAD (`OGC 20-024` §8).
+- **Wire Pattern:**
+  - Advertise `ogcapi-features-3/1.0/conf/filter` and `cql2/1.0/conf/*` on EDR `/conformance`.
+  - Support `filter=S_INTERSECTS(...)` / `INTERSECTS(...)` / `T_INTERSECTS(...)`, `coords`, `bbox`, and `datetime` on **`GET /collections/{collectionId}/items`**.
+  - Support `f=CoverageJSON` (`application/prs.coverage+json`) to return a lightweight **CoverageJSON `"type": "Domain"`** (`domainType: "Grid"`) listing *only* the populated intersecting slices $S(\text{AOI}, \Delta t) \subsetneq D$.
+- **Outcome:** Resolves the *Blind Extraction Problem* and avoids client-side `/items` pagination across virtual multi-file COG/STAC cubes using irregular (`pentadal`, `dekadal`) calendars — while staying 100% conformant with published OGC API specifications.
 
-### 6.2 OGC EDR / CQL2 Best-Practice Profile Note (Zero Non-Standard Endpoints)
+### 6.2 Tracked Community Discussions & PRs
 
-- **Composed Standards:** OGC API – EDR Part 1 v1.1 (`OGC 19-086r6`, Section 8.9 `/req/edr/rc-items`) + OGC API – Features Part 3 Filter (`OGC 19-079r2`) + CQL2 (`OGC 21-065r2`) + CoverageJSON (`OGC 21-069`)
-- **Pattern:** Do not introduce bespoke paths (`/availability`, `/intersection`, `/inverse`). Instead, advertise `ogcapi-features-3/1.0/conf/filter` and `cql2/1.0/conf/*` on the EDR `/conformance` resource, support `filter=S_INTERSECTS(...)` / `INTERSECTS(...)` / `T_INTERSECTS(...)` + `coords` + `bbox` + `datetime` on standard **`GET /collections/{collectionId}/items`**, and allow `f=CoverageJSON` (`application/prs.coverage+json`) to return a lightweight **CoverageJSON `"type": "Domain"`** (`domainType: "Grid"`) listing only the populated intersecting slices ($S(\text{AOI}, \Delta t) \subsetneq D$).
-- **Motivation:** Solves the "Blind Extraction Problem" and unscalable client `/items` pagination on virtual multi-file COG/STAC cubes using non-Gregorian (`pentadal`, `dekadal`) calendars while staying 100% conformant with published OGC API specifications.
+- **STAC Datacube Evolution:** [`stac-extensions/datacube#36`](https://github.com/stac-extensions/datacube/issues/36) (architectural background) &middot; [`#31`](https://github.com/stac-extensions/datacube/issues/31) / [`PR #40`](https://github.com/stac-extensions/datacube/pull/40) (`count` on Dimension Objects) &middot; [`#41`](https://github.com/stac-extensions/datacube/issues/41) (STAC `links` for external dimension endpoints) &middot; [`#42`](https://github.com/stac-extensions/datacube/issues/42) (`scale_type` in `snake_case`).
+- **OGC API – EDR:** [`opengeospatial/ogcapi-environmental-data-retrieval#716`](https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/issues/716) (Table 15 rationalisation + optional `/items` Populated Domain & CQL2 profile).
