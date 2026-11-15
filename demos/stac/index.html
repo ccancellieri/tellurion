@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css">
   <link rel="stylesheet" href="../viewer.css">
   <link rel="stylesheet" href="../protocol.css">
+  <link rel="stylesheet" href="../sparse-workbench.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -133,26 +134,117 @@
           </div>
         </section>
       </div>
-      <section class="protocol-card harvest-card" id="sparse-cubes-workbench" style="margin-top: 1.5rem;" aria-labelledby="sparse-workbench-title">
+      <section class="protocol-card harvest-card sw" id="sparse-cubes-workbench" style="margin-top: 1.5rem;" aria-labelledby="sparse-workbench-title">
         <div class="harvest-heading">
           <div>
-            <p class="eyebrow">OGC Common Part 2 UAD + EDR + CQL2 · Sparse irregular cubes</p>
-            <h2 id="sparse-workbench-title">Dekadal (36/yr) &amp; Pentadal (72/yr) Sparse COG Cube Workbench</h2>
+            <p class="eyebrow">Sparse irregular datacubes · FAO dekadal &amp; pentadal calendars</p>
+            <h2 id="sparse-workbench-title">Which periods actually have data here?</h2>
           </div>
         </div>
-        <p class="intro">Monolithic GeoZarr stores declare coordinates in <code>.zmetadata</code>. Multi-file Cloud-Optimized GeoTIFF (COG) cubes over irregular agro-climatic calendars (<strong>dekadal</strong> 36/yr, D3=21..EOM; <strong>pentadal</strong> 72/yr, P6=26..EOM) separate the <strong>nominal grammar <em>D</em></strong> (OGC Common Part 2 UAD <code>/dimensions/{id}/items</code>) from <strong>populated AOI support <em>S</em>(AOI, Δ<em>t</em>) ⊆ <em>D</em></strong> (standard EDR <code>GET /collections/{cid}/items</code> + CQL2 <code>S_INTERSECTS</code> + <code>f=CoverageJSON</code> <code>Domain</code>). Zero non-standard endpoints are used.</p>
-        <div class="links" role="group" aria-label="Sparse datacube live queries" style="flex-wrap: wrap; gap: 0.5rem;">
-          <button class="button sparse-probe" type="button" data-path="/public/records/catalogs/default/dimensions/pentadal-2021/items?limit=12">1. UAD Calendar Grammar D: pentadal-2021 (12 of 72)</button>
-          <button class="button sparse-probe" type="button" data-path="/public/records/catalogs/default/dimensions/pentadal-2021/items?filter=T_INTERSECTS(time,INTERVAL(%272021-01-01T00:00:00Z%27,%272021-01-31T23:59:59Z%27))&amp;filter-lang=cql2-text">2. UAD CQL2 T_INTERSECTS (Jan 2021 P1..P6)</button>
-          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((12.0%2039.0,12.5%2039.0,12.5%2039.5,12.0%2039.5,12.0%2039.0)))&amp;filter-lang=cql2-text&amp;f=CoverageJSON">3. EDR S_INTERSECTS SW AOI -> P1, P3, P6 (Domain)</button>
-          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((13.5%2040.5,14.5%2040.5,14.5%2041.5,13.5%2041.5,13.5%2040.5)))&amp;filter-lang=cql2-text&amp;f=CoverageJSON">4. EDR S_INTERSECTS NE AOI -> P1, P6 (P3 pruned!)</button>
-          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=INTERSECTS(geometry,POLYGON((12.0%2039.0,12.5%2039.0,12.5%2039.5,12.0%2039.5,12.0%2039.0)))&amp;filter-lang=cql2-text">5. Classic ECQL INTERSECTS Footprints (GeoJSON)</button>
-          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/dekadal_sparse_granules/items?f=CoverageJSON">6. Dekadal (36/yr) Populated Domain (D2 missing)</button>
-          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/cube?bbox=12.0,39.0,12.5,39.5&amp;datetime=2021-01-01T00:00:00Z/2021-01-05T23:59:59Z&amp;f=CoverageJSON">7. EDR /cube Extract on Verified P1</button>
+        <p class="sw-lede">A GeoZarr store carries its own time coordinates. A cube made of <strong>thousands of separate COG files</strong> does not: no single file knows the whole axis, and most calendar periods have <strong>no file at all</strong> for a given area (cloud masks, late ingestion, partial swaths). A map client has to answer one question before it draws a time slider or reads a pixel: <em>of all the periods the calendar defines, which ones have data inside my area?</em> This workbench answers it in three steps against real sparse fixtures for January 2021.</p>
+
+        <div class="sw-sets" role="list">
+          <div class="sw-set" role="listitem"><h3><span class="sym">D</span> · the calendar</h3><p>Every period the calendar defines, with its real start and end. Pentadal = 72 per year (P6 runs from day 26 to month end); dekadal = 36 per year (D3 runs from day 21 to month end). Same for every place on Earth.</p></div>
+          <div class="sw-set" role="listitem"><h3><span class="sym">S(AOI, Δt)</span> · what exists here</h3><p>The subset of <span class="sym">D</span> for which at least one COG granule intersects your area and time window. It changes when you pan the map.</p></div>
+          <div class="sw-set" role="listitem"><h3><span class="sym">D \ S</span> · the gaps</h3><p>Periods to grey out in the UI and to skip when extracting. Without knowing them, a client reads empty slices blindly.</p></div>
         </div>
-        <p class="evidence-status" id="sparse-status" aria-live="polite">Select a query above to inspect live UAD and EDR CoverageJSON responses from Render.</p>
-        <p class="notes"><strong>Architecture &amp; DuckDB / Portolan SDI note:</strong> Read <a href="../../docs/articles/sparse-datacubes-edr-cql2-portolan.md">Sparse Irregular Datacubes on Cloud Storage</a> or review the <a href="https://github.com/ccancellieri/ogc-dimensions/blob/main/docs/EDR_SPARSE_TILE_CUBES_PROPOSAL.md">OGC / STAC Proposal</a> showing how this same CoverageJSON <code>Domain</code> contract pairs with DuckDB GeoParquet joins on <a href="https://www.portolan-sdi.org/">Portolan SDI</a> catalogs.</p>
-        <pre id="sparse-output" style="max-height: 22rem; overflow: auto; padding: 0.9rem; background: #0f172a; color: #e2e8f0; border-radius: 6px; font-size: 0.82rem; white-space: pre-wrap;">{}</pre>
+
+        <p class="sw-backend" id="sparse-backend" data-state="checking" role="status">Checking the hosted service…</p>
+
+        <div class="sw-act">
+          <h3>Step 1 · Read the calendar <span class="sym" style="color:var(--mint)">D</span></h3>
+          <p>The calendar is published once as a dimension resource and linked from the STAC collection through <code>cube:dimensions.time.definition</code>. It is cacheable and independent of any file.</p>
+          <div class="sw-cards">
+            <article class="sw-card" data-path="/public/records/catalogs/default/dimensions/pentadal-2021/items?limit=12" data-kind="grammar">
+              <span class="badge composed">Common Part 2 UAD (draft) · Records items</span>
+              <h4>The 2021 pentadal calendar</h4>
+              <p class="q">Which pentads does 2021 have, and where does each one start and end?</p>
+              <p class="expect">Expect <b>72 matched</b>; first page shows Jan and Feb P1–P6. Jan P6 lasts 6 days, Feb P6 only 3.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+            <article class="sw-card" data-path="/public/records/catalogs/default/dimensions/pentadal-2021/items?filter=T_INTERSECTS(time,INTERVAL(%272021-01-01T00:00:00Z%27,%272021-01-31T23:59:59Z%27))&amp;filter-lang=cql2-text" data-kind="grammar">
+              <span class="badge std">CQL2 T_INTERSECTS · OGC 21-065r2</span>
+              <h4>January, as pentads</h4>
+              <p class="q">Which pentads overlap January 2021?</p>
+              <p class="expect">Expect <b>P1–P6</b>. This is the full set <span class="sym">D</span> for the window used below.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+            <article class="sw-card" data-path="/public/records/catalogs/default/dimensions/dekadal-2021/items?datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z" data-kind="grammar">
+              <span class="badge std">datetime parameter</span>
+              <h4>January, as dekads</h4>
+              <p class="q">Which dekads overlap January 2021?</p>
+              <p class="expect">Expect <b>D1–D3</b>; D3 covers 21–31 (11 days), so no fixed ISO 8601 step fits.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+          </div>
+        </div>
+
+        <div class="sw-act">
+          <h3>Step 2 · Find what exists here <span class="sym" style="color:var(--mint)">S(AOI, Δt)</span></h3>
+          <p>The granule footprints are indexed (GeoPackage R-tree here; STAC, GeoParquet or DuckDB elsewhere). A spatial filter on the collection's <code>/items</code> prunes empty periods on the server. The last three cards ask for the answer as a CoverageJSON <code>Domain</code>: only the populated time values, in well under a kilobyte.</p>
+          <div class="sw-cards">
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((12.0%2039.0,12.5%2039.0,12.5%2039.5,12.0%2039.5,12.0%2039.0)))&amp;filter-lang=cql2-text&amp;datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z" data-kind="support" data-window="2021-01-P1,2021-01-P2,2021-01-P3,2021-01-P4,2021-01-P5,2021-01-P6">
+              <span class="badge composed">EDR /items + Features Part 3 filter</span>
+              <h4>South-west area, as footprints</h4>
+              <p class="q">Which granules intersect a small area near 12.0–12.5°E, 39.0–39.5°N in January?</p>
+              <p class="expect">Expect <b>3 GeoJSON features</b>: P1, P3, P6. P2, P4, P5 were never ingested.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((12.0%2039.0,12.5%2039.0,12.5%2039.5,12.0%2039.5,12.0%2039.0)))&amp;filter-lang=cql2-text&amp;datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z&amp;f=CoverageJSON" data-kind="support" data-window="2021-01-P1,2021-01-P2,2021-01-P3,2021-01-P4,2021-01-P5,2021-01-P6">
+              <span class="badge proposed">Proposed EDR extension · Domain on /items</span>
+              <h4>South-west area, as a Domain</h4>
+              <p class="q">Same question, but return only the populated time values with their bounds.</p>
+              <p class="expect">Expect <b>t = P1, P3, P6</b>, each with its <code>[start, end]</code>.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((13.5%2040.5,14.5%2040.5,14.5%2041.5,13.5%2041.5,13.5%2040.5)))&amp;filter-lang=cql2-text&amp;datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z&amp;f=CoverageJSON" data-kind="support" data-window="2021-01-P1,2021-01-P2,2021-01-P3,2021-01-P4,2021-01-P5,2021-01-P6">
+              <span class="badge proposed">Proposed EDR extension · Domain on /items</span>
+              <h4>North-east area: the answer changes</h4>
+              <p class="q">Move the area to 13.5–14.5°E, 40.5–41.5°N. Does P3 still have data?</p>
+              <p class="expect">Expect <b>t = P1, P6</b>. The P3 granule only covers the south-west, so P3 drops out. A global collection summary would wrongly list it.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/dekadal_sparse_granules/items?datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z&amp;f=CoverageJSON" data-kind="support" data-window="2021-01-D1,2021-01-D2,2021-01-D3">
+              <span class="badge proposed">Proposed EDR extension · Domain on /items</span>
+              <h4>Dekadal cube, January</h4>
+              <p class="q">Which January dekads have any granule?</p>
+              <p class="expect">Expect <b>t = D1, D3</b>; D2 is a deliberate gap.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+          </div>
+        </div>
+
+        <div class="sw-act">
+          <h3>Step 3 · Read pixels only where data exists</h3>
+          <p>Standard EDR <code>/cube</code> extraction. Compare a request limited to a populated period with a blind request over the whole month.</p>
+          <div class="sw-cards">
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/cube?bbox=12.0,39.0,12.5,39.5&amp;datetime=2021-01-01T00:00:00Z/2021-01-05T23:59:59Z&amp;f=CoverageJSON" data-kind="extract" data-window="2021-01-P1">
+              <span class="badge std">EDR Part 1 /cube · OGC 19-086r6</span>
+              <h4>Targeted: P1 only</h4>
+              <p class="q">Extract the area for a period Step 2 confirmed.</p>
+              <p class="expect">Expect <b>one slice</b>, shape <code>[1, 64, 64]</code>, every cell filled.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/cube?bbox=12.4,39.4,12.8,39.8&amp;datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z&amp;f=CoverageJSON" data-kind="extract" data-window="2021-01-P1,2021-01-P2,2021-01-P3,2021-01-P4,2021-01-P5,2021-01-P6">
+              <span class="badge std">EDR Part 1 /cube · OGC 19-086r6</span>
+              <h4>Blind: the whole month</h4>
+              <p class="q">Extract all of January over an area that straddles the P3 granule edge.</p>
+              <p class="expect">Expect <b>6 slices</b>: P2, P4, P5 entirely null, P3 only partly filled. Half the payload is empty.</p>
+              <button class="button run" type="button">Run</button>
+            </article>
+          </div>
+        </div>
+
+        <div class="sw-result" aria-live="polite">
+          <h3 id="sparse-result-title">Result</h3>
+          <p class="sw-status" id="sparse-status">Pick a card above. Each request goes straight from your browser to the hosted Tellurion service.</p>
+          <div class="legend"><span class="l-nominal">in the calendar (D)</span><span class="l-hit">has data here (S)</span><span class="l-miss">gap (D \ S)</span></div>
+          <p class="sw-summary" id="sparse-summary"></p>
+          <div class="chips" id="sparse-chips"></div>
+          <details><summary>Raw response</summary><pre class="raw" id="sparse-output">{}</pre></details>
+        </div>
+
+        <p class="sw-notes"><strong>What is standard today and what is proposed.</strong> Green badges are published OGC standards. Blue badges compose published pieces (OGC API – Common Part 2 UAD is still a draft; EDR <code>/items</code> defers its filtering to OGC API – Features, so the CQL2 <code>filter</code> parameter comes from Features Part 3 rather than from EDR itself). Amber badges are the extension this demo proposes to the EDR Standards Working Group: a CoverageJSON <code>Domain</code> response listing only the populated periods. Background: <a href="../../docs/articles/sparse-datacubes-edr-cql2-portolan.md">Sparse irregular datacubes on cloud storage</a>, the <a href="https://github.com/ccancellieri/ogc-dimensions/blob/main/docs/EDR_SPARSE_TILE_CUBES_PROPOSAL.md">proposal</a>, and the same index pattern over GeoParquet manifests queried with DuckDB in <a href="https://www.portolan-sdi.org/">Portolan SDI</a>-style catalogs.</p>
       </section>
     </section>
   </main>
@@ -244,31 +336,125 @@
     }
     loadEvidence();
 
+    const sparseRoot = document.getElementById("sparse-cubes-workbench");
     const sparseStatus = document.getElementById("sparse-status");
     const sparseOutput = document.getElementById("sparse-output");
-    async function runSparseProbe(path) {
-      const targetUrl = service + path;
+    const sparseSummary = document.getElementById("sparse-summary");
+    const sparseChips = document.getElementById("sparse-chips");
+    const sparseBackend = document.getElementById("sparse-backend");
+    const shortDay = iso => (iso || "").slice(5, 10);
+    function chip(label, detail, cls) {
+      const el = document.createElement("div");
+      el.className = "chip " + cls;
+      const b = document.createElement("b");
+      b.textContent = label;
+      el.append(b, document.createTextNode(detail));
+      return el;
+    }
+    function nonNullPerSlice(coverage) {
+      const range = Object.values(coverage.ranges || {})[0];
+      if (!range || !Array.isArray(range.values) || !Array.isArray(range.shape)) return null;
+      const per = range.shape.slice(1).reduce((a, b) => a * b, 1);
+      const out = [];
+      for (let s = 0; s < range.shape[0]; s++) {
+        let n = 0;
+        for (let i = s * per; i < (s + 1) * per; i++) if (range.values[i] !== null) n++;
+        out.push([n, per]);
+      }
+      return out;
+    }
+    function renderSparse(card, data) {
+      sparseChips.replaceChildren();
+      sparseSummary.textContent = "";
+      const kind = card.dataset.kind;
+      const expected = (card.dataset.window || "").split(",").filter(Boolean);
+      if (kind === "grammar" && data.type === "FeatureCollection") {
+        (data.features || []).forEach(f => {
+          const p = f.properties || {};
+          sparseChips.append(chip(f.id, `${shortDay(p.start_datetime)} → ${shortDay(p.end_datetime)}`, "nominal"));
+        });
+        sparseSummary.textContent = `${data.numberMatched ?? (data.features || []).length} calendar periods matched; ${(data.features || []).length} shown. This is D: it says nothing yet about files.`;
+        return;
+      }
+      let present = [];
+      let bounds = {};
+      if (data.type === "Domain") {
+        const t = (data.axes || {}).t || {};
+        present = t.values || [];
+        (t.bounds || []).forEach((b, i) => { bounds[present[i]] = b; });
+      } else if (data.type === "FeatureCollection") {
+        (data.features || []).forEach(f => {
+          present.push(f.id);
+          const iv = (f.time || {}).interval;
+          if (iv) bounds[f.id] = iv;
+        });
+      } else if (data.type === "Coverage") {
+        const t = ((data.domain || {}).axes || {}).t || {};
+        const counts = nonNullPerSlice(data) || [];
+        (t.values || []).forEach((v, i) => {
+          const [n, total] = counts[i] || [null, null];
+          const cls = n === null ? "nominal" : n === 0 ? "miss" : "hit";
+          const detail = n === null ? "" : n === 0 ? "all cells null" : `${n} / ${total} cells`;
+          sparseChips.append(chip(v, detail, cls));
+        });
+        const empty = counts.filter(c => c[0] === 0).length;
+        sparseSummary.textContent = counts.length
+          ? `${counts.length} slice(s) returned; ${empty} entirely empty. ${empty ? "Those bytes were transferred for nothing: Step 2 would have skipped them." : "No wasted slices."}`
+          : "Coverage returned.";
+        return;
+      }
+      const set = new Set(present);
+      const members = expected.length ? expected : present;
+      members.forEach(m => {
+        const b = bounds[m];
+        sparseChips.append(chip(m, set.has(m) ? (b ? `${shortDay(b[0])} → ${shortDay(b[1])}` : "data") : "no granule", set.has(m) ? "hit" : "miss"));
+      });
+      const gaps = members.filter(m => !set.has(m));
+      sparseSummary.textContent = `${present.length} of ${members.length} periods have data in this area${gaps.length ? `; gaps: ${gaps.join(", ")}` : ""}.`;
+    }
+    async function runSparseProbe(card) {
+      sparseRoot.querySelectorAll(".sw-card").forEach(c => c.setAttribute("aria-current", String(c === card)));
+      const targetUrl = service + card.dataset.path;
       sparseStatus.textContent = "Requesting " + targetUrl;
-      sparseOutput.textContent = "Loading...";
+      sparseOutput.textContent = "Loading…";
+      sparseChips.replaceChildren();
+      sparseSummary.textContent = "";
       try {
         const res = await fetch(targetUrl, { headers: { Accept: "application/prs.coverage+json, application/geo+json, application/json" } });
         const raw = await res.text();
-        let formatted = raw;
-        try {
-          formatted = JSON.stringify(JSON.parse(raw), null, 2);
-        } catch (_parseErr) {
-          formatted = raw;
-        }
+        let data = null;
+        try { data = JSON.parse(raw); } catch (_parseErr) { data = null; }
         sparseStatus.textContent = "HTTP " + res.status + " · " + targetUrl;
-        sparseOutput.textContent = formatted;
+        sparseOutput.textContent = data ? JSON.stringify(data, null, 2) : raw;
+        if (res.ok && data) renderSparse(card, data);
+        else sparseSummary.textContent = res.status === 404
+          ? "The hosted service does not serve this collection yet (HTTP 404). See the service note above."
+          : "The service answered with an error; the raw response is below.";
       } catch (err) {
         sparseStatus.textContent = "Request unavailable (" + (err && err.message ? err.message : "network error") + ") for " + targetUrl;
         sparseOutput.textContent = "";
+        sparseSummary.textContent = "The free hosted instance may be waking up. Wait about a minute and run the card again.";
       }
     }
-    document.querySelectorAll(".sparse-probe").forEach((btn) => {
-      btn.addEventListener("click", () => runSparseProbe(btn.getAttribute("data-path")));
+    sparseRoot.querySelectorAll(".sw-card").forEach(card => {
+      card.querySelector(".run").addEventListener("click", () => runSparseProbe(card));
     });
+    (async function checkSparseBackend() {
+      const probe = service + "/public/records/catalogs/default/dimensions/pentadal-2021";
+      try {
+        const res = await fetch(probe, { headers: { Accept: "application/json" } });
+        if (res.ok) {
+          sparseBackend.dataset.state = "ok";
+          sparseBackend.textContent = "Hosted service is serving the sparse-cube collections. Every card below runs live.";
+        } else {
+          sparseBackend.dataset.state = "missing";
+          sparseBackend.textContent = `The hosted service answered HTTP ${res.status} for the calendar resource: the sparse-cube release is not deployed there yet (deployments wait for the full CI suite to pass). The cards show the expected answers; the same queries are reproducible locally from the repository.`;
+        }
+      } catch (_err) {
+        sparseBackend.dataset.state = "down";
+        sparseBackend.textContent = "The hosted service did not answer. The free instance sleeps when idle and takes about a minute to wake; run a card to wake it.";
+      }
+    })();
   </script>
 </body>
 </html>
