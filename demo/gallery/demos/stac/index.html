@@ -133,6 +133,27 @@
           </div>
         </section>
       </div>
+      <section class="protocol-card harvest-card" id="sparse-cubes-workbench" style="margin-top: 1.5rem;" aria-labelledby="sparse-workbench-title">
+        <div class="harvest-heading">
+          <div>
+            <p class="eyebrow">OGC Common Part 2 UAD + EDR + CQL2 · Sparse irregular cubes</p>
+            <h2 id="sparse-workbench-title">Dekadal (36/yr) &amp; Pentadal (72/yr) Sparse COG Cube Workbench</h2>
+          </div>
+        </div>
+        <p class="intro">Monolithic GeoZarr stores declare coordinates in <code>.zmetadata</code>. Multi-file Cloud-Optimized GeoTIFF (COG) cubes over irregular agro-climatic calendars (<strong>dekadal</strong> 36/yr, D3=21..EOM; <strong>pentadal</strong> 72/yr, P6=26..EOM) separate the <strong>nominal grammar <em>D</em></strong> (OGC Common Part 2 UAD <code>/dimensions/{id}/items</code>) from <strong>populated AOI support <em>S</em>(AOI, Δ<em>t</em>) ⊆ <em>D</em></strong> (standard EDR <code>GET /collections/{cid}/items</code> + CQL2 <code>S_INTERSECTS</code> + <code>f=CoverageJSON</code> <code>Domain</code>). Zero non-standard endpoints are used.</p>
+        <div class="links" role="group" aria-label="Sparse datacube live queries" style="flex-wrap: wrap; gap: 0.5rem;">
+          <button class="button sparse-probe" type="button" data-path="/public/records/catalogs/default/dimensions/pentadal-2021/items?limit=12">1. UAD Calendar Grammar D: pentadal-2021 (12 of 72)</button>
+          <button class="button sparse-probe" type="button" data-path="/public/records/catalogs/default/dimensions/pentadal-2021/items?filter=T_INTERSECTS(time,INTERVAL(%272021-01-01T00:00:00Z%27,%272021-01-31T23:59:59Z%27))&amp;filter-lang=cql2-text">2. UAD CQL2 T_INTERSECTS (Jan 2021 P1..P6)</button>
+          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((12.0%2039.0,12.5%2039.0,12.5%2039.5,12.0%2039.5,12.0%2039.0)))&amp;filter-lang=cql2-text&amp;f=CoverageJSON">3. EDR S_INTERSECTS SW AOI -> P1, P3, P6 (Domain)</button>
+          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((13.5%2040.5,14.5%2040.5,14.5%2041.5,13.5%2041.5,13.5%2040.5)))&amp;filter-lang=cql2-text&amp;f=CoverageJSON">4. EDR S_INTERSECTS NE AOI -> P1, P6 (P3 pruned!)</button>
+          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=INTERSECTS(geometry,POLYGON((12.0%2039.0,12.5%2039.0,12.5%2039.5,12.0%2039.5,12.0%2039.0)))&amp;filter-lang=cql2-text">5. Classic ECQL INTERSECTS Footprints (GeoJSON)</button>
+          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/dekadal_sparse_granules/items?f=CoverageJSON">6. Dekadal (36/yr) Populated Domain (D2 missing)</button>
+          <button class="button sparse-probe" type="button" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/cube?bbox=12.0,39.0,12.5,39.5&amp;datetime=2021-01-01T00:00:00Z/2021-01-05T23:59:59Z&amp;f=CoverageJSON">7. EDR /cube Extract on Verified P1</button>
+        </div>
+        <p class="evidence-status" id="sparse-status" aria-live="polite">Select a query above to inspect live UAD and EDR CoverageJSON responses from Render.</p>
+        <p class="notes"><strong>Architecture &amp; DuckDB / Portolan SDI note:</strong> Read <a href="../../docs/articles/sparse-datacubes-edr-cql2-portolan.md">Sparse Irregular Datacubes on Cloud Storage</a> or review the <a href="https://github.com/ccancellieri/ogc-dimensions/blob/main/docs/EDR_SPARSE_TILE_CUBES_PROPOSAL.md">OGC / STAC Proposal</a> showing how this same CoverageJSON <code>Domain</code> contract pairs with DuckDB GeoParquet joins on <a href="https://www.portolan-sdi.org/">Portolan SDI</a> catalogs.</p>
+        <pre id="sparse-output" style="max-height: 22rem; overflow: auto; padding: 0.9rem; background: #0f172a; color: #e2e8f0; border-radius: 6px; font-size: 0.82rem; white-space: pre-wrap;">{}</pre>
+      </section>
     </section>
   </main>
 
@@ -222,6 +243,32 @@
       }
     }
     loadEvidence();
+
+    const sparseStatus = document.getElementById("sparse-status");
+    const sparseOutput = document.getElementById("sparse-output");
+    async function runSparseProbe(path) {
+      const targetUrl = service + path;
+      sparseStatus.textContent = "Requesting " + targetUrl;
+      sparseOutput.textContent = "Loading...";
+      try {
+        const res = await fetch(targetUrl, { headers: { Accept: "application/prs.coverage+json, application/geo+json, application/json" } });
+        const raw = await res.text();
+        let formatted = raw;
+        try {
+          formatted = JSON.stringify(JSON.parse(raw), null, 2);
+        } catch (_parseErr) {
+          formatted = raw;
+        }
+        sparseStatus.textContent = "HTTP " + res.status + " · " + targetUrl;
+        sparseOutput.textContent = formatted;
+      } catch (err) {
+        sparseStatus.textContent = "Request unavailable (" + (err && err.message ? err.message : "network error") + ") for " + targetUrl;
+        sparseOutput.textContent = "";
+      }
+    }
+    document.querySelectorAll(".sparse-probe").forEach((btn) => {
+      btn.addEventListener("click", () => runSparseProbe(btn.getAttribute("data-path")));
+    });
   </script>
 </body>
 </html>

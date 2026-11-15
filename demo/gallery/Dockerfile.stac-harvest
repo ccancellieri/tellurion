@@ -14,12 +14,12 @@ ENV SOURCE_ARCHIVE=tellurion-v0.5.0-rc.1-source-02e855affea9.zip
 COPY dist/tellurion-v0.5.0-rc.1-source-02e855affea9.zip /build/tellurion-v0.5.0-rc.1-source-02e855affea9.zip
 
 RUN printf '%s  %s\n' \
-      '21c243fc5164c2561a142b47c7a4cce1b7f1e0f29e74daab68275e81704b20d0' \
+      '06cd99a2f2fb27730b1094cbdead3e8f3c256d4abbcf900c6eb593c79c882b10' \
       "${SOURCE_ARCHIVE}" > source.sha256 \
     && sha256sum -c source.sha256 \
     && unzip -q "${SOURCE_ARCHIVE}"
 
-RUN cargo build --release --locked -p tellurion --no-default-features --features cog,geopackage \
+RUN cargo build --release --locked -p tellurion --no-default-features --features cog,geopackage,zarr \
     && cargo build --release --locked -p tellurion-ingest
 
 FROM debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818 AS data-builder
@@ -34,6 +34,8 @@ COPY --from=source-builder /build/target/release/tellurion-ingest /usr/local/bin
 COPY data/stac/esa-worldcover /build/stac/rome
 COPY data/stac/esa-worldcover-italy /build/stac/italy
 COPY deploy/render/build_stac_italy.py /build/build_stac_italy.py
+COPY deploy/render/build_sparse_gpkg.py /build/build_sparse_gpkg.py
+COPY deploy/render/build_zarr_demo.py /build/build_zarr_demo.py
 
 RUN mkdir -p /app/data \
     && ogr2ogr -f GPKG /app/data/worldcover.gpkg /build/stac/rome/footprint.geojson \
@@ -52,7 +54,9 @@ RUN mkdir -p /app/data \
          --mosaic-manifest /app/data/worldcover/mosaic.yaml \
          --ingest-binary /usr/local/bin/tellurion-ingest \
     && test "$(find /app/data/worldcover -type f -name '*.tif' | wc -l)" = "17" \
-    && chmod 0755 /app/data \
+    && python3 /build/build_sparse_gpkg.py /app/data/worldcover.gpkg \
+    && python3 /build/build_zarr_demo.py /app/data/zarr \
+    && chmod 0755 /app/data /app/data/zarr \
     && chmod 0644 /app/data/worldcover.gpkg /app/data/worldcover/mosaic.yaml \
     && find /app/data/worldcover -type f -name '*.tif' -exec chmod 0444 {} +
 
@@ -71,6 +75,7 @@ ENV TELLURION_CONFIG=/app/config.yaml
 ENV TELLURION_GEOPACKAGE_PATH=/app/data/worldcover.gpkg
 ENV TELLURION_COG_URL=https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N39E012_Map.tif
 ENV TELLURION_COG_MOSAIC_MANIFEST=/app/data/worldcover/mosaic.yaml
+ENV TELLURION_ZARR_T0_PATH=/app/data/zarr/sample_zarr_t0
 
 USER 10001:10001
 EXPOSE 10000

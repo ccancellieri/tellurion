@@ -7,7 +7,7 @@ AGPL-3.0 licence, and the commercial licence notice.
 
 - Source revision: `02e855affea95ab8a22fcd4744bc00000fb3b4c4`
 - Release version: `v0.5.0-rc.1`
-- SHA-256: `21c243fc5164c2561a142b47c7a4cce1b7f1e0f29e74daab68275e81704b20d0`
+- SHA-256: `06cd99a2f2fb27730b1094cbdead3e8f3c256d4abbcf900c6eb593c79c882b10`
 - Archive root: repository root (no enclosing directory)
 
 The archive is published with this repository so a clean build does not depend
