@@ -16,7 +16,7 @@ Unlike monolithic **GeoZarr** stores that embed coordinate arrays (`coords`) ins
 | Layer | Standards & Extensions | Core Mechanism |
 | :--- | :--- | :--- |
 | **1. Nominal Grammar ($D$)**<br>*Calendar structure & dimension members* | **STAC Datacube** + **Collection `links`** + **OGC API – Common Part 2 UAD** (`OGC 20-024`) | • Minimal `count` on `cube:dimensions` ([`#40`](https://github.com/stac-extensions/datacube/pull/40), resolving [`#31`](https://github.com/stac-extensions/datacube/issues/31))<br>• External dimension endpoints via `links` (`rel: "dimension"`, [`#41`](https://github.com/stac-extensions/datacube/issues/41)); `scale_type` in `snake_case` ([`#42`](https://github.com/stac-extensions/datacube/issues/42))<br>• `GET /dimensions/{id}/items?datetime=...` or CQL2 `T_INTERSECTS(...)` (e.g., `2021-01-12` $\rightarrow$ `2021-01-P3`) |
-| **2. Populated Support ($S(\text{AOI}, \Delta t) \subsetneq D$)**<br>*Sparse slice discovery & raster extraction* | **OGC API – EDR Part 1 v1.1** (`OGC 19-086r6`) + **Features Part 3 / CQL2** (`OGC 19-079r2`, `21-065r2`) + **CoverageJSON** (`OGC 21-069`) | • **Discovery:** `GET /collections/{cid}/items?filter=S_INTERSECTS(...)` with `Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"` (`Domain` with populated `axes.t`)<br>• **Extraction:** `/items?f=CoverageJSON`, `/cube`, `/area`, `/position` returning full `Coverage` / `CoverageCollection` data (with explicit `t.bounds` and `null`-filled gaps) |
+| **2. Populated Support ($S(\text{AOI}, \Delta t) \subsetneq D$)**<br>*Sparse slice discovery & data extraction* | **OGC API – Coverages Part 3 (`/scenes`)** + **Features Part 3 / CQL2** (`OGC 19-079r2`, `21-065r2`) + **EDR Part 1 v1.1** (`OGC 19-086r6`) + **CoverageJSON** (`OGC 21-069`) | • **Discovery:** `GET /collections/{cid}/scenes?filter=S_INTERSECTS(...)` *(or `itemType`-disambiguated `/items`)* with `Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"` (`Domain` with populated `axes.t`)<br>• **Extraction:** EDR `/cube`, `/area`, `/position` (or Coverages `/coverage`) returning full `Coverage` / `CoverageCollection` data (with explicit `t.bounds` and `null`-filled gaps) |
 
 ---
 
@@ -91,13 +91,13 @@ OGC API – Environmental Data Retrieval (EDR) Part 1 v1.1 (`OGC 19-086r6`) repl
    - Neither field reveals *which* discrete pentads (`P1..P6`) or dekads (`D1..D3`) actually intersect a given $\text{AOI}$.
 2. **Workarounds without CQL2 on EDR `/items` require multi-endpoint round trips:**
    - Previously, checking whether `2021-01-P3` had data over an $\text{AOI}$ (or distinguishing an *absent granule* from a *zero-valued pixel*) forced clients to query a separate Features endpoint, parse GeoJSON item properties, map raw timestamps back to pentad/dekad IDs via `/dimensions/{id}/items?datetime=...`, and only then query EDR.
-   - **Resolution:** EDR Part 1 v1.1 (`OGC 19-086r6` §8.9, `/req/edr/rc-items`) already defines `GET /collections/{cid}/items`, and `ogcapi-features-3` (`OGC 19-079r2`) advertises **CQL2 (`OGC 21-065r2`)** spatial filters (`S_INTERSECTS` / `INTERSECTS`) via `/conformance`. Pairing that standard filter with an explicit **RFC 6906 `profile`** (`Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"`) solves spatiotemporal sparsity with 100% standard OGC/HTTP primitives while keeping `f=CoverageJSON` strictly for extracted data.
+   - **Resolution:** Advertise **`ogcapi-features-3` (`OGC 19-079r2`)** in `/conformance` for **CQL2 (`OGC 21-065r2`)** spatial/temporal filters (`S_INTERSECTS`, `T_INTERSECTS`) on **Coverages Part 3 `/scenes`** (or `itemType`-disambiguated `/items`), paired with an explicit **RFC 6906 `profile`** (`Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"`) for `<1 KB` slice discovery — while keeping **EDR** (`/cube`, `/area`, `/position`) and `f=CoverageJSON` strictly for data extraction.
 
 ---
 
-## 4. Standards-Pure Solution: EDR `/items` + OGC CQL2 (`S_INTERSECTS` / `INTERSECTS`) + `CoverageJSON` `Domain`
+## 4. Standards-Pure Solution: Coverages `/scenes` (or `/items`) + CQL2 (`S_INTERSECTS`) + `CoverageJSON` `Domain` `profile`
 
-Rather than introducing custom paths or non-standard JSON response fields, Tellurion composes strictly existing OGC standards across one unified `/items` pattern:
+Rather than introducing custom paths or non-standard JSON response fields, the architecture composes existing OGC standards across a single discovery-then-extraction contract — using **`/scenes`** (Coverages Part 3) for partitioned scene archives (or **`/items`** with `itemType: "record"`/`"stacItem"` in STAC-hybrid deployments, and `itemType: "feature"` in Features-only vector servers), followed by **EDR** (`/cube`, `/area`, `/position`) or **Coverages** (`/coverage`) for data extraction:
 
 ### 4.1 Conformance Classes & Collection Links (100% Standard OGC)
 - **Declared Conformance Classes (`GET /edr/catalogs/default/conformance`):**
@@ -109,8 +109,8 @@ Rather than introducing custom paths or non-standard JSON response fields, Tellu
 
 ### 4.2 Standard Endpoint & Query Contract
 ```
-GET /collections/{collectionId}/items
-GET /collections/{collectionId}/items/{itemId}
+GET /collections/{collectionId}/scenes        (Coverages Part 3: partitioned raster/vector scenes)
+GET /collections/{collectionId}/items         (STAC itemType: "record"/"stacItem", or Features-only vectors)
 ```
 
 **Supported Standard Filter & Subsetting Parameters:**
@@ -144,9 +144,9 @@ The two-layer architecture handles this in three standard steps:
 
 1. **Fetch the nominal calendar $D$ from UAD (cacheable):**
    Follow the Collection `link` (`rel="dimension"`, `cube:dimension="time"`) to `GET /records/.../dimensions/{did}/items?datetime=<window>` (or `?filter=T_INTERSECTS(...)`) to retrieve theoretical periods (`2021-01-P1..P6`) and their `[start, end]` intervals.
-2. **Push down spatial filtering via EDR `/items?filter=S_INTERSECTS(...)` with `Domain` `profile`:**
+2. **Push down spatial filtering via `/scenes?filter=S_INTERSECTS(...)` (or `itemType`-disambiguated `/items`) with `Domain` `profile`:**
    On viewport pan/zoom, issue one `<1 KB` standard request:
-   `GET /edr/catalogs/default/collections/{cid}/items?filter=S_INTERSECTS(geom,POLYGON((...)))&filter-lang=cql2-text&datetime=<window>`
+   `GET /collections/{cid}/scenes?filter=S_INTERSECTS(geom,POLYGON((...)))&filter-lang=cql2-text&datetime=<window>`
    with `Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"`.
    The server evaluates the spatial R-tree + `geo::Intersects` filter and returns a **CoverageJSON `Domain`** whose `axes.t.values` contains strictly the populated slices $S(\text{AOI}, \Delta t)$ (e.g., `["2021-01-P1", "2021-01-P3", "2021-01-P6"]`). Computing $D \setminus S$ client-side disables empty chips (`P2, P4, P5`) before any `/cube` or `/area` raster extraction runs.
 3. **Inspect individual granules only on demand:**
@@ -162,7 +162,7 @@ This same two-layer pattern extends to **serverless object-storage Spatial Data 
 - **Compounded sparsity across joins:** Joining a sparse COG manifest (`s3://.../portolan/chirps_items.parquet`) with secondary Parquet tables (e.g., FAOSTAT crop-stress records, GAUL boundaries, or basin telemetry) compounds sparsity by relational selectivity:
   $$S_{\text{joined}}(\text{AOI}, \Delta t) = \pi_{t}\!\left(\sigma_{\text{S\_INTERSECTS}(g, \text{AOI}) \land t \in \Delta t}(\text{COG\_Manifest}) \bowtie \sigma_{\text{predicate}}(\text{Attribute\_Parquet})\right)$$
   A slice is usable only when **both** a COG intersects the $\text{AOI}$ **and** a matching tabular record exists.
-- **Zero-egress pushdown + standard wire delivery:** DuckDB evaluates `SELECT DISTINCT period_id, start_datetime, end_datetime ...` over `read_parquet('s3://...')` using Parquet row-group min/max statistics and HTTP range reads — computing $S_{\text{joined}}(\text{AOI}, \Delta t)$ in milliseconds without touching COG pixel data. Exposing the result via **`GET /edr/.../collections/{cid}/items?filter=S_INTERSECTS(...)`** with `Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"` delivers a `<1 KB` CoverageJSON `Domain` (`OGC 21-069`) to browsers, openEO clients, and AI agents.
+- **Zero-egress pushdown + standard wire delivery:** DuckDB evaluates `SELECT DISTINCT period_id, start_datetime, end_datetime ...` over `read_parquet('s3://...')` using Parquet row-group min/max statistics and HTTP range reads — computing $S_{\text{joined}}(\text{AOI}, \Delta t)$ in milliseconds without touching COG pixel data. Exposing the result via **`GET /collections/{cid}/scenes?filter=S_INTERSECTS(...)`** *(or `itemType`-disambiguated `/items`)* with `Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"` delivers a `<1 KB` CoverageJSON `Domain` (`OGC 21-069`) to browsers, openEO clients, and AI agents.
 
 ---
 
@@ -266,7 +266,9 @@ All outputs below were executed against the compiled pure-Rust `tellurion` binar
 
 **Dekadal instant lookup (`GET /public/records/catalogs/default/dimensions/dekadal-2021/items?datetime=2021-01-15` — `HTTP 200`):** returns `"numberMatched": 1`, `"id": "2021-01-D2"` (`2021-01-11T00:00:00Z` to `2021-01-20T23:59:59Z`).
 
-### 5.2 Spatiotemporal Pruning via Standard EDR `/items` + CQL2 (`S_INTERSECTS` / `INTERSECTS`) (`fao_chirps_pentadal_2021_italy`)
+### 5.2 Spatiotemporal Pruning via CQL2 (`S_INTERSECTS` / `INTERSECTS`) (`fao_chirps_pentadal_2021_italy`)
+
+*(Note: The live Tellurion v0.x prototype outputs below were captured against `/edr/.../items?f=CoverageJSON` prior to aligning discovery onto Coverages Part 3 `/scenes` and RFC 6906 `Accept-Profile` / `profile`.)*
 
 In `pentadal_sparse_granules`, January 2021 contains:
 - `2021-01-P1`: full AOI `[12.0, 39.0, 14.5, 41.5]`
@@ -391,4 +393,4 @@ In `pentadal_sparse_granules`, January 2021 contains:
 ### 6.2 Tracked Community Discussions & PRs
 
 - **STAC Datacube Evolution:** [`stac-extensions/datacube#36`](https://github.com/stac-extensions/datacube/issues/36) (architectural background) &middot; [`#31`](https://github.com/stac-extensions/datacube/issues/31) / [`PR #40`](https://github.com/stac-extensions/datacube/pull/40) (`count` on Dimension Objects) &middot; [`#41`](https://github.com/stac-extensions/datacube/issues/41) (STAC `links` for external dimension endpoints) &middot; [`#42`](https://github.com/stac-extensions/datacube/issues/42) (`scale_type` in `snake_case`).
-- **OGC API – EDR:** [`opengeospatial/ogcapi-environmental-data-retrieval#716`](https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/issues/716) (Table 15 rationalisation + optional `/items` Populated Domain & CQL2 profile).
+- **OGC API – EDR & Coverages:** [`opengeospatial/ogcapi-environmental-data-retrieval#716`](https://github.com/opengeospatial/ogcapi-environmental-data-retrieval/issues/716) (aligning Coverages Part 3 `/scenes` vs. `itemType`-disambiguated `/items`, `ogcapi-features-3` in `/conformance`, and RFC 6906 `Domain` `profile` discovery alongside CIS JSON `components="domainset"`).
