@@ -79,7 +79,7 @@ Review on OGC Agora (Jérôme Jacovella-St-Louis, OGC API – Coverages & Common
 
 - **CSTD Gap-Filling vs. Quantitative Time-Series:** CSTD (`Requirement 31`) returns the latest available pixels on or before a target date — ideal for **mosaic compositing and visual overlays**. In **quantitative time-series analysis** (where silent gap-filling across periods would skew accumulations, averages, or anomaly indices) and in **UI time-pickers**, clients still need the exact populated support $S(\text{AOI}, \Delta t) \subsetneq D$ before extraction.
 - **Official Publication of `OGC 20-024`:** With `20-024` now published, `stac-extensions/datacube` PR `#40` was scoped down strictly to `count` (`#31`), leaving external dimension links (`#41`) and `scale_type` (`#42`) separate rather than duplicating `20-024` fields inside STAC.
-- **`/items` vs. Coverages Part 3 `/scenes`:** OGC API – Common does not define `/items` (in Common, a collection's *data* are the captured measurements themselves). **Features** (and **EDR**) use `/items` for **data**, whereas **STAC API** (derived from Features) uses `/items` for **scene metadata** pointing to asset data. **OGC API – Coverages Part 3** introduces `/scenes` so a single collection can serve data via `/coverage` and `/items`, while serving STAC scene metadata at `/scenes`. Aligning populated-domain discovery across `/items` (EDR) and `/scenes` (Coverages) is an open alignment point for the SWGs.
+- **`/items` vs. Coverages Part 3 `/scenes` & `components` Precedent (`OGC 19-087` §23.6.1):** OGC API – Common does not define `/items` (in Common, a collection's *data* are the captured measurements themselves). **Features** (and **EDR**, `19-086r9` §8.2.7) use `/items` for **data** (`itemType: "feature"`), whereas **STAC API** (derived from Features) uses `/items` for **scene metadata** pointing to asset data. **OGC API – Coverages Part 3** introduces `/scenes` so a single collection can serve data via `/coverage` and `/items`, while serving STAC scene metadata at `/scenes` (or STAC `/items` disambiguated via `itemType: "record"` / `"stacItem"` per `OGC 20-024` Rec 3). Meanwhile, `OGC 19-087` §23.6.1 already uses a media-type parameter (`Accept: application/cis+json; components="domainset"`) to request domain-only without rangeset — the exact CIS JSON analogue of our CoverageJSON `Domain` `profile`.
 
 ## 3. Why OGC API – EDR Part 1 v1.1 Alone Is Insufficient: The "Blind Extraction Problem"
 
@@ -163,6 +163,16 @@ This same two-layer pattern extends to **serverless object-storage Spatial Data 
   $$S_{\text{joined}}(\text{AOI}, \Delta t) = \pi_{t}\!\left(\sigma_{\text{S\_INTERSECTS}(g, \text{AOI}) \land t \in \Delta t}(\text{COG\_Manifest}) \bowtie \sigma_{\text{predicate}}(\text{Attribute\_Parquet})\right)$$
   A slice is usable only when **both** a COG intersects the $\text{AOI}$ **and** a matching tabular record exists.
 - **Zero-egress pushdown + standard wire delivery:** DuckDB evaluates `SELECT DISTINCT period_id, start_datetime, end_datetime ...` over `read_parquet('s3://...')` using Parquet row-group min/max statistics and HTTP range reads — computing $S_{\text{joined}}(\text{AOI}, \Delta t)$ in milliseconds without touching COG pixel data. Exposing the result via **`GET /edr/.../collections/{cid}/items?filter=S_INTERSECTS(...)`** with `Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"` delivers a `<1 KB` CoverageJSON `Domain` (`OGC 21-069`) to browsers, openEO clients, and AI agents.
+
+---
+
+### 4.6 Generalization to Sparse Temporal Vector Collections (`itemType: "feature"` & Heavy Vector Footprints)
+
+For **vector collections**, `/scenes` (Coverages Part 3) does not apply when `/collections/{cid}/items` directly serves vector geometries (`itemType: "feature"`, OGC API – Features `17-069r4` + `19-079r2`). Yet multi-year irregular-calendar vector archives (e.g., 20 years of pentadal/dekadal drought or flood polygons) hit the **exact same $O(K \times M)$ pagination bottleneck** when discovering populated slices $S(\text{AOI}, \Delta t)$ — because OGC API – Features lacks `DISTINCT` / `GROUP BY`. Moreover, for very large vector geometries (>100 MB administrative or hydrological polygons that exceed search-index geometry limits), STAC Items likewise act as simplified **metadata footprints** linking to GeoParquet assets or WFS/Features endpoints.
+
+Keeping **`Accept-Profile` / RFC 6906 `profile`** orthogonal to output format unifies **both** worlds under one CQL2 pattern (`S_INTERSECTS`, `T_INTERSECTS`, `datetime`):
+- **Raster scene archives:** `/scenes` (Coverages Part 3) or `itemType: "record"` / `"stacItem"` `/items` $\rightarrow$ STAC Items (`application/geo+json`) or `<1 KB` `Domain` `profile`.
+- **Vector feature archives:** `/items` (`itemType: "feature"`) $\rightarrow$ full vector features (`application/geo+json`, FlatGeobuf) by default, or `<1 KB` `Domain` `profile` for temporal-support discovery.
 
 ## 5. Live Verified Outputs from Tellurion (`tellurion-stac-harvest-demo.onrender.com` & Local Verification)
 
@@ -371,9 +381,9 @@ In `pentadal_sparse_granules`, January 2021 contains:
 
 - **Composed Standards:** OGC API – EDR Part 1 v1.1 (`OGC 19-086r6` §8.9 `/req/edr/rc-items`) + OGC API – Features Part 3 Filter (`OGC 19-079r2`) + CQL2 (`OGC 21-065r2`) + CoverageJSON (`OGC 21-069`) + OGC API – Common Part 2 UAD (`OGC 20-024` §8).
 - **Wire Pattern:**
-  - Advertise `ogcapi-features-3/1.0/conf/filter` and `cql2/1.0/conf/*` on EDR `/conformance`.
-  - Support `filter=S_INTERSECTS(...)` / `INTERSECTS(...)` / `T_INTERSECTS(...)`, `coords`, `bbox`, and `datetime` on **`GET /collections/{collectionId}/items`**.
-  - Keep `f=CoverageJSON` (`application/prs.coverage+json`) strictly for extracted data (`Coverage` / `CoverageCollection`), and negotiate the lightweight **CoverageJSON `"type": "Domain"`** (`domainType: "Grid"`) listing *only* the populated intersecting slices $S(\text{AOI}, \Delta t) \subsetneq D$ via an explicit **RFC 6906 `profile`** (`Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"` or `Accept-Profile`).
+  - Advertise `ogcapi-features-3/1.0/conf/filter` and `cql2/1.0/conf/*` on `/conformance`.
+  - Support `filter=S_INTERSECTS(...)` / `INTERSECTS(...)` / `T_INTERSECTS(...)`, `coords`, `bbox`, and `datetime` on **`GET /collections/{collectionId}/scenes`** (raster scene archives, or `itemType: "record"` / `"stacItem"` `/items`) and **`GET /collections/{collectionId}/items`** (vector `itemType: "feature"`).
+  - Keep `f=CoverageJSON` (`application/prs.coverage+json`) and GeoJSON strictly for full data/items, and negotiate the lightweight **CoverageJSON `"type": "Domain"`** (`domainType: "Grid"`) listing *only* the populated intersecting slices $S(\text{AOI}, \Delta t) \subsetneq D$ via an explicit **RFC 6906 `profile`** (`Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"` or `Accept-Profile`, analogous to `components="domainset"` in `OGC 19-087` §23.6.1).
 - **Outcome:** Resolves the *Blind Extraction Problem* and avoids client-side `/items` pagination across virtual multi-file COG/STAC cubes using irregular (`pentadal`, `dekadal`) calendars — while staying 100% conformant with published OGC API specifications.
 
 ### 6.2 Tracked Community Discussions & PRs
