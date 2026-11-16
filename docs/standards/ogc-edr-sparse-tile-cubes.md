@@ -268,16 +268,14 @@ All outputs below were executed against the compiled pure-Rust `tellurion` binar
 
 ### 5.2 Spatiotemporal Pruning via CQL2 (`S_INTERSECTS` / `INTERSECTS`) (`fao_chirps_pentadal_2021_italy`)
 
-*(Note: The live Tellurion v0.x prototype outputs below were captured against `/edr/.../items?f=CoverageJSON` prior to aligning discovery onto Coverages Part 3 `/scenes` and RFC 6906 `Accept-Profile` / `profile`.)*
-
 In `pentadal_sparse_granules`, January 2021 contains:
 - `2021-01-P1`: full AOI `[12.0, 39.0, 14.5, 41.5]`
 - `2021-01-P3`: **partial SW-only granule** `[12.0, 39.0, 12.6, 39.6]`
 - `2021-01-P6`: irregular 6-day period (`Jan 26–31`) full AOI `[12.0, 39.0, 14.5, 41.5]`
 - `P2`, `P4`, `P5`: intentionally absent.
 
-**Query A — Southwest AOI via OGC CQL2 `S_INTERSECTS` (`f=CoverageJSON` — `application/prs.coverage+json`):**  
-`GET /public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS%28geom%2CPOLYGON%28%2812.2+39.2%2C12.5+39.2%2C12.5+39.5%2C12.2+39.5%2C12.2+39.2%29%29%29&filter-lang=cql2-text&datetime=2021-01-01T00%3A00%3A00Z%2F2021-01-31T23%3A59%3A59Z&f=CoverageJSON` (`HTTP 200`)
+**Query A — Southwest AOI via OGC CQL2 `S_INTERSECTS` (`Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"`):**  
+`GET /public/coverages/catalogs/default/collections/fao_chirps_pentadal_2021_italy/scenes?filter=S_INTERSECTS%28geom%2CPOLYGON%28%2812.2+39.2%2C12.5+39.2%2C12.5+39.5%2C12.2+39.5%2C12.2+39.2%29%29%29&filter-lang=cql2-text&datetime=2021-01-01T00%3A00%3A00Z%2F2021-01-31T23%3A59%3A59Z` (`HTTP 200`)
 ```json
 {
   "axes": {
@@ -338,15 +336,15 @@ In `pentadal_sparse_granules`, January 2021 contains:
   "type": "Domain"
 }
 ```
-*(Omitting `&f=CoverageJSON` on the exact same URL returns `Content-Type: application/geo+json` with `"type": "FeatureCollection"`, `"numberMatched": 3`, `"numberReturned": 3`, and full GeoJSON features `2021-01-P1`, `2021-01-P3`, `2021-01-P6` carrying `properties.granule_bbox` and `time.interval`.)*
+*(Using `Accept: application/geo+json` on the exact same URL returns `"type": "FeatureCollection"`, `"numberMatched": 3`, `"numberReturned": 3`, and full GeoJSON STAC scene features `2021-01-P1`, `2021-01-P3`, `2021-01-P6` carrying `properties.granule_bbox` and `time.interval`.)*
 
-**Query B — Northeast AOI via classic OGC CQL / ECQL `INTERSECTS` (`f=CoverageJSON` — `application/prs.coverage+json`):**  
-`GET /public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=INTERSECTS%28geom%2CPOLYGON%28%2812.7+39.7%2C12.9+39.7%2C12.9+39.9%2C12.7+39.9%2C12.7+39.7%29%29%29&filter-lang=cql2-text&datetime=2021-01-01T00%3A00%3A00Z%2F2021-01-31T23%3A59%3A59Z&f=CoverageJSON` (`HTTP 200`)
+**Query B — Northeast AOI via classic OGC CQL / ECQL `INTERSECTS` (`Accept: application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"`):**  
+`GET /public/coverages/catalogs/default/collections/fao_chirps_pentadal_2021_italy/scenes?filter=INTERSECTS%28geom%2CPOLYGON%28%2812.7+39.7%2C12.9+39.7%2C12.9+39.9%2C12.7+39.9%2C12.7+39.7%29%29%29&filter-lang=cql2-text&datetime=2021-01-01T00%3A00%3A00Z%2F2021-01-31T23%3A59%3A59Z` (`HTTP 200`)
 - **`type`**: `"Domain"` (`domainType: "Grid"`)
 - **`axes.t.values`**: `["2021-01-P1", "2021-01-P6"]` (`axes.x`: `12.7..12.9`, `axes.y`: `39.7..39.9`)
 - Default GeoJSON format returns `"numberMatched": 2`, `"numberReturned": 2` (`2021-01-P1`, `2021-01-P6`).
-- Single-slice lookup works identically per `OGC 19-086r6`: `GET .../items/2021-01-P3` returns `HTTP 200` (`Feature`), whereas absent `GET .../items/2021-01-P2` returns `HTTP 404` (`NotFound`). Non-standard paths (`/availability`, `/intersection`, `/inverse`) are absent (`HTTP 404`).
-- This proves **100% standards-compliant CQL2 / ECQL spatial-temporal pruning** on partial SW granule `2021-01-P3` (`[12.0, 39.0, 12.6, 39.6]`) natively on standard EDR `/items` returning CoverageJSON `Domain`.
+- Single-slice lookup works identically: `GET .../scenes/2021-01-P3` returns `HTTP 200`, whereas absent `GET .../scenes/2021-01-P2` returns `HTTP 404` (`NotFound`). Non-standard paths (`/availability`, `/intersection`, `/inverse`) are absent (`HTTP 404`).
+- This demonstrates **standards-compliant CQL2 / ECQL spatial-temporal pruning** on partial SW granule `2021-01-P3` (`[12.0, 39.0, 12.6, 39.6]`) on `/scenes` returning CoverageJSON `Domain` via `profile`.
 
 ### 5.3 Side-by-Side Live Cube Comparisons (`CoverageJSON` + GeoPackage Features Baseline)
 
