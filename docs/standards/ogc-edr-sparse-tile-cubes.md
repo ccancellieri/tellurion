@@ -166,13 +166,15 @@ This same two-layer pattern extends to **serverless object-storage Spatial Data 
 
 ---
 
-### 4.6 Generalization to Sparse Temporal Vector Collections (`itemType: "feature"` & Heavy Vector Footprints)
+### 4.6 Generalization to Sparse Temporal Vector Collections (`Coverages /scenes` vs. Features-Only `/items`)
 
-For **vector collections**, `/scenes` (Coverages Part 3) does not apply when `/collections/{cid}/items` directly serves vector geometries (`itemType: "feature"`, OGC API – Features `17-069r4` + `19-079r2`). Yet multi-year irregular-calendar vector archives (e.g., 20 years of pentadal/dekadal drought or flood polygons) hit the **exact same $O(K \times M)$ pagination bottleneck** when discovering populated slices $S(\text{AOI}, \Delta t)$ — because OGC API – Features lacks `DISTINCT` / `GROUP BY`. Moreover, for very large vector geometries (>100 MB administrative or hydrological polygons that exceed search-index geometry limits), STAC Items likewise act as simplified **metadata footprints** linking to GeoParquet assets or WFS/Features endpoints.
+At the abstract OGC model level (ISO 19123 / CIS, Coverages `19-087`, and EDR `19-086r9`), neither Coverages `/scenes` nor EDR `/cube` is raster-specific: a **partitioned vector archive** (e.g., GeoParquet partitions or >100 MB administrative/hydrological polygons indexed behind simplified STAC footprints linking to vector assets or WFS/Features) fits **`/scenes`** just as cleanly as COG tiles.
 
-Keeping **`Accept-Profile` / RFC 6906 `profile`** orthogonal to output format unifies **both** worlds under one CQL2 pattern (`S_INTERSECTS`, `T_INTERSECTS`, `datetime`):
-- **Raster scene archives:** `/scenes` (Coverages Part 3) or `itemType: "record"` / `"stacItem"` `/items` $\rightarrow$ STAC Items (`application/geo+json`) or `<1 KB` `Domain` `profile`.
-- **Vector feature archives:** `/items` (`itemType: "feature"`) $\rightarrow$ full vector features (`application/geo+json`, FlatGeobuf) by default, or `<1 KB` `Domain` `profile` for temporal-support discovery.
+In practice, however, **conformance is modular**: many pure-vector servers implement **OGC API – Features** (`17-069r4` + `19-079r2`) without implementing Coverages Part 3 (`/scenes`). On those Features-only deployments, `/items` (`itemType: "feature"`) is the only queryable endpoint and hits the **exact same $O(K \times M)$ pagination bottleneck** when discovering populated slices $S(\text{AOI}, \Delta t)$ — because Features lacks `DISTINCT` / `GROUP BY`.
+
+Keeping **`Accept-Profile` / RFC 6906 `profile`** orthogonal to output format unifies **both** deployment patterns under one CQL2 query (`S_INTERSECTS`, `T_INTERSECTS`, `datetime`):
+- **Partitioned asset archives (raster COGs *or* partitioned/heavy vectors):** `/scenes` (Coverages Part 3) or `itemType: "record"` / `"stacItem"` `/items` $\rightarrow$ STAC Items (`application/geo+json`) or `<1 KB` `Domain` `profile`.
+- **Features-only vector servers (no Coverages Part 3):** `/items` (`itemType: "feature"`) $\rightarrow$ full vector features (`application/geo+json`, FlatGeobuf) by default, or `<1 KB` `Domain` `profile` for temporal-support discovery (future alignment with OGC API – Features).
 
 ## 5. Live Verified Outputs from Tellurion (`tellurion-stac-harvest-demo.onrender.com` & Local Verification)
 
