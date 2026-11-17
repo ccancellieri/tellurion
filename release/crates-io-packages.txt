@@ -24,6 +24,7 @@ tellurion-tiles
 tellurion-places
 tellurion-styles
 tellurion-records
+tellurion-edr
 tellurion-processes
 tellurion-stac
 tellurion-ingest

@@ -12,12 +12,18 @@ pub fn router() -> Router<Arc<AppContext>> {
     Router::new()
         .route("/collections", get(handlers::list_collections))
         .route("/collections/{cid}", get(handlers::get_collection))
-        .route("/collections/{cid}/instances", get(handlers::list_instances))
+        .route(
+            "/collections/{cid}/instances",
+            get(handlers::list_instances),
+        )
         .route(
             "/collections/{cid}/instances/{iid}",
             get(handlers::get_instance),
         )
-        .route("/collections/{cid}/locations", get(handlers::list_locations))
+        .route(
+            "/collections/{cid}/locations",
+            get(handlers::list_locations),
+        )
         .route(
             "/collections/{cid}/locations/{locId}",
             get(handlers::get_location),
@@ -32,10 +38,7 @@ pub fn router() -> Router<Arc<AppContext>> {
         )
         .route("/collections/{cid}/corridor", get(handlers::query_corridor))
         .route("/collections/{cid}/items", get(handlers::list_items))
-        .route(
-            "/collections/{cid}/items/{itemId}",
-            get(handlers::get_item),
-        )
+        .route("/collections/{cid}/items/{itemId}", get(handlers::get_item))
         .route("/collections/{cid}/scenes", get(handlers::list_items))
         .route(
             "/collections/{cid}/scenes/{itemId}",

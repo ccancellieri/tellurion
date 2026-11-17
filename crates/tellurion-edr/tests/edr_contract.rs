@@ -57,7 +57,11 @@ impl CatalogSource for SparseDekadalDriver {
 
 #[async_trait]
 impl FeatureSource for SparseDekadalDriver {
-    async fn items(&self, _collection: &CollectionDecl, query: &ItemsQuery) -> CoreResult<FeaturePage> {
+    async fn items(
+        &self,
+        _collection: &CollectionDecl,
+        query: &ItemsQuery,
+    ) -> CoreResult<FeaturePage> {
         // Intentional sparse subset S ⊂ D: only D1 and D3 exist in Jan 2021 (D2 is missing!).
         let all = vec![
             json!({
@@ -125,7 +129,10 @@ impl RasterSource for SparseDekadalDriver {
         points: &[[f64; 2]],
         _band_indices: Option<&[usize]>,
     ) -> CoreResult<Option<Vec<Vec<Option<f64>>>>> {
-        Ok(Some(vec![points.iter().map(|p| Some(p[0] + p[1])).collect()]))
+        Ok(Some(vec![points
+            .iter()
+            .map(|p| Some(p[0] + p[1]))
+            .collect()]))
     }
 
     async fn sample_grid(
@@ -201,11 +208,17 @@ async fn edr_conformance_collections_and_sparse_cube_with_null_gaps() {
 
     let resp = app
         .clone()
-        .oneshot(Request::builder().uri("/conformance").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/conformance")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
-    let conf: Value = serde_json::from_slice(&to_bytes(resp.into_body(), 65536).await.unwrap()).unwrap();
+    let conf: Value =
+        serde_json::from_slice(&to_bytes(resp.into_body(), 65536).await.unwrap()).unwrap();
     assert!(conf["conformsTo"].as_array().unwrap().len() >= 6);
 
     // Sparse cube over January 2021: D1 present, D2 missing -> null, D3 present.
@@ -224,16 +237,29 @@ async fn edr_conformance_collections_and_sparse_cube_with_null_gaps() {
         resp.headers().get(header::CONTENT_TYPE).unwrap(),
         tellurion_edr::COVJSON_MEDIA_TYPE
     );
-    let cov: Value = serde_json::from_slice(&to_bytes(resp.into_body(), 1024 * 1024).await.unwrap()).unwrap();
+    let cov: Value =
+        serde_json::from_slice(&to_bytes(resp.into_body(), 1024 * 1024).await.unwrap()).unwrap();
     assert_eq!(cov["type"], "Coverage");
     assert_eq!(cov["domain"]["domainType"], "Grid");
-    assert_eq!(cov["domain"]["axes"]["t"]["values"], json!(["2021-01-D1", "2021-01-D2", "2021-01-D3"]));
-    assert_eq!(cov["domain"]["axes"]["t"]["bounds"].as_array().unwrap().len(), 3);
+    assert_eq!(
+        cov["domain"]["axes"]["t"]["values"],
+        json!(["2021-01-D1", "2021-01-D2", "2021-01-D3"])
+    );
+    assert_eq!(
+        cov["domain"]["axes"]["t"]["bounds"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
     let vals = cov["ranges"]["ndvi"]["values"].as_array().unwrap();
     assert_eq!(vals.len(), 3 * 4 * 4);
     // D1 -> 0.75, D2 -> null, D3 -> 0.75
     assert_eq!(vals[0], json!(0.75));
-    assert!(vals[16].is_null(), "missing dekad D2 must emit null in CoverageJSON");
+    assert!(
+        vals[16].is_null(),
+        "missing dekad D2 must emit null in CoverageJSON"
+    );
     assert_eq!(vals[32], json!(0.75));
 }
 
@@ -249,10 +275,17 @@ async fn edr_area_masks_non_rectangular_polygon_and_supports_advanced_queries() 
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
-    let cov: Value = serde_json::from_slice(&to_bytes(resp.into_body(), 1024 * 1024).await.unwrap()).unwrap();
+    let cov: Value =
+        serde_json::from_slice(&to_bytes(resp.into_body(), 1024 * 1024).await.unwrap()).unwrap();
     let vals = cov["ranges"]["ndvi"]["values"].as_array().unwrap();
-    assert!(vals.iter().any(|v| v.is_null()), "polygon masking must null out exterior bbox cells");
-    assert!(vals.iter().any(|v| !v.is_null()), "polygon interior cells must retain values");
+    assert!(
+        vals.iter().any(|v| v.is_null()),
+        "polygon masking must null out exterior bbox cells"
+    );
+    assert!(
+        vals.iter().any(|v| !v.is_null()),
+        "polygon interior cells must retain values"
+    );
 
     // Position GeoJSON + CRS84/EPSG:3857 + radius + trajectory + corridor + locations
     for path in [
@@ -285,7 +318,8 @@ async fn edr_area_masks_non_rectangular_polygon_and_supports_advanced_queries() 
         .await
         .unwrap();
     assert_eq!(resp_in.status(), StatusCode::OK);
-    let items_in: Value = serde_json::from_slice(&to_bytes(resp_in.into_body(), 65536).await.unwrap()).unwrap();
+    let items_in: Value =
+        serde_json::from_slice(&to_bytes(resp_in.into_body(), 65536).await.unwrap()).unwrap();
     assert_eq!(items_in["type"], "FeatureCollection");
     assert_eq!(items_in["numberReturned"], json!(2));
     let ids_in: Vec<&str> = items_in["features"]
@@ -313,9 +347,13 @@ async fn edr_area_masks_non_rectangular_polygon_and_supports_advanced_queries() 
         resp_domain.headers().get(header::CONTENT_TYPE).unwrap(),
         tellurion_edr::COVJSON_DOMAIN_MEDIA_TYPE
     );
-    let dom: Value = serde_json::from_slice(&to_bytes(resp_domain.into_body(), 65536).await.unwrap()).unwrap();
+    let dom: Value =
+        serde_json::from_slice(&to_bytes(resp_domain.into_body(), 65536).await.unwrap()).unwrap();
     assert_eq!(dom["type"], "Domain");
-    assert_eq!(dom["axes"]["t"]["values"], json!(["2021-01-D1", "2021-01-D3"]));
+    assert_eq!(
+        dom["axes"]["t"]["values"],
+        json!(["2021-01-D1", "2021-01-D3"])
+    );
 
     // Accept-Profile header on /items also yields CoverageJSON Domain.
     let resp_ap = app
@@ -330,7 +368,8 @@ async fn edr_area_masks_non_rectangular_polygon_and_supports_advanced_queries() 
         .await
         .unwrap();
     assert_eq!(resp_ap.status(), StatusCode::OK);
-    let dom_ap: Value = serde_json::from_slice(&to_bytes(resp_ap.into_body(), 65536).await.unwrap()).unwrap();
+    let dom_ap: Value =
+        serde_json::from_slice(&to_bytes(resp_ap.into_body(), 65536).await.unwrap()).unwrap();
     assert_eq!(dom_ap["type"], "Domain");
 
     // Bare f=CoverageJSON without profile returns full extracted Coverage data (format-orthogonal).
@@ -349,7 +388,8 @@ async fn edr_area_masks_non_rectangular_polygon_and_supports_advanced_queries() 
         resp_covjson.headers().get(header::CONTENT_TYPE).unwrap(),
         tellurion_edr::COVJSON_MEDIA_TYPE
     );
-    let full_cov: Value = serde_json::from_slice(&to_bytes(resp_covjson.into_body(), 262144).await.unwrap()).unwrap();
+    let full_cov: Value =
+        serde_json::from_slice(&to_bytes(resp_covjson.into_body(), 262144).await.unwrap()).unwrap();
     assert_eq!(full_cov["type"], "Coverage");
     assert!(full_cov["ranges"].is_object());
 
@@ -365,7 +405,8 @@ async fn edr_area_masks_non_rectangular_polygon_and_supports_advanced_queries() 
         .await
         .unwrap();
     assert_eq!(resp_out.status(), StatusCode::OK);
-    let items_out: Value = serde_json::from_slice(&to_bytes(resp_out.into_body(), 65536).await.unwrap()).unwrap();
+    let items_out: Value =
+        serde_json::from_slice(&to_bytes(resp_out.into_body(), 65536).await.unwrap()).unwrap();
     assert_eq!(items_out["numberReturned"], json!(0));
 
     // Single item lookup: present D1 -> 200, missing D2 -> 404.

@@ -300,7 +300,10 @@ mod tests {
         let matrix = ProtocolsConf::default();
         for protocol in Protocol::ALL {
             let enabled = protocol.exposure(&matrix).is_enabled();
-            let opt_in = matches!(protocol, Protocol::Records | Protocol::Processes | Protocol::Edr);
+            let opt_in = matches!(
+                protocol,
+                Protocol::Records | Protocol::Processes | Protocol::Edr
+            );
             assert_eq!(enabled, !opt_in, "{protocol:?} default exposure");
         }
     }

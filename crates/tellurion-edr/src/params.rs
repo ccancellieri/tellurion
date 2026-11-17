@@ -265,7 +265,10 @@ pub fn parse_wkt_trajectory(
                     "Trajectory LINESTRING must contain at least 2 points",
                 ));
             }
-            Ok((LineString::new(coords), if has_z { Some(z_vals) } else { None }))
+            Ok((
+                LineString::new(coords),
+                if has_z { Some(z_vals) } else { None },
+            ))
         }
         _ => Err(ApiError::bad_request(
             "'coords' for trajectory/corridor must be a WKT LINESTRING",

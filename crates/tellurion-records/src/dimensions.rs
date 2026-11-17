@@ -24,7 +24,9 @@ use tellurion_core::filter::{
 use tellurion_core::query_params::percent_encode;
 use tellurion_core::AppContext;
 
-use crate::conformance::{GEOJSON_MEDIA_TYPE, ITEM_TYPE_RECORD, JSON_MEDIA_TYPE, REL_COLLECTION, REL_ITEMS};
+use crate::conformance::{
+    GEOJSON_MEDIA_TYPE, ITEM_TYPE_RECORD, JSON_MEDIA_TYPE, REL_COLLECTION, REL_ITEMS,
+};
 use crate::model::Link;
 use crate::problem::ApiError;
 
@@ -265,10 +267,16 @@ impl DimensionSpec {
                 let year: i32 = y_str.parse().ok()?;
                 let month: u32 = m_str.parse().ok()?;
                 let dekad: u32 = d_part.parse().ok()?;
-                if year < start_year || year > end_year || !(1..=12).contains(&month) || !(1..=3).contains(&dekad) {
+                if year < start_year
+                    || year > end_year
+                    || !(1..=12).contains(&month)
+                    || !(1..=3).contains(&dekad)
+                {
                     return None;
                 }
-                let idx = ((year - start_year) as u64) * 36 + ((month - 1) as u64) * 3 + (dekad - 1) as u64;
+                let idx = ((year - start_year) as u64) * 36
+                    + ((month - 1) as u64) * 3
+                    + (dekad - 1) as u64;
                 self.member_at(idx)
             }
             DimensionSpec::Pentadal {
@@ -280,10 +288,16 @@ impl DimensionSpec {
                 let year: i32 = y_str.parse().ok()?;
                 let month: u32 = m_str.parse().ok()?;
                 let pentad: u32 = p_part.parse().ok()?;
-                if year < start_year || year > end_year || !(1..=12).contains(&month) || !(1..=6).contains(&pentad) {
+                if year < start_year
+                    || year > end_year
+                    || !(1..=12).contains(&month)
+                    || !(1..=6).contains(&pentad)
+                {
                     return None;
                 }
-                let idx = ((year - start_year) as u64) * 72 + ((month - 1) as u64) * 6 + (pentad - 1) as u64;
+                let idx = ((year - start_year) as u64) * 72
+                    + ((month - 1) as u64) * 6
+                    + (pentad - 1) as u64;
                 self.member_at(idx)
             }
             DimensionSpec::IntegerRange { start, end, step } => {
@@ -313,7 +327,9 @@ impl DimensionSpec {
                     11..=20 => 2,
                     _ => 3,
                 };
-                Ok(((year - start_year) as u64) * 36 + ((month - 1) as u64) * 3 + (dekad - 1) as u64)
+                Ok(((year - start_year) as u64) * 36
+                    + ((month - 1) as u64) * 3
+                    + (dekad - 1) as u64)
             }
             DimensionSpec::Pentadal {
                 start_year,
@@ -325,10 +341,15 @@ impl DimensionSpec {
                     return Err("Date outside configured pentadal domain");
                 }
                 let pentad = ((day - 1) / 5 + 1).min(6);
-                Ok(((year - start_year) as u64) * 72 + ((month - 1) as u64) * 6 + (pentad - 1) as u64)
+                Ok(((year - start_year) as u64) * 72
+                    + ((month - 1) as u64) * 6
+                    + (pentad - 1) as u64)
             }
             DimensionSpec::IntegerRange { start, end, step } => {
-                let val: i64 = raw_value.trim().parse().map_err(|_| "Expected integer value")?;
+                let val: i64 = raw_value
+                    .trim()
+                    .parse()
+                    .map_err(|_| "Expected integer value")?;
                 if val < start || val > end {
                     return Err("Value outside configured integer range");
                 }
@@ -410,10 +431,7 @@ fn entry_to_dto(entry: &DimensionCatalogEntry, self_href: &str) -> DimensionColl
     }
 }
 
-pub async fn list_dimensions(
-    State(_ctx): State<Arc<AppContext>>,
-    uri: OriginalUri,
-) -> Response {
+pub async fn list_dimensions(State(_ctx): State<Arc<AppContext>>, uri: OriginalUri) -> Response {
     let base = base_path(&uri);
     let collections: Vec<DimensionCollectionDto> = BUILTIN_DIMENSIONS
         .iter()
@@ -440,7 +458,10 @@ pub async fn get_dimension(
         .ok_or_else(|| ApiError::not_found(format!("Dimension '{did}' not found")))?;
     let self_href = base_path(&uri);
     let dto = entry_to_dto(entry, &self_href);
-    Ok(json_response(JSON_MEDIA_TYPE, serde_json::to_value(dto).unwrap_or_default()))
+    Ok(json_response(
+        JSON_MEDIA_TYPE,
+        serde_json::to_value(dto).unwrap_or_default(),
+    ))
 }
 
 fn normalize_instant(raw: &str, end_of_day: bool) -> Option<String> {
@@ -544,20 +565,41 @@ fn member_matches_cql2_filter(member: &Value, filter: &Filter) -> bool {
         Filter::And(items) => items.iter().all(|f| member_matches_cql2_filter(member, f)),
         Filter::Or(items) => items.iter().any(|f| member_matches_cql2_filter(member, f)),
         Filter::Not(inner) => !member_matches_cql2_filter(member, inner),
-        Filter::Compare { property, op, value } => member_property(member, property)
+        Filter::Compare {
+            property,
+            op,
+            value,
+        } => member_property(member, property)
             .and_then(|v| compare_scalar(v, value))
             .is_some_and(|ord| eval_compare_op(ord, *op)),
         Filter::IsNull { property, negated } => {
             let is_null = member_property(member, property).is_none_or(Value::is_null);
-            if *negated { !is_null } else { is_null }
+            if *negated {
+                !is_null
+            } else {
+                is_null
+            }
         }
-        Filter::Like { property, pattern, negated } => {
+        Filter::Like {
+            property,
+            pattern,
+            negated,
+        } => {
             let matched = member_property(member, property)
                 .and_then(Value::as_str)
                 .is_some_and(|s| like_matches(s, pattern));
-            if *negated { !matched } else { matched }
+            if *negated {
+                !matched
+            } else {
+                matched
+            }
         }
-        Filter::Between { property, low, high, negated } => {
+        Filter::Between {
+            property,
+            low,
+            high,
+            negated,
+        } => {
             let matched = member_property(member, property)
                 .and_then(|v| {
                     let lo = compare_scalar(v, low)?;
@@ -565,33 +607,54 @@ fn member_matches_cql2_filter(member: &Value, filter: &Filter) -> bool {
                     Some(lo != std::cmp::Ordering::Less && hi != std::cmp::Ordering::Greater)
                 })
                 .unwrap_or(false);
-            if *negated { !matched } else { matched }
+            if *negated {
+                !matched
+            } else {
+                matched
+            }
         }
-        Filter::In { property, values, negated } => {
+        Filter::In {
+            property,
+            values,
+            negated,
+        } => {
             let matched = member_property(member, property).is_some_and(|v| {
                 values
                     .iter()
                     .any(|lit| compare_scalar(v, lit) == Some(std::cmp::Ordering::Equal))
             });
-            if *negated { !matched } else { matched }
+            if *negated {
+                !matched
+            } else {
+                matched
+            }
         }
-        Filter::CaseInsensitiveCompare { property, op, value } => member_property(member, property)
+        Filter::CaseInsensitiveCompare {
+            property,
+            op,
+            value,
+        } => member_property(member, property)
             .and_then(Value::as_str)
             .is_some_and(|s| {
-                let eq = s.to_ascii_lowercase() == value.to_ascii_lowercase();
+                let eq = s.eq_ignore_ascii_case(value);
                 match op {
                     CaseInsensitiveCompareOp::Eq => eq,
                     CaseInsensitiveCompareOp::Ne => !eq,
                 }
             }),
         Filter::After { instant, .. } => {
-            let (Some((m_start, _)), Some(q)) = (member_time_bounds(member), normalize_instant(instant, true)) else {
+            let (Some((m_start, _)), Some(q)) =
+                (member_time_bounds(member), normalize_instant(instant, true))
+            else {
                 return false;
             };
             m_start > q.as_str()
         }
         Filter::Before { instant, .. } => {
-            let (Some((_, m_end)), Some(q)) = (member_time_bounds(member), normalize_instant(instant, false)) else {
+            let (Some((_, m_end)), Some(q)) = (
+                member_time_bounds(member),
+                normalize_instant(instant, false),
+            ) else {
                 return false;
             };
             m_end < q.as_str()
@@ -600,13 +663,17 @@ fn member_matches_cql2_filter(member: &Value, filter: &Filter) -> bool {
             let Some((m_start, m_end)) = member_time_bounds(member) else {
                 return false;
             };
-            let Some((q_start, q_end)) = temporal_value_bounds(&TemporalValue::Interval(start.clone(), end.clone())) else {
+            let Some((q_start, q_end)) =
+                temporal_value_bounds(&TemporalValue::Interval(start.clone(), end.clone()))
+            else {
                 return false;
             };
             m_start >= q_start.as_str() && m_end <= q_end.as_str()
         }
         Filter::Temporal { op, value, .. } => {
-            let (Some((m_start, m_end)), Some((q_start, q_end))) = (member_time_bounds(member), temporal_value_bounds(value)) else {
+            let (Some((m_start, m_end)), Some((q_start, q_end))) =
+                (member_time_bounds(member), temporal_value_bounds(value))
+            else {
                 return false;
             };
             let qs = q_start.as_str();
@@ -670,12 +737,18 @@ pub async fn list_dimension_items(
                 let s_idx = if s_trim.is_empty() || s_trim == ".." {
                     0
                 } else {
-                    entry.spec.index_of_date(s_trim).map_err(ApiError::bad_request)?
+                    entry
+                        .spec
+                        .index_of_date(s_trim)
+                        .map_err(ApiError::bad_request)?
                 };
                 let e_idx_incl = if e_trim.is_empty() || e_trim == ".." {
                     total.saturating_sub(1)
                 } else {
-                    entry.spec.index_of_date(e_trim).map_err(ApiError::bad_request)?
+                    entry
+                        .spec
+                        .index_of_date(e_trim)
+                        .map_err(ApiError::bad_request)?
                 };
                 if s_idx > e_idx_incl || total == 0 {
                     (0, 0)
@@ -683,7 +756,10 @@ pub async fn list_dimension_items(
                     (s_idx, (e_idx_incl + 1).min(total))
                 }
             } else {
-                let idx = entry.spec.index_of_date(dt).map_err(ApiError::bad_request)?;
+                let idx = entry
+                    .spec
+                    .index_of_date(dt)
+                    .map_err(ApiError::bad_request)?;
                 (idx, (idx + 1).min(total))
             }
         }
@@ -720,13 +796,28 @@ pub async fn list_dimension_items(
     let items_base = base_path(&uri);
     let coll_base = items_base.strip_suffix("/items").unwrap_or(&items_base);
     let mut query_suffix = String::new();
-    if let Some(dt) = query.datetime.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    if let Some(dt) = query
+        .datetime
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         query_suffix.push_str(&format!("&datetime={}", percent_encode(dt)));
     }
-    if let Some(f) = query.filter.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    if let Some(f) = query
+        .filter
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         query_suffix.push_str(&format!("&filter={}", percent_encode(f)));
     }
-    if let Some(fl) = query.filter_lang.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    if let Some(fl) = query
+        .filter_lang
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         query_suffix.push_str(&format!("&filter-lang={}", percent_encode(fl)));
     }
     let mut links = vec![
@@ -796,17 +887,13 @@ mod tests {
         assert_eq!(spec.len(), 5 * 36);
 
         let feb24 = spec.member_by_id("2024-02-D3").expect("2024-02-D3 exists");
-        assert_eq!(
-            feb24["properties"]["end_datetime"],
-            "2024-02-29T23:59:59Z"
-        );
+        assert_eq!(feb24["properties"]["end_datetime"], "2024-02-29T23:59:59Z");
         let feb21 = spec.member_by_id("2021-02-D3").expect("2021-02-D3 exists");
-        assert_eq!(
-            feb21["properties"]["end_datetime"],
-            "2021-02-28T23:59:59Z"
-        );
+        assert_eq!(feb21["properties"]["end_datetime"], "2021-02-28T23:59:59Z");
 
-        let idx = spec.index_of_date("2024-02-29T14:30:00Z").expect("date resolves");
+        let idx = spec
+            .index_of_date("2024-02-29T14:30:00Z")
+            .expect("date resolves");
         assert_eq!(spec.member_at(idx).unwrap()["id"], "2024-02-D3");
         assert!(spec.index_of_date("2019-12-31").is_err());
     }
@@ -858,7 +945,12 @@ mod tests {
 
         let resp = app
             .clone()
-            .oneshot(Request::builder().uri("/dimensions").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/dimensions")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);

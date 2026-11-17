@@ -26,10 +26,9 @@ use crate::params::{
 };
 use crate::problem::ApiError;
 use crate::sparse::{
-    bbox_of_polygons, build_grid_coverage, build_point_coverage, line_bbox,
-    mask_grid_by_polygons, mask_grid_by_radius, resolve_sparse_time_slices,
-    resolve_sparse_time_slices_with_geom, sample_grid_with_fallback, sample_points_with_fallback,
-    TimeSlice,
+    bbox_of_polygons, build_grid_coverage, build_point_coverage, line_bbox, mask_grid_by_polygons,
+    mask_grid_by_radius, resolve_sparse_time_slices, resolve_sparse_time_slices_with_geom,
+    sample_grid_with_fallback, sample_points_with_fallback, TimeSlice,
 };
 use crate::{
     CONFORMANCE_CLASSES, COVJSON_DOMAIN_MEDIA_TYPE, COVJSON_LEGACY_MEDIA_TYPE, COVJSON_MEDIA_TYPE,
@@ -129,8 +128,16 @@ fn build_collection_dto(decl: &CollectionDecl, coll_base: &str) -> EdrCollection
             Link::new(coll_base, "self", JSON_MEDIA_TYPE),
             Link::new(format!("{coll_base}/items"), "items", GEOJSON_MEDIA_TYPE),
             Link::new(format!("{coll_base}/scenes"), "scenes", GEOJSON_MEDIA_TYPE),
-            Link::new(format!("{coll_base}/instances"), "instances", JSON_MEDIA_TYPE),
-            Link::new(format!("{coll_base}/locations"), "locations", GEOJSON_MEDIA_TYPE),
+            Link::new(
+                format!("{coll_base}/instances"),
+                "instances",
+                JSON_MEDIA_TYPE,
+            ),
+            Link::new(
+                format!("{coll_base}/locations"),
+                "locations",
+                GEOJSON_MEDIA_TYPE,
+            ),
         ],
     }
 }
@@ -151,7 +158,10 @@ pub async fn landing_page(uri: OriginalUri) -> Response {
 
 pub async fn conformance() -> Response {
     let body = EdrConformance {
-        conforms_to: CONFORMANCE_CLASSES.iter().map(|s| (*s).to_string()).collect(),
+        conforms_to: CONFORMANCE_CLASSES
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect(),
     };
     json_response(JSON_MEDIA_TYPE, &body)
 }
@@ -204,9 +214,16 @@ pub async fn get_collection(
     let cid = params
         .get("cid")
         .ok_or_else(|| ApiError::bad_request("Missing collection id"))?;
-    let (decl, _source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
+    let (decl, _source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
     let base = base_path(&uri);
-    Ok(json_response(JSON_MEDIA_TYPE, &build_collection_dto(&decl, &base)))
+    Ok(json_response(
+        JSON_MEDIA_TYPE,
+        &build_collection_dto(&decl, &base),
+    ))
 }
 
 pub async fn list_instances(
@@ -218,7 +235,11 @@ pub async fn list_instances(
     let cid = params
         .get("cid")
         .ok_or_else(|| ApiError::bad_request("Missing collection id"))?;
-    let (decl, _source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
+    let (decl, _source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
     let base = base_path(&uri);
     let inst = build_collection_dto(&decl, &format!("{base}/default"));
     let body = EdrInstances {
@@ -243,9 +264,16 @@ pub async fn get_instance(
     if iid != "default" {
         return Err(ApiError::not_found(format!("Instance '{iid}' not found")));
     }
-    let (decl, _source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
+    let (decl, _source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
     let base = base_path(&uri);
-    Ok(json_response(JSON_MEDIA_TYPE, &build_collection_dto(&decl, &base)))
+    Ok(json_response(
+        JSON_MEDIA_TYPE,
+        &build_collection_dto(&decl, &base),
+    ))
 }
 
 pub async fn list_locations(
@@ -256,10 +284,25 @@ pub async fn list_locations(
     let cid = params
         .get("cid")
         .ok_or_else(|| ApiError::bad_request("Missing collection id"))?;
-    let _ = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
-    let features = if let Ok((f_decl, f_source)) = ctx.current().router.resolve_features(tenant, catalog, cid).await {
+    let _ = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
+    let features = if let Ok((f_decl, f_source)) = ctx
+        .current()
+        .router
+        .resolve_features(tenant, catalog, cid)
+        .await
+    {
         f_source
-            .items(&f_decl, &ItemsQuery { limit: 100, ..Default::default() })
+            .items(
+                &f_decl,
+                &ItemsQuery {
+                    limit: 100,
+                    ..Default::default()
+                },
+            )
             .await
             .map(|p| p.features_geojson)
             .unwrap_or_default()
@@ -283,13 +326,24 @@ pub async fn get_location(
     let loc_id = params
         .get("locId")
         .ok_or_else(|| ApiError::bad_request("Missing location id"))?;
-    let _ = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
-    if let Ok((f_decl, f_source)) = ctx.current().router.resolve_features(tenant, catalog, cid).await {
+    let _ = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
+    if let Ok((f_decl, f_source)) = ctx
+        .current()
+        .router
+        .resolve_features(tenant, catalog, cid)
+        .await
+    {
         if let Ok(Some(feat)) = f_source.item(&f_decl, loc_id, None).await {
             return Ok(json_response(GEOJSON_MEDIA_TYPE, &feat));
         }
     }
-    Err(ApiError::not_found(format!("Location '{loc_id}' not found")))
+    Err(ApiError::not_found(format!(
+        "Location '{loc_id}' not found"
+    )))
 }
 
 pub async fn query_position(
@@ -307,14 +361,27 @@ pub async fn query_position(
     let crs = parse_crs(query.crs.as_deref())?;
     let format = OutputFormat::parse(query.f.as_deref())?;
 
-    let (decl, source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
+    let (decl, source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
     let bbox = [
         points.iter().map(|p| p[0]).fold(f64::INFINITY, f64::min) - 0.001,
         points.iter().map(|p| p[1]).fold(f64::INFINITY, f64::min) - 0.001,
-        points.iter().map(|p| p[0]).fold(f64::NEG_INFINITY, f64::max) + 0.001,
-        points.iter().map(|p| p[1]).fold(f64::NEG_INFINITY, f64::max) + 0.001,
+        points
+            .iter()
+            .map(|p| p[0])
+            .fold(f64::NEG_INFINITY, f64::max)
+            + 0.001,
+        points
+            .iter()
+            .map(|p| p[1])
+            .fold(f64::NEG_INFINITY, f64::max)
+            + 0.001,
     ];
-    let slices = resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
+    let slices =
+        resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
     let sampled = sample_points_with_fallback(source.as_ref(), &decl, &points, None).await?;
     let band_names = vec!["band_1".to_string()];
 
@@ -343,13 +410,18 @@ pub async fn query_position(
         }
         OutputFormat::CoverageJson => {
             let domain_type = if slices.len() > 1 {
-                if points.len() > 1 { "MultiPointSeries" } else { "PointSeries" }
+                if points.len() > 1 {
+                    "MultiPointSeries"
+                } else {
+                    "PointSeries"
+                }
             } else if points.len() > 1 {
                 "MultiPoint"
             } else {
                 "Point"
             };
-            let cov = build_point_coverage(&points, &slices, &band_names, &sampled, crs, domain_type);
+            let cov =
+                build_point_coverage(&points, &slices, &band_names, &sampled, crs, domain_type);
             Ok(json_response(COVJSON_MEDIA_TYPE, &cov))
         }
     }
@@ -377,7 +449,11 @@ pub async fn query_area(
     }
     let selected = parse_parameter_names(query.parameter_name.as_deref());
 
-    let (decl, source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
+    let (decl, source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
     let poly_geom = geo_types::Geometry::MultiPolygon(polys.clone());
     let slices = resolve_sparse_time_slices_with_geom(
         &ctx,
@@ -416,8 +492,13 @@ pub async fn query_cube(
     }
     let selected = parse_parameter_names(query.parameter_name.as_deref());
 
-    let (decl, source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
-    let slices = resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
+    let (decl, source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
+    let slices =
+        resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
     let grid = sample_grid_with_fallback(source.as_ref(), &decl, bbox, 64, None).await?;
     let cov = build_grid_coverage(&grid, &slices, crs, selected.as_deref());
     Ok(json_response(COVJSON_MEDIA_TYPE, &cov))
@@ -448,8 +529,13 @@ pub async fn query_radius(
         center[1] + d_lat,
     ];
 
-    let (decl, source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
-    let slices = resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
+    let (decl, source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
+    let slices =
+        resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
     let mut grid = sample_grid_with_fallback(source.as_ref(), &decl, bbox, 64, None).await?;
     mask_grid_by_radius(&mut grid, center, radius_m);
     let cov = build_grid_coverage(&grid, &slices, crs, selected.as_deref());
@@ -471,10 +557,22 @@ pub async fn query_trajectory(
     let crs = parse_crs(query.crs.as_deref())?;
     let bbox = line_bbox(&line.0, 0.001);
 
-    let (decl, source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
-    let slices = resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
+    let (decl, source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
+    let slices =
+        resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
     let sampled = sample_points_with_fallback(source.as_ref(), &decl, &pts, None).await?;
-    let cov = build_point_coverage(&pts, &slices, &["band_1".to_string()], &sampled, crs, "Trajectory");
+    let cov = build_point_coverage(
+        &pts,
+        &slices,
+        &["band_1".to_string()],
+        &sampled,
+        crs,
+        "Trajectory",
+    );
     Ok(json_response(COVJSON_MEDIA_TYPE, &cov))
 }
 
@@ -496,8 +594,13 @@ pub async fn query_corridor(
 
     let buf_deg = (width_m / 2.0) / 111_320.0;
     let bbox = line_bbox(&line.0, buf_deg.max(0.001));
-    let (decl, source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
-    let slices = resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
+    let (decl, source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
+    let slices =
+        resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, bbox, temporal.as_ref()).await?;
     let grid = sample_grid_with_fallback(source.as_ref(), &decl, bbox, 64, None).await?;
     let cov = build_grid_coverage(&grid, &slices, crs, selected.as_deref());
     Ok(json_response(COVJSON_MEDIA_TYPE, &cov))
@@ -564,7 +667,11 @@ fn geojson_to_geometry(val: &Value) -> Result<Geometry<f64>, ApiError> {
         "MultiPolygon" => {
             let polys = coords
                 .as_array()
-                .and_then(|arr| arr.iter().map(parse_geojson_polygon).collect::<Option<Vec<_>>>())
+                .and_then(|arr| {
+                    arr.iter()
+                        .map(parse_geojson_polygon)
+                        .collect::<Option<Vec<_>>>()
+                })
                 .ok_or_else(|| ApiError::bad_request("Invalid GeoJSON MultiPolygon coordinates"))?;
             Ok(Geometry::MultiPolygon(MultiPolygon::new(polys)))
         }
@@ -635,23 +742,21 @@ fn extract_filter_constraints(
                 | TemporalOp::Equals,
             value,
             ..
-        } => {
-            if out_temp.is_none() {
-                let range = match value {
-                    TemporalValue::Instant(s) => {
-                        let dt = parse_iso_instant(s)?;
-                        TemporalRange {
-                            start: Some(dt),
-                            end: Some(dt),
-                        }
+        } if out_temp.is_none() => {
+            let range = match value {
+                TemporalValue::Instant(s) => {
+                    let dt = parse_iso_instant(s)?;
+                    TemporalRange {
+                        start: Some(dt),
+                        end: Some(dt),
                     }
-                    TemporalValue::Interval(s, e) => TemporalRange {
-                        start: Some(parse_iso_instant(s)?),
-                        end: Some(parse_iso_instant(e)?),
-                    },
-                };
-                *out_temp = Some(range);
-            }
+                }
+                TemporalValue::Interval(s, e) => TemporalRange {
+                    start: Some(parse_iso_instant(s)?),
+                    end: Some(parse_iso_instant(e)?),
+                },
+            };
+            *out_temp = Some(range);
         }
         _ => {}
     }
@@ -698,7 +803,12 @@ enum ItemsRepresentation {
 }
 
 fn header_requests_domain_profile(headers: &HeaderMap, query: &EdrQueryParams) -> bool {
-    if let Some(p) = query.profile.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    if let Some(p) = query
+        .profile
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         if p == DOMAIN_PROFILE_URI || p.eq_ignore_ascii_case("domain") {
             return true;
         }
@@ -766,31 +876,43 @@ pub async fn list_items(
         .ok_or_else(|| ApiError::bad_request("Missing collection id"))?;
     let mut temporal = parse_datetime(query.datetime.as_deref())?;
 
-    let mut filter_geom: Option<Geometry<f64>> = if let Some(wkt_str) =
-        query.coords.as_deref().map(str::trim).filter(|s| !s.is_empty())
-    {
-        Some(
-            Geometry::try_from_wkt_str(wkt_str)
-                .map_err(|e| ApiError::bad_request(format!("Invalid WKT in 'coords': {e}")))?,
-        )
-    } else if let Some(raw_intersects) =
-        query.intersects.as_deref().map(str::trim).filter(|s| !s.is_empty())
-    {
-        if raw_intersects.starts_with('{') {
-            let val: Value = serde_json::from_str(raw_intersects)
-                .map_err(|e| ApiError::bad_request(format!("Invalid GeoJSON in 'intersects': {e}")))?;
-            Some(geojson_to_geometry(&val)?)
-        } else {
+    let mut filter_geom: Option<Geometry<f64>> =
+        if let Some(wkt_str) = query
+            .coords
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
             Some(
-                Geometry::try_from_wkt_str(raw_intersects)
-                    .map_err(|e| ApiError::bad_request(format!("Invalid WKT in 'intersects': {e}")))?,
+                Geometry::try_from_wkt_str(wkt_str)
+                    .map_err(|e| ApiError::bad_request(format!("Invalid WKT in 'coords': {e}")))?,
             )
-        }
-    } else {
-        None
-    };
+        } else if let Some(raw_intersects) = query
+            .intersects
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            if raw_intersects.starts_with('{') {
+                let val: Value = serde_json::from_str(raw_intersects).map_err(|e| {
+                    ApiError::bad_request(format!("Invalid GeoJSON in 'intersects': {e}"))
+                })?;
+                Some(geojson_to_geometry(&val)?)
+            } else {
+                Some(Geometry::try_from_wkt_str(raw_intersects).map_err(|e| {
+                    ApiError::bad_request(format!("Invalid WKT in 'intersects': {e}"))
+                })?)
+            }
+        } else {
+            None
+        };
 
-    if let Some(raw_filter) = query.filter.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    if let Some(raw_filter) = query
+        .filter
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         let lang = query.filter_lang.as_deref().unwrap_or("cql2-text");
         let parsed = filter::parse(lang, raw_filter)
             .map_err(|e| ApiError::bad_request(format!("Invalid CQL2 filter: {e}")))?;
@@ -800,15 +922,19 @@ pub async fn list_items(
     let query_bbox = if query.bbox.as_deref().is_some_and(|s| !s.trim().is_empty()) {
         parse_bbox(query.bbox.as_deref())?
     } else if let Some(geom) = &filter_geom {
-        let rect = geom
-            .bounding_rect()
-            .ok_or_else(|| ApiError::bad_request("Spatial filter geometry has empty bounding box"))?;
+        let rect = geom.bounding_rect().ok_or_else(|| {
+            ApiError::bad_request("Spatial filter geometry has empty bounding box")
+        })?;
         [rect.min().x, rect.min().y, rect.max().x, rect.max().y]
     } else {
         [-180.0, -90.0, 180.0, 90.0]
     };
 
-    let (decl, source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
+    let (decl, source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
     let slices = resolve_sparse_time_slices_with_geom(
         &ctx,
         tenant,
@@ -871,7 +997,8 @@ pub async fn list_items(
         ItemsRepresentation::CoverageData => {
             let crs = parse_crs(query.crs.as_deref())?;
             let selected = parse_parameter_names(query.parameter_name.as_deref());
-            let grid = sample_grid_with_fallback(source.as_ref(), &decl, query_bbox, 64, None).await?;
+            let grid =
+                sample_grid_with_fallback(source.as_ref(), &decl, query_bbox, 64, None).await?;
             let cov = build_grid_coverage(&grid, &populated, crs, selected.as_deref());
             return Ok(with_vary_accept_profile(json_response(
                 COVJSON_MEDIA_TYPE,
@@ -919,7 +1046,11 @@ pub async fn get_item(
         .get("itemId")
         .ok_or_else(|| ApiError::bad_request("Missing item id"))?;
 
-    let (decl, _source) = ctx.current().router.resolve_raster(tenant, catalog, cid).await?;
+    let (decl, _source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
     let world = [-180.0, -90.0, 180.0, 90.0];
     let slices = resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, world, None).await?;
     let matched = slices

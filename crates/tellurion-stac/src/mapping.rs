@@ -30,7 +30,8 @@ use crate::projection::{log_override_disagreement, DerivedProjection, PROJECTION
 pub const STAC_VERSION: &str = "1.1.0";
 
 /// STAC Datacube Extension schema URI (`cube:dimensions`).
-pub const DATACUBE_EXTENSION_URI: &str = "https://stac-extensions.github.io/datacube/v2.2.0/schema.json";
+pub const DATACUBE_EXTENSION_URI: &str =
+    "https://stac-extensions.github.io/datacube/v2.2.0/schema.json";
 
 /// STAC Collection `license` value for a collection with no configured
 /// `stac.license` (`#36`). `"other"` — not the older `"proprietary"`/
@@ -1440,7 +1441,12 @@ mod tests {
 
     #[test]
     fn cube_dimensions_serialize_with_datacube_extension_and_omission_is_byte_identical() {
-        let bare = to_stac_collection(Some(&canonical_with(None, None)), "demo", vec![], BTreeMap::new());
+        let bare = to_stac_collection(
+            Some(&canonical_with(None, None)),
+            "demo",
+            vec![],
+            BTreeMap::new(),
+        );
         let empty_stac = to_stac_collection(
             Some(&canonical_with(None, Some(CanonicalStac::default()))),
             "demo",

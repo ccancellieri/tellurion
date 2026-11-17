@@ -63,7 +63,12 @@ fn feature_bbox(feat: &Value) -> Option<[f64; 4]> {
         }
     }
     if let Some(coords) = feat.get("geometry").and_then(|g| g.get("coordinates")) {
-        let mut acc = [f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY];
+        let mut acc = [
+            f64::INFINITY,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+        ];
         let mut found = false;
         collect_coords_bbox(coords, &mut acc, &mut found);
         if found {
@@ -124,10 +129,8 @@ pub async fn resolve_sparse_time_slices_with_geom(
                         continue;
                     }
                     if let Some(geom) = filter_geom {
-                        let rect = Rect::new(
-                            Coord { x: fb[0], y: fb[1] },
-                            Coord { x: fb[2], y: fb[3] },
-                        );
+                        let rect =
+                            Rect::new(Coord { x: fb[0], y: fb[1] }, Coord { x: fb[2], y: fb[3] });
                         if !geom.intersects(&rect) {
                             continue;
                         }
@@ -349,7 +352,10 @@ pub async fn sample_grid_with_fallback(
     max_dim: usize,
     band_indices: Option<&[usize]>,
 ) -> Result<CoverageGrid, ApiError> {
-    if let Some(grid) = source.sample_grid(decl, bbox, max_dim, band_indices).await? {
+    if let Some(grid) = source
+        .sample_grid(decl, bbox, max_dim, band_indices)
+        .await?
+    {
         return Ok(grid);
     }
     // Fallback to `raster_tile` at the zoom level matching the requested bbox.
@@ -379,10 +385,10 @@ pub async fn sample_grid_with_fallback(
                     let lon = bbox[0] + (col as f64 + 0.5) * dx;
                     let u = ((lon + 180.0) / 360.0 * n) - coord.x as f64;
                     if (0.0..1.0).contains(&u) && (0.0..1.0).contains(&v) {
-                        let px = ((u * win.width as f64).floor() as usize)
-                            .min(win.width as usize - 1);
-                        let py = ((v * win.height as f64).floor() as usize)
-                            .min(win.height as usize - 1);
+                        let px =
+                            ((u * win.width as f64).floor() as usize).min(win.width as usize - 1);
+                        let py =
+                            ((v * win.height as f64).floor() as usize).min(win.height as usize - 1);
                         let off = (py * win.width as usize + px) * 4;
                         let alpha = win.rgba.get(off + 3).copied().unwrap_or(0);
                         if alpha == 0 {
@@ -556,10 +562,10 @@ pub fn build_grid_coverage(
                         t_y_x.extend_from_slice(vals);
                     }
                 } else {
-                    t_y_x.extend(std::iter::repeat(None).take(grid.height * grid.width));
+                    t_y_x.extend(std::iter::repeat_n(None, grid.height * grid.width));
                 }
             } else {
-                t_y_x.extend(std::iter::repeat(None).take(grid.height * grid.width));
+                t_y_x.extend(std::iter::repeat_n(None, grid.height * grid.width));
             }
         }
         ranges.insert(
@@ -673,10 +679,10 @@ pub fn build_point_coverage(
                 if let Some(row) = sampled.get(b_idx) {
                     values.extend_from_slice(row);
                 } else {
-                    values.extend(std::iter::repeat(None).take(points.len()));
+                    values.extend(std::iter::repeat_n(None, points.len()));
                 }
             } else {
-                values.extend(std::iter::repeat(None).take(points.len()));
+                values.extend(std::iter::repeat_n(None, points.len()));
             }
         }
         ranges.insert(

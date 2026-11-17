@@ -27,10 +27,7 @@ impl SupportedCrs {
             Ok(Self::Crs84)
         } else if norm == "EPSG:4326" || norm.ends_with("/EPSG/0/4326") {
             Ok(Self::Epsg4326)
-        } else if norm == "EPSG:3857"
-            || norm == "EPSG:900913"
-            || norm.ends_with("/EPSG/0/3857")
-        {
+        } else if norm == "EPSG:3857" || norm == "EPSG:900913" || norm.ends_with("/EPSG/0/3857") {
             Ok(Self::Epsg3857)
         } else {
             Err(ApiError::bad_request(format!(
