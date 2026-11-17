@@ -18,6 +18,20 @@ pub struct ApiError {
     pub problem: Problem,
 }
 
+impl ApiError {
+    /// Builds a `400 Bad Request` RFC 9457 problem response.
+    pub fn bad_request(detail: impl Into<String>) -> Self {
+        Self::from(CoreError::Invalid(detail.into()))
+    }
+
+    /// Builds a `404 Not Found` RFC 9457 problem response with custom detail.
+    pub fn not_found(detail: impl Into<String>) -> Self {
+        let mut err = Self::from(CoreError::NotFound);
+        err.problem.detail = detail.into();
+        err
+    }
+}
+
 /// `#34`: the response `policy::authorize_resource`'s `Deny` verdict maps to.
 /// See `Problem::for_denied_credential`'s own doc for the status/code rule.
 pub fn policy_denied(credential: &Credential) -> ApiError {

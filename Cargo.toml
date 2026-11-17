@@ -21,6 +21,7 @@ members = [
     "crates/tellurion-styles",
     "crates/tellurion-stac",
     "crates/tellurion-records",
+    "crates/tellurion-edr",
     "crates/tellurion-processes",
     "crates/tellurion-memory",
     "crates/tellurion-duckdb",
@@ -63,6 +64,7 @@ tellurion-places = { path = "crates/tellurion-places", version = "0.6.1" }
 tellurion-styles = { path = "crates/tellurion-styles", version = "0.6.1" }
 tellurion-stac = { path = "crates/tellurion-stac", version = "0.6.1" }
 tellurion-records = { path = "crates/tellurion-records", version = "0.6.1" }
+tellurion-edr = { path = "crates/tellurion-edr", version = "0.6.1" }
 tellurion-processes = { path = "crates/tellurion-processes", version = "0.6.1" }
 tellurion-memory = { path = "crates/tellurion-memory", version = "0.6.1" }
 tellurion-duckdb = { path = "crates/tellurion-duckdb", version = "0.6.1" }
@@ -148,6 +150,9 @@ hmac = "0.13"
 # geoparquet drivers pull it in via `arrow`/`parquet`) — pinned here so
 # `tellurion-core` resolves to that same copy rather than a second one.
 chrono = "0.4"
+geo = "0.29"
+geo-types = "0.7"
+wkt = "0.14"
 # Same class: RFC 7231 HTTP-date parsing/formatting for `Last-Modified`/
 # `If-Unmodified-Since`. Already in the dependency graph transitively (via
 # `hyper`, which every direct `reqwest`/`axum` dependency in this workspace

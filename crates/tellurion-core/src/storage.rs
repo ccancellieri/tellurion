@@ -443,6 +443,18 @@ pub struct RasterWindow {
     pub rgba: Vec<u8>,
 }
 
+/// Numeric coverage grid returned by [`RasterSource::sample_grid`] for OGC API - EDR.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CoverageGrid {
+    pub width: usize,
+    pub height: usize,
+    pub bbox: [f64; 4],
+    pub bands: Vec<String>,
+    /// Per-band row-major values (`None` denotes nodata / masked / sparse gap).
+    pub values: Vec<Vec<Option<f64>>>,
+    pub crs: String,
+}
+
 #[async_trait::async_trait]
 pub trait RasterSource: Send + Sync {
     /// `Ok(None)`: `coord`'s tile does not intersect this raster's extent at
@@ -460,6 +472,29 @@ pub trait RasterSource: Send + Sync {
         collection: &CollectionDecl,
         coord: TileCoord,
     ) -> Result<Option<RasterWindow>>;
+
+    /// Sample numeric band values at `(lon, lat)` points (CRS84) for EDR `position`/`trajectory`.
+    /// Default returns `Ok(None)` so tile-only implementations stay compatible.
+    async fn sample_points(
+        &self,
+        _collection: &CollectionDecl,
+        _points: &[[f64; 2]],
+        _band_indices: Option<&[usize]>,
+    ) -> Result<Option<Vec<Vec<Option<f64>>>>> {
+        Ok(None)
+    }
+
+    /// Sample a numeric grid over `bbox` (`[min_lon, min_lat, max_lon, max_lat]` in CRS84)
+    /// for EDR `area`/`cube`/`radius`/`corridor`.
+    async fn sample_grid(
+        &self,
+        _collection: &CollectionDecl,
+        _bbox: [f64; 4],
+        _max_dim: usize,
+        _band_indices: Option<&[usize]>,
+    ) -> Result<Option<CoverageGrid>> {
+        Ok(None)
+    }
 }
 
 /// One driver's answer to "true solid geometry for this tile" (`#15`): a

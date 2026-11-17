@@ -192,6 +192,71 @@
           }
         }
       }
+    },
+    "/dimensions": {
+      "get": {
+        "summary": "List declared domain dimensions",
+        "operationId": "listDimensions",
+        "responses": {
+          "200": {
+            "description": "List of intensional dimension descriptors.",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dimensions/{did}": {
+      "get": {
+        "summary": "Describe one dimension",
+        "operationId": "describeDimension",
+        "parameters": [
+          { "name": "did", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Intensional dimension descriptor.",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/dimensions/{did}/items": {
+      "get": {
+        "summary": "List dimension members",
+        "operationId": "listDimensionItems",
+        "parameters": [
+          { "name": "did", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated dimension members.",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/dimensions/{did}/items/{memberId}": {
+      "get": {
+        "summary": "Retrieve one dimension member",
+        "operationId": "getDimensionItem",
+        "parameters": [
+          { "name": "did", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "memberId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Single dimension member.",
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
     }
   },
   "components": {

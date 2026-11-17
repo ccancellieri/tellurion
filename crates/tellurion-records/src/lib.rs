@@ -50,6 +50,7 @@
 /// each one) is reachable from the rendered documentation, not just from the
 /// source.
 pub mod conformance;
+pub mod dimensions;
 mod handlers;
 mod model;
 mod problem;

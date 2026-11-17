@@ -141,6 +141,7 @@ tellurion-places = { workspace = true }
 tellurion-styles = { workspace = true }
 tellurion-stac = { workspace = true }
 tellurion-records = { workspace = true }
+tellurion-edr = { workspace = true }
 tellurion-processes = { workspace = true }
 # `#245`: `link_contributors.rs` decides which registered styles are worth
 # advertising for a collection, and the predicate that decides it

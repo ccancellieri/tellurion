@@ -17,7 +17,7 @@ use axum::Router;
 
 use tellurion_core::AppContext;
 
-use crate::handlers;
+use crate::{dimensions, handlers};
 
 pub fn router() -> Router<Arc<AppContext>> {
     Router::new()
@@ -27,5 +27,15 @@ pub fn router() -> Router<Arc<AppContext>> {
         .route(
             "/collections/{cid}/items/{recordId}",
             get(handlers::get_record),
+        )
+        .route("/dimensions", get(dimensions::list_dimensions))
+        .route("/dimensions/{did}", get(dimensions::get_dimension))
+        .route(
+            "/dimensions/{did}/items",
+            get(dimensions::list_dimension_items),
+        )
+        .route(
+            "/dimensions/{did}/items/{memberId}",
+            get(dimensions::get_dimension_item),
         )
 }

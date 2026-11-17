@@ -34,6 +34,7 @@ const THREEDTILES_OPENAPI_JSON: &str = include_str!("../openapi_threedtiles.json
 const STAC_OPENAPI_JSON: &str = include_str!("../openapi_stac.json");
 const RECORDS_OPENAPI_JSON: &str = include_str!("../openapi_records.json");
 const PROCESSES_OPENAPI_JSON: &str = include_str!("../openapi_processes.json");
+const EDR_OPENAPI_JSON: &str = include_str!("../openapi_edr.json");
 
 fn document_for(protocol: Protocol) -> &'static str {
     match protocol {
@@ -44,6 +45,7 @@ fn document_for(protocol: Protocol) -> &'static str {
         Protocol::Stac => STAC_OPENAPI_JSON,
         Protocol::Records => RECORDS_OPENAPI_JSON,
         Protocol::Processes => PROCESSES_OPENAPI_JSON,
+        Protocol::Edr => EDR_OPENAPI_JSON,
     }
 }
 
@@ -363,6 +365,11 @@ mod tests {
     #[test]
     fn processes_document_covers_every_served_route() {
         assert_document_covers(Protocol::Processes, tellurion_processes::router());
+    }
+
+    #[test]
+    fn edr_document_covers_every_served_route() {
+        assert_document_covers(Protocol::Edr, tellurion_edr::router());
     }
 
     /// Every embedded document is valid JSON, is an OpenAPI 3.0 document, and

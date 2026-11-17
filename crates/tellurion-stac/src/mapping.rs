@@ -29,6 +29,9 @@ use crate::projection::{log_override_disagreement, DerivedProjection, PROJECTION
 /// repos version independently.
 pub const STAC_VERSION: &str = "1.1.0";
 
+/// STAC Datacube Extension schema URI (`cube:dimensions`).
+pub const DATACUBE_EXTENSION_URI: &str = "https://stac-extensions.github.io/datacube/v2.2.0/schema.json";
+
 /// STAC Collection `license` value for a collection with no configured
 /// `stac.license` (`#36`). `"other"` — not the older `"proprietary"`/
 /// `"various"` strings — is the STAC 1.1.0 Collection spec's own answer for
@@ -129,7 +132,7 @@ pub fn to_stac_collection(
     // no `summaries`, no `stac_extensions`, and a byte-identical document.
     let facts = canonical.and_then(|c| c.projection);
     let derived = crate::projection::derive_projection(facts.as_ref(), None);
-    let (stac_extensions, summaries) = match derived {
+    let (mut stac_extensions, summaries) = match derived {
         Some(derived) => (
             vec![PROJECTION_EXTENSION_URI.to_string()],
             derived
@@ -140,6 +143,13 @@ pub fn to_stac_collection(
         ),
         None => (Vec::new(), BTreeMap::new()),
     };
+
+    let cube_dimensions = stac
+        .map(|conf| conf.cube_dimensions.clone())
+        .unwrap_or_default();
+    if !cube_dimensions.is_empty() {
+        stac_extensions.push(DATACUBE_EXTENSION_URI.to_string());
+    }
 
     StacCollection {
         type_: "Collection",
@@ -158,6 +168,7 @@ pub fn to_stac_collection(
             },
         },
         summaries,
+        cube_dimensions,
         links,
         assets,
     }
@@ -561,6 +572,7 @@ mod tests {
             assets: BTreeMap::new(),
             contacts: vec![],
             lineage: None,
+            cube_dimensions: BTreeMap::new(),
         };
         let canonical = canonical_with(None, Some(stac));
         let collection = to_stac_collection(Some(&canonical), "demo", vec![], BTreeMap::new());
@@ -613,6 +625,7 @@ mod tests {
             assets: BTreeMap::new(),
             contacts: vec![],
             lineage: None,
+            cube_dimensions: BTreeMap::new(),
         };
         let canonical = canonical_with(None, Some(stac));
         let collection = to_stac_collection(Some(&canonical), "demo", vec![], BTreeMap::new());
@@ -641,6 +654,7 @@ mod tests {
                 url: Some("https://example.com/ada".to_string()),
             }],
             lineage: None,
+            cube_dimensions: BTreeMap::new(),
         };
         let canonical = canonical_with(None, Some(stac));
         let collection = to_stac_collection(Some(&canonical), "demo", vec![], BTreeMap::new());
@@ -674,6 +688,7 @@ mod tests {
                 sources: vec![],
                 process_steps: vec![],
             }),
+            cube_dimensions: BTreeMap::new(),
         };
         let canonical = canonical_with(None, Some(stac));
         let collection = to_stac_collection(Some(&canonical), "demo", vec![], BTreeMap::new());
@@ -788,6 +803,7 @@ mod tests {
             assets: declared,
             contacts: vec![],
             lineage: None,
+            cube_dimensions: BTreeMap::new(),
         };
         let canonical = canonical_with(None, Some(stac));
         let collection = to_stac_collection(Some(&canonical), "demo", vec![], BTreeMap::new());
@@ -817,6 +833,7 @@ mod tests {
             assets: declared,
             contacts: vec![],
             lineage: None,
+            cube_dimensions: BTreeMap::new(),
         };
         let canonical = canonical_with(None, Some(stac));
         let collection = to_stac_collection(Some(&canonical), "demo", vec![], BTreeMap::new());
@@ -864,6 +881,7 @@ mod tests {
             assets: declared,
             contacts: vec![],
             lineage: None,
+            cube_dimensions: BTreeMap::new(),
         };
         let canonical = canonical_with(None, Some(stac));
         let collection = to_stac_collection(Some(&canonical), "demo", vec![], capability_derived);
@@ -1418,5 +1436,68 @@ mod tests {
             json!([[0.01, 0.0, -1.28, 0.0, -0.01, 1.28]])
         );
         assert_eq!(value["summaries"]["proj:shape"], json!([[512, 1024]]));
+    }
+
+    #[test]
+    fn cube_dimensions_serialize_with_datacube_extension_and_omission_is_byte_identical() {
+        let bare = to_stac_collection(Some(&canonical_with(None, None)), "demo", vec![], BTreeMap::new());
+        let empty_stac = to_stac_collection(
+            Some(&canonical_with(None, Some(CanonicalStac::default()))),
+            "demo",
+            vec![],
+            BTreeMap::new(),
+        );
+        assert_eq!(
+            serde_json::to_string(&bare).unwrap(),
+            serde_json::to_string(&empty_stac).unwrap(),
+            "omitting cube_dimensions must preserve pre-extension byte-identical output"
+        );
+        assert!(empty_stac.stac_extensions.is_empty());
+
+        let mut cube_dimensions = BTreeMap::new();
+        cube_dimensions.insert(
+            "time".to_string(),
+            tellurion_core::CubeDimensionDecl {
+                dim_type: "temporal".to_string(),
+                description: Some("Dekadal time axis (36 members/year)".to_string()),
+                axis: None,
+                extent: Some(vec![json!("2021-01-01T00:00:00Z"), json!("2021-12-31T23:59:59Z")]),
+                values: None,
+                step: None,
+                unit: None,
+                reference_system: None,
+                size: Some(36),
+                definition: Some(
+                    "https://tellurion-stac-harvest-demo.onrender.com/public/records/catalogs/default/dimensions/dekadal-2021"
+                        .to_string(),
+                ),
+                variable_type: Some("categoricalOrdinal".to_string()),
+            },
+        );
+        let stac = CanonicalStac {
+            cube_dimensions,
+            ..Default::default()
+        };
+        let collection = to_stac_collection(
+            Some(&canonical_with(None, Some(stac))),
+            "demo",
+            vec![],
+            BTreeMap::new(),
+        );
+        assert_eq!(
+            collection.stac_extensions,
+            vec![DATACUBE_EXTENSION_URI.to_string()]
+        );
+        let value = serde_json::to_value(&collection).unwrap();
+        assert_eq!(value["cube:dimensions"]["time"]["type"], json!("temporal"));
+        assert_eq!(value["cube:dimensions"]["time"]["size"], json!(36));
+        assert_eq!(
+            value["cube:dimensions"]["time"]["variableType"],
+            json!("categoricalOrdinal")
+        );
+        assert_eq!(
+            value["cube:dimensions"]["time"]["definition"],
+            json!("https://tellurion-stac-harvest-demo.onrender.com/public/records/catalogs/default/dimensions/dekadal-2021")
+        );
     }
 }

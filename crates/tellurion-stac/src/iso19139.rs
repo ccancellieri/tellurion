@@ -546,6 +546,7 @@ mod tests {
             assets: BTreeMap::new(),
             contacts: vec![],
             lineage: None,
+            cube_dimensions: BTreeMap::new(),
         }
     }
 
@@ -626,6 +627,7 @@ mod tests {
                 assets: BTreeMap::new(),
                 contacts: vec![],
                 lineage: None,
+                cube_dimensions: BTreeMap::new(),
             }),
             capabilities: CanonicalCapabilities::default(),
             geometry_profile: None,
@@ -720,6 +722,7 @@ mod tests {
                 assets: BTreeMap::new(),
                 contacts: vec![],
                 lineage: None,
+                cube_dimensions: BTreeMap::new(),
             }),
             ..complete_canonical()
         };

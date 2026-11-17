@@ -1,0 +1,28 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tellurion OGC API - Environmental Data Retrieval (EDR)",
+    "version": "1.1.0"
+  },
+  "paths": {
+    "/": { "get": { "summary": "Landing page", "responses": { "200": { "description": "OK" } } } },
+    "/conformance": { "get": { "summary": "Conformance classes", "responses": { "200": { "description": "OK" } } } },
+    "/api": { "get": { "summary": "OpenAPI definition", "responses": { "200": { "description": "OK" } } } },
+    "/collections": { "get": { "summary": "List EDR collections", "responses": { "200": { "description": "OK" } } } },
+    "/collections/{cid}": { "get": { "summary": "Describe EDR collection", "responses": { "200": { "description": "OK" } } } },
+    "/collections/{cid}/instances": { "get": { "summary": "List collection instances", "responses": { "200": { "description": "OK" } } } },
+    "/collections/{cid}/instances/{iid}": { "get": { "summary": "Get collection instance", "responses": { "200": { "description": "OK" } } } },
+    "/collections/{cid}/locations": { "get": { "summary": "List named locations", "responses": { "200": { "description": "OK" } } } },
+    "/collections/{cid}/locations/{locId}": { "get": { "summary": "Get named location", "responses": { "200": { "description": "OK" } } } },
+    "/collections/{cid}/position": { "get": { "summary": "Position query", "responses": { "200": { "description": "CoverageJSON or GeoJSON" } } } },
+    "/collections/{cid}/area": { "get": { "summary": "Area query", "responses": { "200": { "description": "CoverageJSON" } } } },
+    "/collections/{cid}/cube": { "get": { "summary": "Cube query", "responses": { "200": { "description": "CoverageJSON" } } } },
+    "/collections/{cid}/radius": { "get": { "summary": "Radius query", "responses": { "200": { "description": "CoverageJSON" } } } },
+    "/collections/{cid}/trajectory": { "get": { "summary": "Trajectory query", "responses": { "200": { "description": "CoverageJSON" } } } },
+    "/collections/{cid}/corridor": { "get": { "summary": "Corridor query", "responses": { "200": { "description": "CoverageJSON" } } } },
+    "/collections/{cid}/items": { "get": { "summary": "List or filter collection items (OGC API - EDR Part 1 / Features Part 3 CQL2)", "responses": { "200": { "description": "GeoJSON FeatureCollection, extracted CoverageJSON, or CoverageJSON Domain via RFC 6906 profile" } } } },
+    "/collections/{cid}/items/{itemId}": { "get": { "summary": "Get collection item by id", "responses": { "200": { "description": "GeoJSON Feature or CoverageJSON" } } } },
+    "/collections/{cid}/scenes": { "get": { "summary": "List or filter partitioned scenes (OGC API - Coverages Part 3 / CQL2)", "responses": { "200": { "description": "GeoJSON STAC scenes, extracted CoverageJSON, or CoverageJSON Domain via RFC 6906 profile" } } } },
+    "/collections/{cid}/scenes/{itemId}": { "get": { "summary": "Get collection scene by id", "responses": { "200": { "description": "GeoJSON STAC scene Feature or CoverageJSON" } } } }
+  }
+}

@@ -127,7 +127,8 @@ pub use config::{
     OutboxRetentionConfig, Places3dConf, PolicyConfig, PolicyLane, ProcessesConfig, ProfileDecl,
     PropertyDecl, PropertyType, ProtocolExposure, ProtocolsConf, RegistryBackend, RegistryConfig,
     RegistryValidationMode, RoleDecl, RoutingDecl, RoutingSnapshot, SchemaDecl, SearchConf,
-    ServerConfig, ServiceAssetsMode, SettingsDecl, StacConf, StacProvider, StorageDecl, StyleConf,
+    CubeDimensionDecl, ServerConfig, ServiceAssetsMode, SettingsDecl, StacConf, StacProvider,
+    StorageDecl, StyleConf,
     StyleRef, TenantDecl, TenantPolicyDecl, TileInvalidationConfig, TilesConf, VisibilityDecl,
     WebhookDeliveryConfig, WebhookSubscriptionDecl, ZoomCaps, DEFAULT_DESCRIPTOR_CACHE_CAPACITY,
     DEFAULT_DESCRIPTOR_TTL_S, DEFAULT_TILE_CAP, RESERVED_TENANT_SEGMENTS, SETTINGS_KEY_NAMES,
@@ -242,9 +243,9 @@ pub use settings::{
 };
 pub use stac_sidecar::StacMetadataSource;
 pub use storage::{
-    advertised_vector_layers, is_volume_capable_geometry_type, DatetimeRange, FeaturePage,
-    FeatureSource, ItemsQuery, RasterSource, RasterWindow, TileCoord, TileSource, VolumeMesh,
-    VolumeSource,
+    advertised_vector_layers, is_volume_capable_geometry_type, CoverageGrid, DatetimeRange,
+    FeaturePage, FeatureSource, ItemsQuery, RasterSource, RasterWindow, TileCoord, TileSource,
+    VolumeMesh, VolumeSource,
 };
 pub use style_store::{FileStyleStore, StyleStore};
 pub use tenant::{

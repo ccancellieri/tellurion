@@ -1138,7 +1138,7 @@ fn keyword_or_ident(word: &str) -> Token {
         "NULL" => Token::Null,
         "TRUE" => Token::True,
         "FALSE" => Token::False,
-        "S_INTERSECTS" => Token::SIntersects,
+        "S_INTERSECTS" | "INTERSECTS" => Token::SIntersects,
         "S_WITHIN" => Token::SWithin,
         "S_CONTAINS" => Token::SContains,
         "S_DISJOINT" => Token::SDisjoint,
@@ -1996,10 +1996,10 @@ fn filter_from_json(value: &serde_json::Value) -> Result<Filter> {
                 negated: false,
             })
         }
-        "s_intersects" => {
+        "s_intersects" | "intersects" => {
             let property = json_property(args.first())?;
             let geometry = json_geometry(args.get(1).ok_or_else(|| {
-                Error::Invalid("CQL2-JSON 's_intersects' requires two arguments".to_string())
+                Error::Invalid(format!("CQL2-JSON '{op}' requires two arguments"))
             })?)?;
             Ok(Filter::Intersects { property, geometry })
         }
@@ -3659,5 +3659,30 @@ mod tests {
         )
         .unwrap();
         assert_ne!(instant.fingerprint(), interval.fingerprint());
+    }
+
+    #[test]
+    fn parses_ecql_intersects_alias_identically_to_cql2_s_intersects() {
+        let cql2 = parse_text(
+            "S_INTERSECTS(geom, POLYGON((12.2 39.2, 12.5 39.2, 12.5 39.5, 12.2 39.5, 12.2 39.2)))",
+        )
+        .unwrap();
+        let ecql = parse_text(
+            "INTERSECTS(geom, POLYGON((12.2 39.2, 12.5 39.2, 12.5 39.5, 12.2 39.5, 12.2 39.2)))",
+        )
+        .unwrap();
+        let ecql_json = parse_json(
+            r#"{"op":"intersects","args":[{"property":"geom"},{"bbox":[12.2,39.2,12.5,39.5]}]}"#,
+        )
+        .unwrap();
+        assert_eq!(cql2, ecql);
+        assert!(matches!(cql2, Filter::Intersects { .. }));
+        assert_eq!(
+            ecql_json,
+            Filter::Intersects {
+                property: "geom".to_string(),
+                geometry: GeometryLiteral::Bbox([12.2, 39.2, 12.5, 39.5]),
+            }
+        );
     }
 }

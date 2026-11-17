@@ -4616,6 +4616,7 @@ dependencies = [
  "tellurion-control-sqlite",
  "tellurion-core",
  "tellurion-duckdb",
+ "tellurion-edr",
  "tellurion-features",
  "tellurion-flatgeobuf",
  "tellurion-geopackage",
@@ -4748,6 +4749,26 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
+]
+
+[[package]]
+name = "tellurion-edr"
+version = "0.6.1"
+dependencies = [
+ "async-trait",
+ "axum",
+ "chrono",
+ "geo",
+ "geo-types",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tellurion-core",
+ "tellurion-memory",
+ "tokio",
+ "tower",
+ "tracing",
+ "wkt",
 ]
 
 [[package]]

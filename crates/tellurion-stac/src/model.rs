@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 use serde_json::Value;
 
-use tellurion_core::{ContributedLink, StacProvider};
+use tellurion_core::{ContributedLink, CubeDimensionDecl, StacProvider};
 
 /// `skip_serializing_if` helper for [`Link::templated`]: a plain `false`
 /// stays off the wire entirely, so every link this crate built before the
@@ -132,6 +132,8 @@ pub struct StacCollection {
     /// byte-for-byte as before.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub summaries: BTreeMap<String, Value>,
+    #[serde(rename = "cube:dimensions", skip_serializing_if = "BTreeMap::is_empty")]
+    pub cube_dimensions: BTreeMap<String, CubeDimensionDecl>,
     pub links: Vec<Link>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub assets: BTreeMap<String, StacAsset>,

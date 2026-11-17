@@ -41,8 +41,8 @@ use std::collections::BTreeMap;
 
 use crate::catalog::{AttributeColumn, GeometryProfile, ProjectionFacts, SpatialExtent};
 use crate::config::{
-    AssetDecl, CollectionDecl, CollectionKind, ContactDecl, LineageDecl, PropertyType, SchemaDecl,
-    StacConf, StacProvider,
+    AssetDecl, CollectionDecl, CollectionKind, ContactDecl, CubeDimensionDecl, LineageDecl,
+    PropertyType, SchemaDecl, StacConf, StacProvider,
 };
 use crate::descriptor::CollectionDescriptor;
 
@@ -112,7 +112,7 @@ pub struct CanonicalSchema {
 /// from the `stac:` config key it mirrors): `contacts` exists for the ISO
 /// 19115 projection, which requires a responsible party STAC has no slot
 /// for. See [`CanonicalStac::contacts`].
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct CanonicalStac {
     pub license: Option<String>,
     pub keywords: Vec<String>,
@@ -141,6 +141,8 @@ pub struct CanonicalStac {
     /// `LineageDecl`'s own doc for why the operator's declaration is the
     /// only lineage fact this workspace genuinely has.
     pub lineage: Option<LineageDecl>,
+    /// Declared STAC Datacube `cube:dimensions` (`cube_dimensions` in config).
+    pub cube_dimensions: BTreeMap<String, CubeDimensionDecl>,
 }
 
 /// What this collection can actually serve, resolved live through `Router`
@@ -440,6 +442,7 @@ pub fn build(
             assets: conf.assets.clone(),
             contacts: conf.contacts.clone(),
             lineage: conf.lineage.clone(),
+            cube_dimensions: conf.cube_dimensions.clone(),
         }),
         capabilities,
         geometry_profile,

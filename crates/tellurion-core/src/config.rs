@@ -1056,6 +1056,10 @@ pub struct ProtocolsConf {
     /// avoid — better no root than a root that lies.
     #[serde(default = "opt_in_exposure_default")]
     pub processes: ProtocolExposure,
+    /// The OGC API — Environmental Data Retrieval (EDR) root. Opt-in
+    /// (`disabled` by default) just like `records` and `processes`.
+    #[serde(default = "opt_in_exposure_default")]
+    pub edr: ProtocolExposure,
 }
 
 /// Hand-written rather than derived because [`ProtocolsConf::records`] and
@@ -1074,6 +1078,7 @@ impl Default for ProtocolsConf {
             stac: ProtocolExposure::Enabled,
             records: opt_in_exposure_default(),
             processes: opt_in_exposure_default(),
+            edr: opt_in_exposure_default(),
         }
     }
 }
@@ -1162,6 +1167,47 @@ pub struct StacConf {
     /// See [`ServiceAssetsMode`].
     #[serde(default, skip_serializing_if = "ServiceAssetsMode::is_templated")]
     pub service_assets: ServiceAssetsMode,
+    /// Declared STAC Datacube `cube:dimensions` entries, including the
+    /// proposed `size`, `definition` (OGC API – Common Part 2 UAD URI), and
+    /// `variableType` fields. Empty by default so existing collections
+    /// serialize byte-for-byte identically.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub cube_dimensions: BTreeMap<String, CubeDimensionDecl>,
+}
+
+/// One dimension entry under `stac.cube_dimensions`, serialized onto
+/// `StacCollection` as `cube:dimensions.<name>`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CubeDimensionDecl {
+    #[serde(rename = "type")]
+    pub dim_type: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub axis: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extent: Option<Vec<serde_json::Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub values: Option<Vec<serde_json::Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference_system: Option<serde_json::Value>,
+    /// Total discrete member cardinality (STAC Datacube `#31` / `#36`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    /// OGC API – Common Part 2 (UAD) semantic concept / dimension service URI.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub definition: Option<String>,
+    /// OGC API – Common Part 2 (UAD) measurement-scale classification.
+    #[serde(
+        rename = "variableType",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub variable_type: Option<String>,
 }
 
 /// How a collection's STAC `assets` map represents the *service* surfaces
@@ -4538,6 +4584,34 @@ impl StacConf {
                 if !is_plausible_media_type(media_type) {
                     return Err(Error::Config(format!(
                         "{context}.stac.assets['{asset_id}'].type '{media_type}' does not look like a media type (expected 'type/subtype')"
+                    )));
+                }
+            }
+        }
+        for (dim_id, dim) in &self.cube_dimensions {
+            if dim.dim_type.trim().is_empty() {
+                return Err(Error::Config(format!(
+                    "{context}.stac.cube_dimensions['{dim_id}'].type must not be empty"
+                )));
+            }
+            if let Some(def) = &dim.definition {
+                if def.trim().is_empty() {
+                    return Err(Error::Config(format!(
+                        "{context}.stac.cube_dimensions['{dim_id}'].definition must not be blank"
+                    )));
+                }
+            }
+            if let Some(vt) = &dim.variable_type {
+                const VALID_UAD: &[&str] = &[
+                    "continuous",
+                    "numericalOrdinal",
+                    "numericalNominal",
+                    "categoricalOrdinal",
+                    "categoricalNominal",
+                ];
+                if !VALID_UAD.contains(&vt.as_str()) {
+                    return Err(Error::Config(format!(
+                        "{context}.stac.cube_dimensions['{dim_id}'].variableType '{vt}' is not a valid OGC API Common Part 2 UAD value"
                     )));
                 }
             }

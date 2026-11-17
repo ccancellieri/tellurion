@@ -1,0 +1,30 @@
+[package]
+name = "tellurion-edr"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "OGC API - Environmental Data Retrieval (EDR) Part 1 v1.1 for Tellurion with native sparse multi-item datacube support and CoverageJSON streaming."
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tellurion-core = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+geo = "0.31"
+geo-types = { workspace = true }
+wkt = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+async-trait = { workspace = true }
+tokio = { workspace = true }
+serde_yaml = { workspace = true }
+tellurion-memory = { workspace = true }
+tower = { workspace = true, features = ["util"] }
