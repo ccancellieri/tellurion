@@ -190,22 +190,22 @@
               <p class="expect">Expect <b>3 GeoJSON features</b>: P1, P3, P6. P2, P4, P5 were never ingested.</p>
               <button class="button run" type="button">Run</button>
             </article>
-            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((12.0%2039.0,12.5%2039.0,12.5%2039.5,12.0%2039.5,12.0%2039.0)))&amp;filter-lang=cql2-text&amp;datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z&amp;f=CoverageJSON" data-kind="support" data-window="2021-01-P1,2021-01-P2,2021-01-P3,2021-01-P4,2021-01-P5,2021-01-P6">
-              <span class="badge proposed">Proposed EDR extension · Domain on /items</span>
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/scenes?filter=S_INTERSECTS(geometry,POLYGON((12.0%2039.0,12.5%2039.0,12.5%2039.5,12.0%2039.5,12.0%2039.0)))&amp;filter-lang=cql2-text&amp;datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z" data-accept='application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"' data-kind="support" data-window="2021-01-P1,2021-01-P2,2021-01-P3,2021-01-P4,2021-01-P5,2021-01-P6">
+              <span class="badge proposed">Coverages /scenes · Domain profile</span>
               <h4>South-west area, as a Domain</h4>
               <p class="q">Same question, but return only the populated time values with their bounds.</p>
               <p class="expect">Expect <b>t = P1, P3, P6</b>, each with its <code>[start, end]</code>.</p>
               <button class="button run" type="button">Run</button>
             </article>
-            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/items?filter=S_INTERSECTS(geometry,POLYGON((13.5%2040.5,14.5%2040.5,14.5%2041.5,13.5%2041.5,13.5%2040.5)))&amp;filter-lang=cql2-text&amp;datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z&amp;f=CoverageJSON" data-kind="support" data-window="2021-01-P1,2021-01-P2,2021-01-P3,2021-01-P4,2021-01-P5,2021-01-P6">
-              <span class="badge proposed">Proposed EDR extension · Domain on /items</span>
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/fao_chirps_pentadal_2021_italy/scenes?filter=S_INTERSECTS(geometry,POLYGON((13.5%2040.5,14.5%2040.5,14.5%2041.5,13.5%2041.5,13.5%2040.5)))&amp;filter-lang=cql2-text&amp;datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z" data-accept='application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"' data-kind="support" data-window="2021-01-P1,2021-01-P2,2021-01-P3,2021-01-P4,2021-01-P5,2021-01-P6">
+              <span class="badge proposed">Coverages /scenes · Domain profile</span>
               <h4>North-east area: the answer changes</h4>
               <p class="q">Move the area to 13.5–14.5°E, 40.5–41.5°N. Does P3 still have data?</p>
               <p class="expect">Expect <b>t = P1, P6</b>. The P3 granule only covers the south-west, so P3 drops out. A global collection summary would wrongly list it.</p>
               <button class="button run" type="button">Run</button>
             </article>
-            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/dekadal_sparse_granules/items?datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z&amp;f=CoverageJSON" data-kind="support" data-window="2021-01-D1,2021-01-D2,2021-01-D3">
-              <span class="badge proposed">Proposed EDR extension · Domain on /items</span>
+            <article class="sw-card" data-path="/public/edr/catalogs/default/collections/dekadal_sparse_granules/scenes?datetime=2021-01-01T00:00:00Z/2021-01-31T23:59:59Z" data-accept='application/prs.coverage+json; profile="http://www.opengis.net/def/profile/covjson/domain"' data-kind="support" data-window="2021-01-D1,2021-01-D2,2021-01-D3">
+              <span class="badge proposed">Coverages /scenes · Domain profile</span>
               <h4>Dekadal cube, January</h4>
               <p class="q">Which January dekads have any granule?</p>
               <p class="expect">Expect <b>t = D1, D3</b>; D2 is a deliberate gap.</p>
@@ -420,7 +420,8 @@
       sparseChips.replaceChildren();
       sparseSummary.textContent = "";
       try {
-        const res = await fetch(targetUrl, { headers: { Accept: "application/prs.coverage+json, application/geo+json, application/json" } });
+        const acceptHeader = card.dataset.accept || "application/prs.coverage+json, application/geo+json, application/json";
+        const res = await fetch(targetUrl, { headers: { Accept: acceptHeader } });
         const raw = await res.text();
         let data = null;
         try { data = JSON.parse(raw); } catch (_parseErr) { data = null; }
