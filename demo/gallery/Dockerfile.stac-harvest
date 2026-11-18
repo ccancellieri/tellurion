@@ -7,14 +7,14 @@ RUN apt-get update \
 
 WORKDIR /build
 
-ARG TELLURION_VERSION=v0.5.0-rc.1
-ARG TELLURION_REVISION=02e855affea9
-ENV SOURCE_ARCHIVE=tellurion-v0.5.0-rc.1-source-02e855affea9.zip
+ARG TELLURION_VERSION=v0.6.1
+ARG TELLURION_REVISION=14eb981
+ENV SOURCE_ARCHIVE=tellurion-v0.6.1-source-14eb981.zip
 
-COPY dist/tellurion-v0.5.0-rc.1-source-02e855affea9.zip /build/tellurion-v0.5.0-rc.1-source-02e855affea9.zip
+COPY dist/tellurion-v0.6.1-source-14eb981.zip /build/tellurion-v0.6.1-source-14eb981.zip
 
 RUN printf '%s  %s\n' \
-      '06cd99a2f2fb27730b1094cbdead3e8f3c256d4abbcf900c6eb593c79c882b10' \
+      '8cfbbf60c9213b255f46e63190367885c42e53d9f5d0847253bcfb9b04c89f32' \
       "${SOURCE_ARCHIVE}" > source.sha256 \
     && sha256sum -c source.sha256 \
     && unzip -q "${SOURCE_ARCHIVE}"
