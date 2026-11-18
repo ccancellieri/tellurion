@@ -15,7 +15,7 @@ Instead of inventing custom endpoints (`/availability`, `/intersection`, `/inver
 
 | Role | Mathematical Set | Standard Mechanism | Wire Output |
 | :--- | :--- | :--- | :--- |
-| **Nominal calendar grammar** | $D$ (intensional domain) | STAC `cube:dimensions` (`size`, `variableType`, `definition`) linking to **OGC API – Common Part 2 UAD** `/dimensions/{dimensionId}/items` with `?datetime=` or CQL2 `T_INTERSECTS(...)` | Record Collection / GeoJSON Features with exact nominal `[start, end]` intervals |
+| **Nominal calendar grammar** | $D$ (intensional domain) | STAC `cube:dimensions` (`count` via PR #40) + Collection `links` (`rel="dimension"`, #41) to **OGC API – Common Part 2 UAD** `/dimensions/{dimensionId}/items` with `?datetime=` or CQL2 `T_INTERSECTS(...)` | Record Collection / GeoJSON Features with exact nominal `[start, end]` intervals |
 | **Populated slice support** | $S(\text{AOI}, \Delta t) \subsetneq D$ | **OGC API – EDR Part 1** (`OGC 19-086r6` §8.9) `GET /collections/{cid}/items` with **CQL2** `filter=S_INTERSECTS(geometry, POLYGON(...))` (or ECQL `INTERSECTS(...)`) and **`f=CoverageJSON`** | `<1 KB` **CoverageJSON `"type": "Domain"`** (`OGC 21-069`) whose `axes.t.values` + `axes.t.bounds` list only populated slices |
 | **Pixel extraction** | Data array over $S(\text{AOI}, \Delta t)$ | Standard EDR `/cube`, `/area`, `/position` | CoverageJSON `Coverage` or array payload with zero empty-slice requests |
 
