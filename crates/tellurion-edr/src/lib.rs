@@ -14,7 +14,7 @@ pub mod router;
 pub mod sparse;
 
 pub use problem::ApiError;
-pub use router::{router, standalone_router};
+pub use router::{coverages_router, router, standalone_router};
 
 pub const JSON_MEDIA_TYPE: &str = "application/json";
 pub const GEOJSON_MEDIA_TYPE: &str = "application/geo+json";
@@ -31,6 +31,20 @@ pub const CONFORMANCE_CLASSES: &[&str] = &[
     "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/edr-geojson",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/queries",
     "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/covjson",
+    "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
+    "http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2",
+    "http://www.opengis.net/spec/cql2/1.0/conf/cql2-text",
+    "http://www.opengis.net/spec/cql2/1.0/conf/cql2-json",
+    "http://www.opengis.net/spec/cql2/1.0/conf/basic-spatial-functions",
+    "http://www.opengis.net/spec/cql2/1.0/conf/temporal-functions",
+];
+
+pub const COVERAGES_CONFORMANCE_CLASSES: &[&str] = &[
+    "https://www.opengis.net/spec/ogcapi-coverages-1/1.0/conf/core",
+    "https://www.opengis.net/spec/ogcapi-coverages-1/1.0/conf/spatial-subsetting",
+    "https://www.opengis.net/spec/ogcapi-coverages-1/1.0/conf/temporal-subsetting",
+    "https://www.opengis.net/spec/ogcapi-coverages-1/1.0/conf/coveragejson",
+    "https://www.opengis.net/spec/ogcapi-coverages-3/1.0/conf/scenes",
     "http://www.opengis.net/spec/ogcapi-features-3/1.0/conf/filter",
     "http://www.opengis.net/spec/cql2/1.0/conf/basic-cql2",
     "http://www.opengis.net/spec/cql2/1.0/conf/cql2-text",

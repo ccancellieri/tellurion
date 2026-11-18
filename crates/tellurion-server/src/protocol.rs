@@ -25,6 +25,8 @@ pub enum Protocol {
     Processes,
     /// The OGC API — Environmental Data Retrieval (EDR) root.
     Edr,
+    /// The OGC API — Coverages (Part 1 + Part 3 Scenes) root.
+    Coverages,
 }
 
 impl Protocol {
@@ -40,6 +42,7 @@ impl Protocol {
             Protocol::Records => "records",
             Protocol::Processes => "processes",
             Protocol::Edr => "edr",
+            Protocol::Coverages => "coverages",
         }
     }
 
@@ -54,6 +57,7 @@ impl Protocol {
             Protocol::Records => "OGC API Records",
             Protocol::Processes => "OGC API Processes",
             Protocol::Edr => "OGC API EDR",
+            Protocol::Coverages => "OGC API Coverages",
         }
     }
 
@@ -78,6 +82,7 @@ impl Protocol {
             Protocol::Records => protocols.records,
             Protocol::Processes => protocols.processes,
             Protocol::Edr => protocols.edr,
+            Protocol::Coverages => protocols.coverages,
         }
     }
 
@@ -122,14 +127,14 @@ impl Protocol {
             // adding a collection-scoped resource to this root later cannot
             // happen without someone revisiting this decision.
             Protocol::Processes => false,
-            Protocol::Edr => kind.has_geometry(),
+            Protocol::Edr | Protocol::Coverages => kind.has_geometry(),
         }
     }
 
     /// Every protocol this server mounts, in a fixed order — the tenant
     /// directory doc (`landing::tenant_directory`) walks this to list every
     /// `(protocol, catalog)` combination under a tenant.
-    pub const ALL: [Protocol; 8] = [
+    pub const ALL: [Protocol; 9] = [
         Protocol::Features,
         Protocol::Tiles,
         Protocol::Styles,
@@ -138,6 +143,7 @@ impl Protocol {
         Protocol::Records,
         Protocol::Processes,
         Protocol::Edr,
+        Protocol::Coverages,
     ];
 }
 
@@ -175,7 +181,8 @@ impl RootAvailability {
             | Protocol::ThreeDTiles
             | Protocol::Stac
             | Protocol::Records
-            | Protocol::Edr => true,
+            | Protocol::Edr
+            | Protocol::Coverages => true,
         }
     }
 }
@@ -201,6 +208,7 @@ mod tests {
             (Protocol::Stac, true),
             (Protocol::Records, true),
             (Protocol::Edr, true),
+            (Protocol::Coverages, true),
             (Protocol::Processes, false),
         ];
         assert_eq!(expected_without_capability.len(), Protocol::ALL.len());
@@ -302,7 +310,7 @@ mod tests {
             let enabled = protocol.exposure(&matrix).is_enabled();
             let opt_in = matches!(
                 protocol,
-                Protocol::Records | Protocol::Processes | Protocol::Edr
+                Protocol::Records | Protocol::Processes | Protocol::Edr | Protocol::Coverages
             );
             assert_eq!(enabled, !opt_in, "{protocol:?} default exposure");
         }
@@ -322,6 +330,7 @@ mod tests {
                 records: ProtocolExposure::Enabled,
                 processes: ProtocolExposure::Enabled,
                 edr: ProtocolExposure::Enabled,
+                coverages: ProtocolExposure::Enabled,
                 ..ProtocolsConf::default()
             };
             let before: Vec<bool> = Protocol::ALL
@@ -337,6 +346,7 @@ mod tests {
                 Protocol::Records => matrix.records = ProtocolExposure::Disabled,
                 Protocol::Processes => matrix.processes = ProtocolExposure::Disabled,
                 Protocol::Edr => matrix.edr = ProtocolExposure::Disabled,
+                Protocol::Coverages => matrix.coverages = ProtocolExposure::Disabled,
             }
             let after: Vec<bool> = Protocol::ALL
                 .iter()

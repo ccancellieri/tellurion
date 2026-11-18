@@ -860,6 +860,55 @@ fn with_vary_accept_profile(mut resp: Response) -> Response {
     resp
 }
 
+/// Standard OGC API - Coverages Part 1 `GET /collections/{cid}/coverage` endpoint.
+pub async fn query_coverage(
+    State(ctx): State<Arc<AppContext>>,
+    Path(params): Path<BTreeMap<String, String>>,
+    Query(mut query): Query<EdrQueryParams>,
+) -> Result<Response, ApiError> {
+    if query.bbox.as_deref().is_none_or(|s| s.trim().is_empty()) {
+        query.bbox = Some("-180,-90,180,90".to_string());
+    }
+    query_cube(State(ctx), Path(params), Query(query)).await
+}
+
+/// Standard OGC API - Coverages Part 3 `GET /collections/{cid}/scenes/{itemId}/coverage` endpoint.
+pub async fn query_scene_coverage(
+    State(ctx): State<Arc<AppContext>>,
+    Path(params): Path<BTreeMap<String, String>>,
+    Query(query): Query<EdrQueryParams>,
+) -> Result<Response, ApiError> {
+    let (tenant, catalog) = extract_scope(&params);
+    let cid = params
+        .get("cid")
+        .ok_or_else(|| ApiError::bad_request("Missing collection id"))?;
+    let item_id = params
+        .get("itemId")
+        .ok_or_else(|| ApiError::bad_request("Missing scene id"))?;
+    let crs = parse_crs(query.crs.as_deref())?;
+    let selected = parse_parameter_names(query.parameter_name.as_deref());
+
+    let (decl, source) = ctx
+        .current()
+        .router
+        .resolve_raster(tenant, catalog, cid)
+        .await?;
+    let world = [-180.0, -90.0, 180.0, 90.0];
+    let slices = resolve_sparse_time_slices(&ctx, tenant, catalog, &decl, world, None).await?;
+    let matched = slices
+        .into_iter()
+        .find(|s| s.label == *item_id && s.has_granule)
+        .ok_or_else(|| ApiError::not_found(format!("Scene '{item_id}' not found in '{cid}'")))?;
+    let bbox = if query.bbox.as_deref().is_some_and(|s| !s.trim().is_empty()) {
+        parse_bbox(query.bbox.as_deref())?
+    } else {
+        matched.matched_bbox.unwrap_or(world)
+    };
+    let grid = sample_grid_with_fallback(source.as_ref(), &decl, bbox, 64, None).await?;
+    let cov = build_grid_coverage(&grid, &[matched], crs, selected.as_deref());
+    Ok(json_response(COVJSON_MEDIA_TYPE, &cov))
+}
+
 /// Standard OGC API - EDR / Features Part 3 / Coverages Part 3 `GET /collections/{cid}/items`
 /// and `/scenes` with CQL2 (`S_INTERSECTS` / `INTERSECTS` / `T_INTERSECTS`) and RFC 6906 `profile`
 /// (`Domain`-only) vs. format-orthogonal `f=CoverageJSON` (full extracted Coverage data).

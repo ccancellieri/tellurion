@@ -1,0 +1,18 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Tellurion OGC API - Coverages (Part 1 + Part 3 Scenes)",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/": { "get": { "summary": "OGC API - Coverages landing page", "responses": { "200": { "description": "Landing page" } } } },
+    "/api": { "get": { "summary": "OpenAPI definition", "responses": { "200": { "description": "OpenAPI 3.0 document" } } } },
+    "/conformance": { "get": { "summary": "Conformance classes", "responses": { "200": { "description": "Conformance declaration" } } } },
+    "/collections": { "get": { "summary": "List coverages collections", "responses": { "200": { "description": "Collections metadata" } } } },
+    "/collections/{cid}": { "get": { "summary": "Describe coverage collection", "responses": { "200": { "description": "Collection metadata" } } } },
+    "/collections/{cid}/coverage": { "get": { "summary": "Extract coverage (OGC API - Coverages Part 1)", "responses": { "200": { "description": "CoverageJSON Coverage" } } } },
+    "/collections/{cid}/scenes": { "get": { "summary": "List or filter partitioned scenes (OGC API - Coverages Part 3 / CQL2)", "responses": { "200": { "description": "GeoJSON STAC scenes, extracted CoverageJSON, or CoverageJSON Domain via RFC 6906 profile" } } } },
+    "/collections/{cid}/scenes/{itemId}": { "get": { "summary": "Get collection scene by id", "responses": { "200": { "description": "GeoJSON STAC scene Feature" } } } },
+    "/collections/{cid}/scenes/{itemId}/coverage": { "get": { "summary": "Extract coverage for a specific scene (OGC API - Coverages Part 3)", "responses": { "200": { "description": "CoverageJSON Coverage" } } } }
+  }
+}

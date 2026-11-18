@@ -46,6 +46,23 @@ pub fn router() -> Router<Arc<AppContext>> {
         )
 }
 
+/// OGC API - Coverages (Part 1 `/coverage` + Part 3 `/scenes`) router.
+pub fn coverages_router() -> Router<Arc<AppContext>> {
+    Router::new()
+        .route("/collections", get(handlers::list_collections))
+        .route("/collections/{cid}", get(handlers::get_collection))
+        .route("/collections/{cid}/coverage", get(handlers::query_coverage))
+        .route("/collections/{cid}/scenes", get(handlers::list_items))
+        .route(
+            "/collections/{cid}/scenes/{itemId}",
+            get(handlers::get_item),
+        )
+        .route(
+            "/collections/{cid}/scenes/{itemId}/coverage",
+            get(handlers::query_scene_coverage),
+        )
+}
+
 /// Standalone router including `/` and `/conformance` for direct crate-level testing.
 pub fn standalone_router() -> Router<Arc<AppContext>> {
     router()

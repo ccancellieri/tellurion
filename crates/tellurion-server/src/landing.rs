@@ -173,6 +173,11 @@ pub async fn protocol_landing(
             "data",
             JSON_MEDIA_TYPE,
         )),
+        Protocol::Coverages => links.push(Link::new(
+            format!("{self_root}/collections"),
+            "data",
+            JSON_MEDIA_TYPE,
+        )),
         // `#182`: the Processes root's own process list, with the relation
         // OGC API — Processes — Part 1: Core Requirement 2
         // (`/req/core/landingpage-success`) names for it. Spelled as the full
@@ -341,6 +346,9 @@ fn conformance_classes(
             classes.extend(tellurion_processes::CONFORMANCE_CLASSES.iter().copied())
         }
         Protocol::Edr => classes.extend(tellurion_edr::CONFORMANCE_CLASSES.iter().copied()),
+        Protocol::Coverages => {
+            classes.extend(tellurion_edr::COVERAGES_CONFORMANCE_CLASSES.iter().copied())
+        }
         Protocol::Styles | Protocol::ThreeDTiles => {}
     }
     classes

@@ -1060,6 +1060,10 @@ pub struct ProtocolsConf {
     /// (`disabled` by default) just like `records` and `processes`.
     #[serde(default = "opt_in_exposure_default")]
     pub edr: ProtocolExposure,
+    /// The OGC API — Coverages (Part 1 + Part 3 Scenes) root. Opt-in
+    /// (`disabled` by default) just like `records`, `processes`, and `edr`.
+    #[serde(default = "opt_in_exposure_default")]
+    pub coverages: ProtocolExposure,
 }
 
 /// Hand-written rather than derived because [`ProtocolsConf::records`] and
@@ -1079,6 +1083,7 @@ impl Default for ProtocolsConf {
             records: opt_in_exposure_default(),
             processes: opt_in_exposure_default(),
             edr: opt_in_exposure_default(),
+            coverages: opt_in_exposure_default(),
         }
     }
 }

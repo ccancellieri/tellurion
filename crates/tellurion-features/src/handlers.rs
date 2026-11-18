@@ -1012,6 +1012,53 @@ pub async fn get_queryables(
 /// GET /collections/{cid}/items. `all_params` is a second, independent
 /// parse of the same query string as `raw_query` — axum's `Query` extractor
 /// only ever reads `parts.uri.query()`, never the body, so having both in
+const DOMAIN_PROFILE_URI: &str = "http://www.opengis.net/def/profile/covjson/domain";
+const COVJSON_DOMAIN_MEDIA_TYPE: &str =
+    "application/prs.coverage+json; profile=\"http://www.opengis.net/def/profile/covjson/domain\"";
+
+fn requests_covjson_domain_profile(headers: &HeaderMap) -> bool {
+    if let Some(ap) = headers.get("accept-profile").and_then(|v| v.to_str().ok()) {
+        if ap.contains(DOMAIN_PROFILE_URI) {
+            return true;
+        }
+    }
+    if let Some(accept) = headers.get(header::ACCEPT).and_then(|v| v.to_str().ok()) {
+        let lower = accept.to_ascii_lowercase();
+        if (lower.contains("application/prs.coverage+json")
+            || lower.contains("application/vnd.cov+json"))
+            && accept.contains(DOMAIN_PROFILE_URI)
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn feature_temporal_member(
+    feature: &serde_json::Value,
+    dt_col: Option<&str>,
+) -> Option<(String, Option<[String; 2]>)> {
+    let props = feature.get("properties")?.as_object()?;
+    let label = dt_col
+        .and_then(|k| props.get(k))
+        .and_then(|v| v.as_str())
+        .or_else(|| props.get("pentad_id").and_then(|v| v.as_str()))
+        .or_else(|| props.get("dekad_id").and_then(|v| v.as_str()))
+        .or_else(|| props.get("datetime").and_then(|v| v.as_str()))
+        .or_else(|| props.get("start_datetime").and_then(|v| v.as_str()))
+        .map(str::trim)
+        .filter(|s| !s.is_empty())?
+        .to_string();
+    let bounds = match (
+        props.get("start_datetime").and_then(|v| v.as_str()),
+        props.get("end_datetime").and_then(|v| v.as_str()),
+    ) {
+        (Some(s), Some(e)) => Some([s.to_string(), e.to_string()]),
+        _ => None,
+    };
+    Some((label, bounds))
+}
+
 /// one handler signature is safe — into an unstructured map, the only way to
 /// see a query parameter name `ItemsQueryParams` has no field for: the
 /// per-collection queryable names Requirement 4 (`/req/queryables-query-
@@ -1260,6 +1307,60 @@ pub async fn list_items(
     }
 
     let mut page = source.items(&decl, &query).await?;
+    if requests_covjson_domain_profile(&headers) {
+        let dt_col = decl.datetime.as_deref();
+        let mut seen = std::collections::HashSet::new();
+        let mut values: Vec<String> = Vec::new();
+        let mut bounds: Vec<[String; 2]> = Vec::new();
+        for f in &page.features_geojson {
+            if let Some((label, b)) = feature_temporal_member(f, dt_col) {
+                if seen.insert(label.clone()) {
+                    values.push(label);
+                    if let Some(pair) = b {
+                        bounds.push(pair);
+                    }
+                }
+            }
+        }
+        let bbox = query.bbox.unwrap_or([-180.0, -90.0, 180.0, 90.0]);
+        let t_axis = if bounds.len() == values.len() && !bounds.is_empty() {
+            serde_json::json!({ "values": values, "bounds": bounds })
+        } else {
+            serde_json::json!({ "values": values })
+        };
+        let domain_body = serde_json::json!({
+            "type": "Domain",
+            "domainType": "Grid",
+            "axes": {
+                "t": t_axis,
+                "x": { "start": bbox[0], "stop": bbox[2], "num": 1 },
+                "y": { "start": bbox[1], "stop": bbox[3], "num": 1 }
+            },
+            "referencing": [
+                {
+                    "coordinates": ["x", "y"],
+                    "system": {
+                        "type": "GeographicCRS",
+                        "id": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+                    }
+                },
+                {
+                    "coordinates": ["t"],
+                    "system": {
+                        "type": "TemporalRS",
+                        "calendar": "Gregorian"
+                    }
+                }
+            ]
+        });
+        let mut response = (StatusCode::OK, Json(domain_body)).into_response();
+        set_content_type(&mut response, COVJSON_DOMAIN_MEDIA_TYPE);
+        if let Ok(hv) = HeaderValue::from_str("Accept, Accept-Profile") {
+            response.headers_mut().insert(axum::http::header::VARY, hv);
+        }
+        set_read_source(&mut response, &served);
+        return Ok(response);
+    }
     // `#184`: byte-budget the page AFTER the source returned it — trimming
     // is response-shaping policy, deliberately not part of the
     // `FeatureSource` contract (contrast the vertex budget, which refuses

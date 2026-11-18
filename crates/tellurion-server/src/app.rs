@@ -1119,6 +1119,10 @@ pub(crate) fn build_with_webhook_registry_and_control_browser(
             "/edr/catalogs/{catalog}",
             protocol_root(&ctx, Protocol::Edr, tellurion_edr::router()),
         )
+        .nest(
+            "/coverages/catalogs/{catalog}",
+            protocol_root(&ctx, Protocol::Coverages, tellurion_edr::coverages_router()),
+        )
         // `#182`: the OGC API — Processes root. Mounted unconditionally, like
         // its six siblings, and gated twice — by `protocols.processes` (which,
         // like `records`, defaults to `disabled`) and by whether this
