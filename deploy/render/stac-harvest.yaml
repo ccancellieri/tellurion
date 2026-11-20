@@ -28,6 +28,7 @@ settings:
   protocols:
     records: enabled
     edr: enabled
+    coverages: enabled
 
 catalogs:
   - id: default
