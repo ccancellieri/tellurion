@@ -1014,7 +1014,7 @@ pub async fn get_queryables(
 /// only ever reads `parts.uri.query()`, never the body, so having both in
 const DOMAIN_PROFILE_URI: &str = "http://www.opengis.net/def/profile/covjson/domain";
 const COVJSON_DOMAIN_MEDIA_TYPE: &str =
-    "application/prs.coverage+json; profile=\"http://www.opengis.net/def/profile/covjson/domain\"";
+    "application/vnd.cov+json; profile=\"http://www.opengis.net/def/profile/covjson/domain\"";
 
 fn requests_covjson_domain_profile(headers: &HeaderMap) -> bool {
     if let Some(ap) = headers.get("accept-profile").and_then(|v| v.to_str().ok()) {

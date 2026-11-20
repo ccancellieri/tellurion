@@ -6129,3 +6129,87 @@ async fn a_grant_declaring_no_ceiling_is_never_rate_limited() {
         assert!(response.headers().get(header::RETRY_AFTER).is_none());
     }
 }
+
+fn sparse_vector_feature(id: &str, start: &str, end: &str) -> Value {
+    json!({
+        "type": "Feature",
+        "id": id,
+        "geometry": { "type": "Point", "coordinates": [12.5, 41.9] },
+        "properties": {
+            "datetime": start,
+            "start_datetime": start,
+            "end_datetime": end
+        }
+    })
+}
+
+async fn get_with_header(app: &axum::Router, uri: &str, name: &str, value: &str) -> Response {
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .uri(uri)
+                .header(name, value)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn list_items_returns_coveragejson_domain_when_domain_profile_requested() {
+    let app = build_app(vec![
+        (
+            "f1",
+            sparse_vector_feature("f1", "2021-01-01T00:00:00Z", "2021-01-11T00:00:00Z"),
+        ),
+        (
+            "f2",
+            sparse_vector_feature("f2", "2021-01-01T00:00:00Z", "2021-01-11T00:00:00Z"),
+        ),
+        (
+            "f3",
+            sparse_vector_feature("f3", "2021-01-21T00:00:00Z", "2021-02-01T00:00:00Z"),
+        ),
+    ]);
+
+    let expected_ct =
+        "application/vnd.cov+json; profile=\"http://www.opengis.net/def/profile/covjson/domain\"";
+
+    for (hdr_name, hdr_val) in [
+        ("accept", expected_ct),
+        (
+            "accept-profile",
+            "http://www.opengis.net/def/profile/covjson/domain",
+        ),
+    ] {
+        let response = get_with_header(&app, "/collections/demo/items", hdr_name, hdr_val).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get(header::CONTENT_TYPE).unwrap(),
+            expected_ct
+        );
+        let vary = response
+            .headers()
+            .get(header::VARY)
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(vary.contains("Accept-Profile"));
+
+        let body = body_json(response).await;
+        assert_eq!(body["type"], "Domain");
+        assert_eq!(body["domainType"], "Grid");
+        assert_eq!(
+            body["axes"]["t"]["values"],
+            json!(["2021-01-01T00:00:00Z", "2021-01-21T00:00:00Z"])
+        );
+        assert_eq!(
+            body["axes"]["t"]["bounds"],
+            json!([
+                ["2021-01-01T00:00:00Z", "2021-01-11T00:00:00Z"],
+                ["2021-01-21T00:00:00Z", "2021-02-01T00:00:00Z"]
+            ])
+        );
+    }
+}

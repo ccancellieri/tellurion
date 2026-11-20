@@ -18,11 +18,11 @@ pub use router::{coverages_router, router, standalone_router};
 
 pub const JSON_MEDIA_TYPE: &str = "application/json";
 pub const GEOJSON_MEDIA_TYPE: &str = "application/geo+json";
-pub const COVJSON_MEDIA_TYPE: &str = "application/prs.coverage+json";
-pub const COVJSON_LEGACY_MEDIA_TYPE: &str = "application/vnd.cov+json";
+pub const COVJSON_MEDIA_TYPE: &str = "application/vnd.cov+json";
+pub const COVJSON_LEGACY_MEDIA_TYPE: &str = "application/prs.coverage+json";
 pub const DOMAIN_PROFILE_URI: &str = "http://www.opengis.net/def/profile/covjson/domain";
 pub const COVJSON_DOMAIN_MEDIA_TYPE: &str =
-    "application/prs.coverage+json; profile=\"http://www.opengis.net/def/profile/covjson/domain\"";
+    "application/vnd.cov+json; profile=\"http://www.opengis.net/def/profile/covjson/domain\"";
 
 pub const CONFORMANCE_CLASSES: &[&str] = &[
     "http://www.opengis.net/spec/ogcapi-edr-1/1.1/conf/core",
