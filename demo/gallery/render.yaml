@@ -51,7 +51,7 @@ services:
         - demo/gallery/deploy/render/build_stac_italy.py
         - demo/gallery/deploy/render/build_sparse_gpkg.py
         - demo/gallery/deploy/render/build_zarr_demo.py
-        - demo/gallery/dist/tellurion-v0.6.1-source-14eb981.zip
+        - demo/gallery/dist/tellurion-v0.6.1-source-783e4df.zip
   - type: web
     name: tellurion-zarr-demo
     runtime: docker
