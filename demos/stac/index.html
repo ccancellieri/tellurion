@@ -153,10 +153,10 @@
 
         <div class="sw-act">
           <h3>Step 1 · Read the calendar <span class="sym" style="color:var(--mint)">D</span></h3>
-          <p>The calendar is published once as a dimension resource and linked from the STAC collection through <code>cube:dimensions.time.definition</code>. It is cacheable and independent of any file.</p>
+          <p>The calendar is described via OGC Common Part 2 UAD (<code>OGC 20-024</code> §8 <code>extent</code> metadata on <code>/collections/{id}</code>) and enumerated here through a prototype OGC API – Records label resource (<code>/dimensions/{id}/items</code>, not defined by <code>20-024</code> itself). It is cacheable and independent of any file.</p>
           <div class="sw-cards">
             <article class="sw-card" data-path="/public/records/catalogs/default/dimensions/pentadal-2021/items?limit=12" data-kind="grammar">
-              <span class="badge composed">Common Part 2 UAD (draft) · Records items</span>
+              <span class="badge composed">Records items prototype · OGC 20-024 extent</span>
               <h4>The 2021 pentadal calendar</h4>
               <p class="q">Which pentads does 2021 have, and where does each one start and end?</p>
               <p class="expect">Expect <b>72 matched</b>; first page shows Jan and Feb P1–P6. Jan P6 lasts 6 days, Feb P6 only 3.</p>
@@ -244,7 +244,7 @@
           <details><summary>Raw response</summary><pre class="raw" id="sparse-output">{}</pre></details>
         </div>
 
-        <p class="sw-notes"><strong>What is standard today and what is proposed.</strong> Green badges are published OGC standards. Blue badges compose published pieces (OGC API – Common Part 2 UAD is still a draft; EDR <code>/items</code> defers its filtering to OGC API – Features, so the CQL2 <code>filter</code> parameter comes from Features Part 3 rather than from EDR itself). Amber badges are the extension this demo proposes to the EDR Standards Working Group: a CoverageJSON <code>Domain</code> response listing only the populated periods. Background: <a href="../../docs/articles/sparse-datacubes-edr-cql2-portolan.md">Sparse irregular datacubes on cloud storage</a>, the <a href="https://github.com/ccancellieri/tellurion/blob/main/docs/standards/ogc-edr-sparse-tile-cubes.md">canonical specification proposal</a>, and the same index pattern over GeoParquet manifests queried with DuckDB in <a href="https://www.portolan-sdi.org/">Portolan SDI</a>-style catalogs.</p>
+        <p class="sw-notes"><strong>What is standard today and what is proposed.</strong> Green badges are published OGC standards. Blue badges compose published pieces (OGC API – Common Part 2 <code>OGC 20-024</code> is published and extends <code>/collections/{collectionId}</code> <code>extent</code> metadata — the <code>/dimensions/{id}/items</code> route in Step 1 is a Tellurion Records label-listing prototype; EDR <code>/items</code> defers its filtering to OGC API – Features, so the CQL2 <code>filter</code> parameter comes from Features Part 3 rather than from EDR itself). Amber badges are the extension this demo proposes to the Coverages/EDR/Features Standards Working Groups: a CoverageJSON <code>Domain</code> response listing only the populated periods. Background: <a href="../../docs/articles/sparse-datacubes-edr-cql2-portolan.md">Sparse irregular datacubes on cloud storage</a>, the <a href="https://github.com/ccancellieri/tellurion/blob/main/docs/standards/ogc-edr-sparse-tile-cubes.md">canonical specification proposal</a>, and the same index pattern over GeoParquet manifests queried with DuckDB in <a href="https://www.portolan-sdi.org/">Portolan SDI</a>-style catalogs.</p>
       </section>
     </section>
   </main>
