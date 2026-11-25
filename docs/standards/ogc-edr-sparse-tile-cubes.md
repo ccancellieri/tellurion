@@ -15,7 +15,7 @@ Unlike monolithic **GeoZarr** stores that embed coordinate arrays (`coords`) ins
 
 | Layer | Standards & Extensions | Core Mechanism |
 | :--- | :--- | :--- |
-| **1. Nominal Grammar ($D$)**<br>*Calendar structure & dimension members* | **STAC Datacube** + **Collection `links`** + **OGC API – Common Part 2 UAD** (`OGC 20-024`) | • Minimal `count` on `cube:dimensions` ([`#40`](https://github.com/stac-extensions/datacube/pull/40), resolving [`#31`](https://github.com/stac-extensions/datacube/issues/31))<br>• External dimension endpoints via `links` (`rel: "dimension"`, [`#41`](https://github.com/stac-extensions/datacube/issues/41)); `scale_type` in `snake_case` ([`#42`](https://github.com/stac-extensions/datacube/issues/42))<br>• `GET /dimensions/{id}/items?datetime=...` or CQL2 `T_INTERSECTS(...)` (e.g., `2021-01-12` $\rightarrow$ `2021-01-P3`) |
+| **1. Nominal Grammar ($D$)**<br>*Calendar structure & dimension labels* | **STAC Datacube** + **OGC API – Common Part 2 UAD** (`OGC 20-024` §8 `extent`) + **Records / Features `/collections/{cid}/items`** (or static asset) | • Minimal `count` on `cube:dimensions` ([`#40`](https://github.com/stac-extensions/datacube/pull/40), merged, resolving [`#31`](https://github.com/stac-extensions/datacube/issues/31))<br>• `OGC 20-024` §8 extends `extent` inside `/collections/{collectionId}` metadata (it does not define a `/dimensions` endpoint); external label lists can be linked via STAC `links` ([`#41`](https://github.com/stac-extensions/datacube/issues/41)) or static Parquet/JSON assets (`scale_type` in [`#42`](https://github.com/stac-extensions/datacube/issues/42))<br>• Prototype label lookup in Tellurion: `GET /records/.../dimensions/{id}/items?datetime=...` or CQL2 `T_INTERSECTS(...)` (e.g., `2021-01-12` $\rightarrow$ `2021-01-P3`) |
 | **2. Populated Support ($S(\text{AOI}, \Delta t) \subsetneq D$)**<br>*Sparse slice discovery & data extraction* | **OGC API – Coverages Part 3 (`/scenes`)** + **Features Part 3 / CQL2** (`OGC 19-079r2`, `21-065r2`) + **EDR Part 1 v1.1** (`OGC 19-086r6`) + **CoverageJSON** (`OGC 21-069`) | • **Discovery:** `GET /collections/{cid}/scenes?filter=S_INTERSECTS(...)` *(or `itemType`-disambiguated `/items`)* with `Accept: application/vnd.cov+json; profile="http://www.opengis.net/def/profile/covjson/domain"` (`Domain` with populated `axes.t`)<br>• **Extraction:** EDR `/cube`, `/area`, `/position` (or Coverages `/coverage`) returning full `Coverage` / `CoverageCollection` data (with explicit `t.bounds` and `null`-filled gaps) |
 
 ---
@@ -44,7 +44,7 @@ A key reason the GeoDataCube and Zarr communities sometimes talk past earth-obse
 |---|---|---|---|
 | **Storage Layout** | Single hierarchical store (`.zattrs`, `.zarray`, chunks `[t, y, x]`) | Hundreds of thousands of independent COG files (`1 file ≈ 1 granule`), routed via `routing.tiles` (raster) + `routing.features` (index) | Relational table + R-tree virtual index (`rtree_<table>_geom`) storing `(id, geom, pentad_id/dekad_id, start_datetime, end_datetime, status)` |
 | **Coordinate Metadata (`coords`)** | Embedded directly inside store attributes / 1D coordinate arrays (Zarr `coords`) | **Cannot exist inside a single COG file** — no individual TIFF holds the global multi-year pentadal/dekadal axis | Stores **extensional** per-granule footprints (`geom`) and actual ingested timestamps ($S$), not missing slots |
-| **Calendar Expressiveness** | Fixed array index `[0..N-1]` paired with numeric time vector or `.zattrs` metadata | Intensional calendar $D$ linked via STAC Collection `links` (`rel="dimension"`) + `count` (`72` or `36`) to UAD `/dimensions/{id}`; explicit irregular `t.bounds` in CoverageJSON | Rows carry canonical IDs (`2021-01-P3`, `2021-01-D1`) resolved via standard UAD `/items?datetime=...` |
+| **Calendar Expressiveness** | Fixed array index `[0..N-1]` paired with numeric time vector or `.zattrs` metadata | Intensional calendar $D$ described via `OGC 20-024` §8 `extent` metadata + STAC `count` (`72` or `36`) and optional label collection/asset (prototype `/dimensions/{id}` in Tellurion); explicit irregular `t.bounds` in CoverageJSON | Rows carry canonical IDs (`2021-01-P3`, `2021-01-D1`) resolved via `?datetime=...` / CQL2 label lookup |
 | **Temporal & Spatial Sparsity** | Dense rectangular chunk grid; empty slices waste storage or rely on unpopulated chunks | Missing granules are **absent files** (zero storage cost); partial footprints leave non-intersecting pixels unpopulated | Exact spatial R-tree pushdown + WKT geometry intersection reveals populated vs. missing slices in milliseconds |
 | **EDR Subset Output (`CoverageJSON`)** | Direct slice readout over `[time, y, x]` chunks (in our demo: `shape=[2, 64, 64]`, `4508` non-null cells) | Multi-item assembly over all matching slices in $\Delta t$: missing slices become `null`, partial granules are masked per-pixel to `matched_bbox` (`shape=[6, 64, 64]`) | Exposed via standard Features/EDR `/items` (`filter=S_INTERSECTS(...)` / `INTERSECTS(...)`) and consumed internally by EDR (`/cube`/`/area`/`/position`/`/radius`) |
 
@@ -74,7 +74,7 @@ Review on OGC Agora (Jérôme Jacovella-St-Louis, OGC API – Coverages & Common
 | Topic | Spec Reference | Alignment with This Proposal |
 | :--- | :--- | :--- |
 | **Temporal Gap-Filling vs. Slice Discovery** | **OGC API – Coverages (`19-087`) §11** (`#rc_sparse-dimensions-collapse-temporal`, Req. 31) | **Complementary:** CSTD fills `NODATA` from nearby non-empty slices at extraction time; `/items` (`Domain`) inspects exact populated support $S(\text{AOI}, \Delta t)$ upfront without implicit filling. |
-| **Uniform Additional Dimensions (UAD)** | **OGC API – Common Part 2 (`20-024`) §8** ([published spec](https://docs.ogc.org/is/20-024/20-024.html)) | **Decoupled:** `20-024` standardizes `definition`, `variableType`, and `grid.cellsCount`. STAC `datacube` keeps only `count` (`#40`), `links` (`#41`), and `scale_type` (`#42`). |
+| **Uniform Additional Dimensions (UAD)** | **OGC API – Common Part 2 (`20-024`) §8** ([published spec](https://docs.ogc.org/is/20-024/20-024.html)) | **Decoupled:** `20-024` §8 extends the `extent` object inside `/collections/{collectionId}` metadata (`definition`, `variableType`, `grid.cellsCount`); it does not define a `/dimensions` endpoint. STAC `datacube` keeps `count` (`#40`, merged), `sampling` (`#47`), and open discussions `#41`/`#42`. |
 | **Data vs. Metadata Boundary** | **OGC API – Coverages Part 3 (Scenes)** (`/collections/{cid}/scenes`) | **Open SWG Question:** Whether populated-domain discovery (`filter` + `Domain` `profile`) belongs on `/scenes` for raster scene archives and `/items` for feature/in-situ EDR collections. |
 
 - **CSTD Gap-Filling vs. Quantitative Time-Series:** CSTD (`Requirement 31`) returns the latest available pixels on or before a target date — ideal for **mosaic compositing and visual overlays**. In **quantitative time-series analysis** (where silent gap-filling across periods would skew accumulations, averages, or anomaly indices) and in **UI time-pickers**, clients still need the exact populated support $S(\text{AOI}, \Delta t) \subsetneq D$ before extraction.
@@ -142,8 +142,8 @@ Consider an archive indexing **hundreds of thousands of sparse COG files** (e.g.
 
 The two-layer architecture handles this in three standard steps:
 
-1. **Fetch the nominal calendar $D$ from UAD (cacheable):**
-   Follow the Collection `link` (`rel="dimension"`, `cube:dimension="time"`) to `GET /records/.../dimensions/{did}/items?datetime=<window>` (or `?filter=T_INTERSECTS(...)`) to retrieve theoretical periods (`2021-01-P1..P6`) and their `[start, end]` intervals.
+1. **Fetch the nominal calendar $D$ (cacheable):**
+   Read `OGC 20-024` §8 `extent` metadata on `/collections/{cid}`, and for full irregular label enumeration follow a Collection `link` (or static Parquet/JSON asset) to a Records/Features `/collections/{cid}/items` endpoint (implemented in Tellurion as prototype `GET /records/.../dimensions/{did}/items?datetime=<window>` or `?filter=T_INTERSECTS(...)`) to retrieve theoretical periods (`2021-01-P1..P6`) and their `[start, end]` intervals.
 2. **Push down spatial filtering via `/scenes?filter=S_INTERSECTS(...)` (or `itemType`-disambiguated `/items`) with `Domain` `profile`:**
    On viewport pan/zoom, issue one `<1 KB` standard request:
    `GET /collections/{cid}/scenes?filter=S_INTERSECTS(geom,POLYGON((...)))&filter-lang=cql2-text&datetime=<window>`
@@ -180,7 +180,7 @@ Keeping **`Accept-Profile` / RFC 6906 `profile`** orthogonal to output format un
 
 All outputs below were executed against the compiled pure-Rust `tellurion` binary (`--features cog,geopackage,zarr`) serving the hybrid catalog (`demo.yaml`) combining UAD Records Dimensions, real remote S3 ESA WorldCover COG streaming (`ESA_WorldCover_10m_2021_v200_N39E012_Map.tif`), a GeoPackage R-tree granule index (`sparse_dekadal.gpkg`), and a synthetic Zarr v2 cube (`sample_zarr_t0`).
 
-### 5.1 UAD Domain Definition & Standard `?datetime=` Filtering (`pentadal-2021` & `dekadal-2021`)
+### 5.1 Prototype Dimension Label Collection & Standard `?datetime=` Filtering (`pentadal-2021` & `dekadal-2021`)
 
 **`GET /public/records/catalogs/default/dimensions/pentadal-2021`** (`HTTP 200`):
 ```json
